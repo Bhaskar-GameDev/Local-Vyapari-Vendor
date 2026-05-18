@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "511392842596",
+    "firebase_url": "https://local-vyapari-838cd-default-rtdb.firebaseio.com",
+    "project_id": "local-vyapari-838cd",
+    "storage_bucket": "local-vyapari-838cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511392842596:android:cc8204ef03879055c87071",
+        "android_client_info": {
+          "package_name": "com.example.local_vyapari_vendor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDb3Q1Lu-T4kSoaCHAlWxQ_e1FDHC0QD_A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

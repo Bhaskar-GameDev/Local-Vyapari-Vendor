@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "products": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "offers": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "shop": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "inventory": {
+      "$productId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

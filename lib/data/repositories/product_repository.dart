@@ -1,0 +1,51 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../models/product_model.dart';
+
+class ProductRepository {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref('products');
+
+  String? get _currentShopId => _auth.currentUser?.uid;
+
+  /// Realtime stream — pushes updates the instant Firebase changes for this shop ID
+  Stream<List<ProductModel>> watchProducts() {
+    final shopId = _currentShopId;
+    if (shopId == null) return Stream.value([]);
+    
+    return _dbRef.child(shopId).onValue.map((event) {
+      final data = event.snapshot.value;
+      if (data == null) return [];
+
+      final map = Map<String, dynamic>.from(data as Map);
+      return map.entries.map((e) {
+        final productData = Map<String, dynamic>.from(e.value as Map);
+        productData['id'] = e.key;
+        return ProductModel.fromJson(productData);
+      }).toList();
+    });
+  }
+
+  Future<void> addProduct(ProductModel product) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+    
+    final data = product.toJson()..remove('id');
+    await _dbRef.child(shopId).push().set(data);
+  }
+
+  Future<void> updateProduct(ProductModel product) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+    
+    final data = product.toJson()..remove('id');
+    await _dbRef.child(shopId).child(product.id).update(data);
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+    
+    await _dbRef.child(shopId).child(productId).remove();
+  }
+}
