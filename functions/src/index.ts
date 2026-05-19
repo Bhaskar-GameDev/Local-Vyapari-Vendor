@@ -78,3 +78,71 @@ export const aggregateProductViews = functions.firestore.document("/events/{even
     }
     return null;
   });
+
+// 4. Send Hyperlocal Push Notification on New Offer (RTDB trigger)
+export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId}")
+  .onCreate(async (snapshot, context) => {
+    const offerData = snapshot.val();
+    if (!offerData) return null;
+
+    const shopId = context.params.shopId;
+    const offerTitle = offerData.title || "New Offer!";
+    const discount = offerData.discountPercentage || 0;
+
+    try {
+      // Fetch shop data from Realtime Database to get geohash and name
+      const shopSnapshot = await admin.database().ref(`/shop/${shopId}`).once("value");
+      if (!shopSnapshot.exists()) {
+        console.log(`Shop ${shopId} does not exist.`);
+        return null;
+      }
+
+      const shopData = shopSnapshot.val();
+      const shopName = shopData.name || shopData.shopName || "Nearby Shop";
+      const geohash = shopData.geohash;
+
+      if (!geohash || geohash.length < 5) {
+        console.log(`Shop ${shopId} does not have a valid geohash.`);
+        return null;
+      }
+
+      // Extract 5-character geohash prefix for hyperlocal targeting
+      const geohashPrefix = geohash.substring(0, 5);
+      const topic = `offers_geo_${geohashPrefix}`;
+
+      // Construct the FCM push notification payload
+      const message = {
+        topic: topic,
+        notification: {
+          title: `New Offer at ${shopName}!`,
+          body: `${offerTitle} - Get ${discount}% OFF!`,
+        },
+        android: {
+          notification: {
+            sound: "default",
+            clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+            },
+          },
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          type: "offer",
+          shopId: shopId,
+        },
+      };
+
+      // Send the message to the topic
+      const response = await admin.messaging().send(message);
+      console.log(`Successfully sent hyperlocal FCM message to topic ${topic}:`, response);
+    } catch (error) {
+      console.error("Error sending hyperlocal offer notification:", error);
+    }
+
+    return null;
+  });
