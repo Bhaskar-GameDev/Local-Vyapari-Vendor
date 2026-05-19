@@ -10,7 +10,8 @@ import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
-  const AddProductScreen({super.key});
+  final ProductModel? existingProduct;
+  const AddProductScreen({super.key, this.existingProduct});
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
@@ -22,6 +23,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
+  final _offerPriceController = TextEditingController();
   final _stockController = TextEditingController();
   
   String _selectedCategory = 'Groceries';
@@ -31,10 +33,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    final p = widget.existingProduct;
+    if (p != null) {
+      _nameController.text = p.name;
+      _descController.text = p.description;
+      _priceController.text = p.actualPrice.toString();
+      _offerPriceController.text = p.offerPrice?.toString() ?? '';
+      _stockController.text = p.stockQuantity.toString();
+      if (_categories.contains(p.category)) {
+        _selectedCategory = p.category;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _offerPriceController.dispose();
     _stockController.dispose();
     super.dispose();
   }
@@ -49,7 +68,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   void _submitProduct() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImage == null) {
+    if (_selectedImage == null && (widget.existingProduct == null || widget.existingProduct!.images.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image', style: TextStyle(color: Colors.white)), backgroundColor: AppColors.error));
       return;
     }
@@ -57,29 +76,35 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Upload to Cloudinary First
-      final imageUrl = await CloudinaryService.uploadImage(_selectedImage!.path);
-      
-      if (imageUrl == null) throw Exception("Image upload failed");
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await CloudinaryService.uploadImage(_selectedImage!.path);
+        if (imageUrl == null) throw Exception("Image upload failed");
+      } else {
+        imageUrl = widget.existingProduct!.images.first;
+      }
 
-      // 2. Create the Product with the Cloudinary URL
       final newProduct = ProductModel(
-        id: '', // Firebase will generate
+        id: widget.existingProduct?.id ?? '', 
         name: _nameController.text.trim(),
         description: _descController.text.trim(),
         category: _selectedCategory,
         actualPrice: double.parse(_priceController.text.trim()),
+        offerPrice: _offerPriceController.text.trim().isNotEmpty ? double.parse(_offerPriceController.text.trim()) : null,
         stockQuantity: int.parse(_stockController.text.trim()),
         images: [imageUrl],
-        isActive: true,
+        isActive: widget.existingProduct?.isActive ?? true,
       );
 
-      // 3. Save to Firebase Realtime Database
-      await ref.read(productsProvider.notifier).addProduct(newProduct);
+      if (widget.existingProduct != null) {
+        await ref.read(productsProvider.notifier).updateProduct(newProduct);
+      } else {
+        await ref.read(productsProvider.notifier).addProduct(newProduct);
+      }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product added successfully!'), backgroundColor: AppColors.success),
+          SnackBar(content: Text(widget.existingProduct != null ? 'Product updated successfully!' : 'Product added successfully!'), backgroundColor: AppColors.success),
         );
         Navigator.pop(context);
       }
@@ -98,7 +123,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Product'),
+        title: Text(widget.existingProduct != null ? 'Edit Product' : 'Add New Product'),
       ),
       body: Form(
         key: _formKey,
@@ -131,7 +156,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 children: [
                   Expanded(
                     child: CustomTextField(
-                      label: 'Price (₹)',
+                      label: 'Actual Price (₹)',
                       controller: _priceController,
                       keyboardType: TextInputType.number,
                       validator: (val) {
@@ -144,17 +169,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: CustomTextField(
-                      label: 'Stock Qty',
-                      controller: _stockController,
+                      label: 'Offer Price (₹)',
+                      controller: _offerPriceController,
                       keyboardType: TextInputType.number,
                       validator: (val) {
-                        if (val == null || val.isEmpty) return 'Required';
-                        if (int.tryParse(val) == null) return 'Invalid';
+                        if (val != null && val.isNotEmpty && double.tryParse(val) == null) return 'Invalid';
                         return null;
                       },
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: 'Stock Qty',
+                controller: _stockController,
+                keyboardType: TextInputType.number,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Required';
+                  if (int.tryParse(val) == null) return 'Invalid';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               CustomTextField(
@@ -190,14 +225,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity),
               )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.primary),
-                  const SizedBox(height: 8),
-                  Text('Tap to Upload Product Image', style: Theme.of(context).textTheme.bodyMedium),
-                ],
-              ),
+            : widget.existingProduct != null && widget.existingProduct!.images.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(widget.existingProduct!.images.first, fit: BoxFit.cover, width: double.infinity),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.primary),
+                      const SizedBox(height: 8),
+                      Text('Tap to Upload Product Image', style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                  ),
       ),
     );
   }

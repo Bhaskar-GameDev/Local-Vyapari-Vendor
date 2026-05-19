@@ -18,6 +18,12 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('My Shop Profile')),
       body: shopState.when(
         data: (shop) {
+          final lat = shop?.latitude;
+          final lng = shop?.longitude;
+          final coordinatesText = (lat != null && lng != null)
+              ? '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'
+              : 'Not Set (Required for discovery)';
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -48,6 +54,11 @@ class ProfileScreen extends ConsumerWidget {
               _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
               _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
               _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
+              _buildListTile(
+                'Storefront GPS Coordinates',
+                coordinatesText,
+                Icons.map_outlined,
+              ),
               _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
               const SizedBox(height: 32),
               PrimaryButton(

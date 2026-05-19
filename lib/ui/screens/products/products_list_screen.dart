@@ -30,6 +30,12 @@ class ProductsListScreen extends ConsumerWidget {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddProductScreen(existingProduct: product)),
+                      );
+                    },
                     leading: Container(
                       width: 50,
                       height: 50,
@@ -40,11 +46,11 @@ class ProductsListScreen extends ConsumerWidget {
                       child: const Icon(Icons.inventory_2, color: AppColors.primary),
                     ),
                     title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${product.category} • \$${product.actualPrice}'),
+                    subtitle: Text('${product.category} • ₹${product.actualPrice}'),
                     trailing: Switch(
                       value: product.isActive,
                       onChanged: (val) {
-                        // Toggle logic can be added to repository
+                        ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
                       },
                       activeColor: AppColors.success,
                     ),

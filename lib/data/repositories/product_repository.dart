@@ -48,4 +48,11 @@ class ProductRepository {
     
     await _dbRef.child(shopId).child(productId).remove();
   }
+
+  Future<void> updateProductStatus(String productId, bool isActive) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+    
+    await _dbRef.child(shopId).child(productId).update({'isActive': isActive});
+  }
 }

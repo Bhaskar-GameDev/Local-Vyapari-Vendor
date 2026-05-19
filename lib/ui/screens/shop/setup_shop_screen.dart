@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geocoding/geocoding.dart';
+import '../../../core/utils/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/cloudinary_service.dart';
 import '../../../data/models/shop_model.dart';
@@ -72,25 +73,28 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   Future<void> _getCurrentLocation() async {
     setState(() => _isLocating = true);
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception("Location permission was denied.");
+      final position = await LocationService.getCurrentLocation();
+
+      String addressStr = _addressController.text;
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          final parts = [place.street, place.subLocality, place.locality, place.postalCode, place.country]
+              .where((p) => p != null && p.isNotEmpty)
+              .toList();
+          if (parts.isNotEmpty) {
+            addressStr = parts.join(', ');
+          }
         }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception("Location permissions are permanently denied.");
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      } catch (_) {}
 
       setState(() {
         _latController.text = position.latitude.toStringAsFixed(6);
         _lngController.text = position.longitude.toStringAsFixed(6);
+        if (addressStr.isNotEmpty) {
+          _addressController.text = addressStr;
+        }
       });
 
       if (mounted) {
@@ -103,10 +107,11 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         );
       }
     } catch (e) {
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not fetch location: $e'),
+            content: Text('Could not fetch location: $errorMsg'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),

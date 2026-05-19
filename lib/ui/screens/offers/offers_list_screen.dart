@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../domain/providers/offer_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import 'create_offer_screen.dart';
@@ -25,6 +26,10 @@ class OffersListScreen extends ConsumerWidget {
             itemCount: offers.length,
             itemBuilder: (context, index) {
               final offer = offers[index];
+              final endDate = DateTime.parse(offer.endDate);
+              final isExpired = endDate.isBefore(DateTime.now());
+              final effectiveActive = offer.isActive && !isExpired;
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
@@ -32,17 +37,35 @@ class OffersListScreen extends ConsumerWidget {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.2),
+                      color: (effectiveActive ? AppColors.warning : Colors.grey).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.local_offer, color: AppColors.warning),
+                    child: Icon(Icons.local_offer, color: effectiveActive ? AppColors.warning : Colors.grey),
                   ),
-                  title: Text(offer.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${offer.discountPercentage}% OFF • Ends ${offer.endDate}'),
-                  trailing: Switch(
-                    value: offer.isActive,
-                    onChanged: (val) {},
-                    activeColor: AppColors.success,
+                  title: Text(offer.title, style: TextStyle(fontWeight: FontWeight.bold, color: effectiveActive ? null : Colors.grey)),
+                  subtitle: Text(
+                    isExpired 
+                        ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}' 
+                        : '${offer.discountPercentage}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
+                    style: TextStyle(color: isExpired ? AppColors.error : null),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Switch(
+                        value: effectiveActive,
+                        onChanged: isExpired ? null : (val) {
+                          ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
+                        },
+                        activeColor: AppColors.success,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                        onPressed: () {
+                          ref.read(offersProvider.notifier).deleteOffer(offer.id);
+                        },
+                      ),
+                    ],
                   ),
                 ),
               );

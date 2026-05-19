@@ -12,6 +12,20 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
   OffersNotifier(this._repository) : super(const AsyncValue.loading()) {
     _subscription = _repository.watchOffers().listen((offers) {
       state = AsyncValue.data(offers);
+      
+      // Automatically deactivate any expired offers in the database
+      final now = DateTime.now();
+      for (final offer in offers) {
+        if (offer.isActive) {
+          try {
+            final endDate = DateTime.parse(offer.endDate);
+            if (endDate.isBefore(now)) {
+              _repository.updateOfferStatus(offer.id, false);
+            }
+          } catch (_) {}
+        }
+      }
+
     }, onError: (e, st) {
       state = AsyncValue.error(e, st);
     });
@@ -23,6 +37,10 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
 
   Future<void> deleteOffer(String offerId) async {
     await _repository.deleteOffer(offerId);
+  }
+
+  Future<void> toggleOfferAvailability(String offerId, bool isActive) async {
+    await _repository.updateOfferStatus(offerId, isActive);
   }
 
   @override

@@ -1,12 +1,18 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/offer_model.dart';
 
 class OfferRepository {
-  final DatabaseReference _ref =
-      FirebaseDatabase.instance.ref('offers');
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _ref = FirebaseDatabase.instance.ref('offers');
+
+  String? get _currentShopId => _auth.currentUser?.uid;
 
   Stream<List<OfferModel>> watchOffers() {
-    return _ref.onValue.map((event) {
+    final shopId = _currentShopId;
+    if (shopId == null) return Stream.value([]);
+
+    return _ref.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
       if (data == null) return [];
 
@@ -20,11 +26,24 @@ class OfferRepository {
   }
 
   Future<void> addOffer(OfferModel offer) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+
     final data = offer.toJson()..remove('id');
-    await _ref.push().set(data);
+    await _ref.child(shopId).push().set(data);
   }
 
   Future<void> deleteOffer(String offerId) async {
-    await _ref.child(offerId).remove();
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+
+    await _ref.child(shopId).child(offerId).remove();
+  }
+
+  Future<void> updateOfferStatus(String offerId, bool isActive) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+
+    await _ref.child(shopId).child(offerId).update({'isActive': isActive});
   }
 }

@@ -30,6 +30,10 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<ProductModel>>> {
     await _repository.deleteProduct(productId);
   }
 
+  Future<void> toggleProductAvailability(String productId, bool isActive) async {
+    await _repository.updateProductStatus(productId, isActive);
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
