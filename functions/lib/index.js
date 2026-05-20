@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+exports.onPasswordResetRequest = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -69,6 +69,119 @@ exports.aggregateProductViews = functions.firestore.document("/events/{eventId}"
         await shopRef.update({
             "stats.totalViews": admin.firestore.FieldValue.increment(1)
         });
+    }
+    return null;
+});
+// 4. Send Hyperlocal Push Notification on New Offer (RTDB trigger)
+exports.onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId}")
+    .onCreate(async (snapshot, context) => {
+    const offerData = snapshot.val();
+    if (!offerData)
+        return null;
+    const shopId = context.params.shopId;
+    const offerTitle = offerData.title || "New Offer!";
+    const discount = offerData.discountPercentage || 0;
+    try {
+        // Fetch shop data from Realtime Database to get geohash and name
+        const shopSnapshot = await admin.database().ref(`/shop/${shopId}`).once("value");
+        if (!shopSnapshot.exists()) {
+            console.log(`Shop ${shopId} does not exist.`);
+            return null;
+        }
+        const shopData = shopSnapshot.val();
+        const shopName = shopData.name || shopData.shopName || "Nearby Shop";
+        const geohash = shopData.geohash;
+        if (!geohash || geohash.length < 5) {
+            console.log(`Shop ${shopId} does not have a valid geohash.`);
+            return null;
+        }
+        // Extract 5-character geohash prefix for hyperlocal targeting
+        const geohashPrefix = geohash.substring(0, 5);
+        const topic = `offers_geo_${geohashPrefix}`;
+        // Construct the FCM push notification payload
+        const message = {
+            topic: topic,
+            notification: {
+                title: `New Offer at ${shopName}!`,
+                body: `${offerTitle} - Get ${discount}% OFF!`,
+            },
+            android: {
+                notification: {
+                    sound: "default",
+                    clickAction: "FLUTTER_NOTIFICATION_CLICK",
+                },
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: "default",
+                    },
+                },
+            },
+            data: {
+                click_action: "FLUTTER_NOTIFICATION_CLICK",
+                type: "offer",
+                shopId: shopId,
+            },
+        };
+        // Send the message to the topic
+        const response = await admin.messaging().send(message);
+        console.log(`Successfully sent hyperlocal FCM message to topic ${topic}:`, response);
+    }
+    catch (error) {
+        console.error("Error sending hyperlocal offer notification:", error);
+    }
+    return null;
+});
+// 5. Password Reset via RTDB Trigger (Safe & Secure password updates)
+exports.onPasswordResetRequest = functions.database.ref("/password_resets/{phone}")
+    .onCreate(async (snapshot, context) => {
+    const data = snapshot.val();
+    if (!data)
+        return null;
+    const phone = context.params.phone;
+    const otp = data.otp;
+    const newPassword = data.newPassword;
+    const ref = snapshot.ref;
+    try {
+        // 1. Verify OTP in RTDB
+        const otpSnapshot = await admin.database().ref(`/otps/${phone}`).once("value");
+        if (!otpSnapshot.exists()) {
+            await ref.update({ status: "error", error: "OTP not found or expired" });
+            return null;
+        }
+        const { otp: storedOtp, expiresAt } = otpSnapshot.val();
+        if (storedOtp !== otp || Date.now() > expiresAt) {
+            await ref.update({ status: "error", error: "Invalid or expired OTP" });
+            return null;
+        }
+        // Delete OTP
+        await admin.database().ref(`/otps/${phone}`).remove();
+        // 2. Find UID by phone in RTDB
+        const phoneSnapshot = await admin.database().ref(`/phones/${phone}`).once("value");
+        if (!phoneSnapshot.exists()) {
+            await ref.update({ status: "error", error: "Phone number is not registered" });
+            return null;
+        }
+        const uid = phoneSnapshot.val();
+        // 3. Update password in Firebase Auth
+        await admin.auth().updateUser(uid, {
+            password: newPassword
+        });
+        await ref.update({ status: "success" });
+        // Clean up reset request after 10 seconds
+        setTimeout(async () => {
+            try {
+                await ref.remove();
+            }
+            catch (e) {
+                console.error("Error cleaning up reset request:", e);
+            }
+        }, 10000);
+    }
+    catch (error) {
+        console.error("Error during password reset:", error);
+        await ref.update({ status: "error", error: error.message || "Internal server error" });
     }
     return null;
 });

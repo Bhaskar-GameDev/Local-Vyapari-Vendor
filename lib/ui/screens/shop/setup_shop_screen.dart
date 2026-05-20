@@ -122,8 +122,115 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     }
   }
 
+  Future<bool> _verifyShopPhone(String phone) async {
+    final phoneNum = phone.trim();
+    final fullPhone = phoneNum.startsWith('+') ? phoneNum : '+91$phoneNum';
+
+    final authNotifier = ref.read(authProvider.notifier);
+    final otp = await authNotifier.requestBindPhoneOtp(fullPhone);
+
+    if (otp == null) {
+      if (mounted) {
+        final error = ref.read(authProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? 'Failed to send verification OTP'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return false;
+    }
+
+    if (!mounted) return false;
+    final verified = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final codeController = TextEditingController();
+        bool isVerifying = false;
+        String? mockOtp = otp;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Verify Phone Number'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('We have sent a verification OTP to $fullPhone.'),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Mock OTP: $mockOtp',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  CustomTextField(
+                    label: '6-Digit OTP',
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icons.lock_outline,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isVerifying ? null : () async {
+                    final code = codeController.text.trim();
+                    if (code.length != 6) return;
+
+                    setState(() => isVerifying = true);
+
+                    final success = await authNotifier.verifyOtpOnly(fullPhone, code);
+
+                    if (context.mounted) {
+                      setState(() => isVerifying = false);
+                      Navigator.pop(dialogContext, success);
+                    }
+                  },
+                  child: isVerifying
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Verify'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return verified ?? false;
+  }
+
   Future<void> _submitShop() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final isEditing = widget.existingShop != null && 
+                      widget.existingShop!.address.isNotEmpty;
+
+    if (!isEditing) {
+      final verified = await _verifyShopPhone(_phoneController.text.trim());
+      if (!verified) return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -150,20 +257,24 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         isOpen: widget.existingShop?.isOpen ?? true,
       );
 
-      // 2. Save shop details to DB and update state notifier
-      final success = await ref.read(shopProvider.notifier).createOrUpdateShop(shop);
+      // 2. Save shop details to DB
+      await ref.read(shopRepositoryProvider).updateShopProfile(shop);
+      const success = true;
 
       if (success && mounted) {
+        final isEditing = widget.existingShop != null && 
+                          widget.existingShop!.address.isNotEmpty;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.existingShop != null
+            content: Text(isEditing
                 ? 'Shop profile updated successfully!'
                 : 'Shop storefront created successfully!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        if (widget.existingShop != null) {
+        if (isEditing) {
           Navigator.pop(context);
         }
       }
@@ -184,7 +295,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.existingShop != null;
+    final isEditing = widget.existingShop != null && 
+                      widget.existingShop!.address.isNotEmpty && 
+                      widget.existingShop!.latitude != null;
 
     return Scaffold(
       appBar: AppBar(

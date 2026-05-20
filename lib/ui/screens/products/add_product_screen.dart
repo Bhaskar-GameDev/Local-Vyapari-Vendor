@@ -29,7 +29,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   String _selectedCategory = 'Groceries';
   final List<String> _categories = ['Groceries', 'Electronics', 'Clothing', 'Pharmacy', 'Other'];
   
-  File? _selectedImage;
+  final List<dynamic> _images = [];
   bool _isLoading = false;
 
   @override
@@ -45,6 +45,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (_categories.contains(p.category)) {
         _selectedCategory = p.category;
       }
+      _images.addAll(p.images);
     }
   }
 
@@ -58,30 +59,69 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImages() async {
+    if (_images.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can add up to 5 images only', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _selectedImage = File(pickedFile.path));
+    try {
+      final List<XFile> pickedFiles = await picker.pickMultiImage();
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          final remainingSlots = 5 - _images.length;
+          final imagesToAdd = pickedFiles.take(remainingSlots).map((xFile) => File(xFile.path)).toList();
+          _images.addAll(imagesToAdd);
+          if (pickedFiles.length > remainingSlots) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Only up to 5 images can be added', style: TextStyle(color: Colors.white)),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: $e', style: const TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
   void _submitProduct() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImage == null && (widget.existingProduct == null || widget.existingProduct!.images.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image', style: TextStyle(color: Colors.white)), backgroundColor: AppColors.error));
+    if (_images.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least 1 image', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await CloudinaryService.uploadImage(_selectedImage!.path);
-        if (imageUrl == null) throw Exception("Image upload failed");
-      } else {
-        imageUrl = widget.existingProduct!.images.first;
+      final List<String> imageUrls = [];
+      for (final image in _images) {
+        if (image is File) {
+          final imageUrl = await CloudinaryService.uploadImage(image.path);
+          if (imageUrl == null) throw Exception("Image upload failed");
+          imageUrls.add(imageUrl);
+        } else if (image is String) {
+          imageUrls.add(image);
+        }
       }
 
       final newProduct = ProductModel(
@@ -92,7 +132,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         actualPrice: double.parse(_priceController.text.trim()),
         offerPrice: _offerPriceController.text.trim().isNotEmpty ? double.parse(_offerPriceController.text.trim()) : null,
         stockQuantity: int.parse(_stockController.text.trim()),
-        images: [imageUrl],
+        images: imageUrls,
         isActive: widget.existingProduct?.isActive ?? true,
       );
 
@@ -104,14 +144,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.existingProduct != null ? 'Product updated successfully!' : 'Product added successfully!'), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text(widget.existingProduct != null ? 'Product updated successfully!' : 'Product added successfully!'),
+            backgroundColor: AppColors.success,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding product: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error adding product: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -211,33 +257,121 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildImageUploader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Product Images (${_images.length}/5)',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Text(
+              'Min 1, Max 5',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _images.length + (_images.length < 5 ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == _images.length) {
+                return _buildAddImageCard();
+              }
+              
+              final image = _images[index];
+              return _buildImageCard(image, index);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddImageCard() {
     return GestureDetector(
-      onTap: _pickImage,
+      onTap: _pickImages,
       child: Container(
-        height: 140,
+        width: 120,
+        margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
           color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.3),
+            style: BorderStyle.solid,
+            width: 1.5,
+          ),
         ),
-        child: _selectedImage != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity),
-              )
-            : widget.existingProduct != null && widget.existingProduct!.images.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(widget.existingProduct!.images.first, fit: BoxFit.cover, width: double.infinity),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.primary),
-                      const SizedBox(height: 8),
-                      Text('Tap to Upload Product Image', style: Theme.of(context).textTheme.bodyMedium),
-                    ],
-                  ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_photo_alternate_outlined, size: 36, color: AppColors.primary),
+            SizedBox(height: 8),
+            Text(
+              'Add Image',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageCard(dynamic image, int index) {
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 8),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: image is File
+                  ? Image.file(image, fit: BoxFit.cover)
+                  : Image.network(image as String, fit: BoxFit.cover),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _images.removeAt(index);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

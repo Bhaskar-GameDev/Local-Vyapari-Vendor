@@ -16,16 +16,16 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _shopNameController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _shopNameController.dispose();
     super.dispose();
   }
 
@@ -33,9 +33,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final success = await ref.read(authProvider.notifier).register(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          'merchant',
+          null,
+          phone: '+91${_phoneController.text.trim()}',
+        );
 
     if (!mounted) return;
 
@@ -76,7 +79,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -91,12 +94,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Join Local Vyapari',
+                            Text(
+                              'Join Local Vyapari',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: AppColors.primary, fontWeight: FontWeight.bold)),
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('Reach thousands of nearby customers',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                            Text(
+                              'Reach thousands of nearby customers',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
                           ],
                         ),
                       ),
@@ -104,13 +115,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                CustomTextField(
-                  label: 'Shop / Business Name',
-                  controller: _shopNameController,
-                  prefixIcon: Icons.business_outlined,
-                  validator: (val) => val == null || val.isEmpty ? 'Shop name is required' : null,
-                ),
-                const SizedBox(height: 16),
+                
                 CustomTextField(
                   label: 'Email Address',
                   controller: _emailController,
@@ -123,6 +128,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
+                CustomTextField(
+                  label: 'Phone Number',
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  prefixIcon: Icons.phone_android,
+                  prefixText: '+91 ',
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Phone number is required';
+                    if (val.length != 10) return 'Enter a valid 10-digit number';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
                 CustomTextField(
                   label: 'Password',
                   controller: _passwordController,
@@ -135,6 +155,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+                
                 CustomTextField(
                   label: 'Confirm Password',
                   controller: _confirmPasswordController,
@@ -147,17 +168,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
+                
                 PrimaryButton(
                   text: 'Create My Store',
                   isLoading: authState.isLoading,
                   onPressed: _handleRegister,
                 ),
                 const SizedBox(height: 16),
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Already have an account?',
-                      style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      'Already have an account?',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('Sign In'),

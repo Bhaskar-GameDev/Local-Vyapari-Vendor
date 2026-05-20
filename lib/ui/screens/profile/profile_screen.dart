@@ -4,6 +4,7 @@ import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../common/primary_button.dart';
+import '../../common/custom_text_field.dart';
 import '../shop/setup_shop_screen.dart';
 import '../auth/login_screen.dart';
 
@@ -13,6 +14,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shopState = ref.watch(shopProvider);
+    final profileState = ref.watch(userProfileProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Shop Profile')),
@@ -60,6 +62,85 @@ class ProfileScreen extends ConsumerWidget {
                 Icons.map_outlined,
               ),
               _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
+              
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              
+              Text(
+                'Security & Linked Accounts',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+              const SizedBox(height: 12),
+
+              profileState.when(
+                data: (profile) {
+                  final email = profile?['email'] as String?;
+                  final phone = profile?['phone'] as String?;
+
+                  return Column(
+                    children: [
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.email_outlined, color: AppColors.primary),
+                          title: const Text('Bound Email Address'),
+                          subtitle: Text(email != null && email.isNotEmpty ? email : 'Not Bound'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: () async {
+                              final updated = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => _BindEmailDialog(initialEmail: email, ref: ref),
+                              );
+                              if (updated == true && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Email bound successfully!'),
+                                    backgroundColor: AppColors.success,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
+                          title: const Text('Bound Phone Number'),
+                          subtitle: Text(phone != null && phone.isNotEmpty ? phone : 'Not Bound'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: () async {
+                              final updated = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => _BindPhoneDialog(ref: ref),
+                              );
+                              if (updated == true && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Phone number bound successfully!'),
+                                    backgroundColor: AppColors.success,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error loading accounts: $e')),
+              ),
+
               const SizedBox(height: 32),
               PrimaryButton(
                 text: 'Edit Profile',
@@ -79,7 +160,7 @@ class ProfileScreen extends ConsumerWidget {
                   await ref.read(authProvider.notifier).logout();
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => LoginScreen()),
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
                       (route) => false,
                     );
                   }
@@ -109,6 +190,268 @@ class ProfileScreen extends ConsumerWidget {
         title: Text(title, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 16, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
       ),
+    );
+  }
+}
+
+// ─── Bind Email Dialog ────────────────────────────────────────────────────────
+class _BindEmailDialog extends StatefulWidget {
+  final String? initialEmail;
+  final WidgetRef ref;
+
+  const _BindEmailDialog({required this.initialEmail, required this.ref});
+
+  @override
+  State<_BindEmailDialog> createState() => _BindEmailDialogState();
+}
+
+class _BindEmailDialogState extends State<_BindEmailDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _emailController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Bind Email Address'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CustomTextField(
+              label: 'Email Address',
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: Icons.email_outlined,
+              validator: (val) {
+                if (val == null || val.isEmpty) return 'Email is required';
+                if (!val.contains('@')) return 'Enter a valid email';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : () async {
+            if (!_formKey.currentState!.validate()) return;
+            setState(() => _isLoading = true);
+
+            final success = await widget.ref.read(authProvider.notifier).bindEmail(_emailController.text.trim());
+
+            if (mounted) {
+              setState(() => _isLoading = false);
+              if (success) {
+                Navigator.pop(context, true);
+              } else {
+                final error = widget.ref.read(authProvider).error;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error ?? 'Binding failed'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            }
+          },
+          child: _isLoading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Bind'),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Bind Phone Dialog ────────────────────────────────────────────────────────
+class _BindPhoneDialog extends StatefulWidget {
+  final WidgetRef ref;
+
+  const _BindPhoneDialog({required this.ref});
+
+  @override
+  State<_BindPhoneDialog> createState() => _BindPhoneDialogState();
+}
+
+class _BindPhoneDialogState extends State<_BindPhoneDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  bool _otpSent = false;
+  bool _isLoading = false;
+  String? _mockOtp;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit number'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final fullPhone = '+91$phone';
+    final otp = await widget.ref.read(authProvider.notifier).requestBindPhoneOtp(fullPhone);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (otp != null) {
+        setState(() {
+          _otpSent = true;
+          _mockOtp = otp;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('OTP sent. For testing use: $otp'),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      } else {
+        final error = widget.ref.read(authProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? 'Failed to send OTP'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _verifyOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final phone = _phoneController.text.trim();
+    final fullPhone = '+91$phone';
+    final code = _otpController.text.trim();
+
+    final success = await widget.ref.read(authProvider.notifier).verifyAndBindPhone(fullPhone, code);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
+        Navigator.pop(context, true);
+      } else {
+        final error = widget.ref.read(authProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? 'Verification failed'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Bind Phone Number'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_mockOtp != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Mock OTP: $_mockOtp',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              CustomTextField(
+                label: 'Phone Number',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                prefixIcon: Icons.phone_android,
+                prefixText: '+91 ',
+                readOnly: _otpSent,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Phone number is required';
+                  if (val.length != 10) return 'Enter a valid 10-digit number';
+                  return null;
+                },
+              ),
+              if (_otpSent) ...[
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: 'Enter 6-Digit OTP',
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.lock_outline,
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'OTP code is required';
+                    if (val.length != 6) return 'OTP must be 6 digits';
+                    return null;
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : (_otpSent ? _verifyOtp : _sendOtp),
+          child: _isLoading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(_otpSent ? 'Verify & Link' : 'Send OTP'),
+        ),
+      ],
     );
   }
 }

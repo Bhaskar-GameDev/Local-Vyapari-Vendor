@@ -21,14 +21,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   void _navigate() {
     if (!mounted) return;
-    // Check Firebase Auth state — if already logged in, skip the login screen
+    
     final authState = ref.read(authStateProvider);
-    final isLoggedIn = authState.asData?.value != null;
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => isLoggedIn ? const MainNavigation() : LoginScreen(),
-      ),
+    
+    authState.when(
+      data: (user) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => user != null ? const MainNavigation() : const LoginScreen(),
+          ),
+        );
+      },
+      loading: () {
+        Future.delayed(const Duration(milliseconds: 500), _navigate);
+      },
+      error: (_, __) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          ),
+        );
+      },
     );
   }
 

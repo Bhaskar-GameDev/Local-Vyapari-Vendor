@@ -34,9 +34,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
 
     return shopState.when(
       data: (shop) {
-        if (shop == null) {
-          // If shop is null (merchant signs up for the first time), redirect to SetupShopScreen
-          return const SetupShopScreen();
+        if (shop == null || shop.address.isEmpty || shop.latitude == null || shop.longitude == null) {
+          // If shop is null or incomplete, redirect to SetupShopScreen
+          return SetupShopScreen(existingShop: shop);
         }
 
         // Show main navigation when shop profile is completed
@@ -122,7 +122,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => ref.read(shopProvider.notifier).loadShopProfile(),
+                        onPressed: () => ref.invalidate(shopProvider),
                         icon: const Icon(Icons.refresh_rounded),
                         label: const Text('Retry'),
                       ),
@@ -132,7 +132,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                           await ref.read(authProvider.notifier).logout();
                           if (context.mounted) {
                             Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => LoginScreen()),
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
                               (route) => false,
                             );
                           }

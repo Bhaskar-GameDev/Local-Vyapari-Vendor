@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../common/custom_text_field.dart';
@@ -17,11 +19,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  
+  bool _isEmailMode = true;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -29,10 +35,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+    final success = _isEmailMode
+        ? await ref.read(authProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          )
+        : await ref.read(authProvider.notifier).loginWithPhoneAndPassword(
+            '+91${_phoneController.text.trim()}',
+            _passwordController.text.trim(),
+          );
 
     if (!mounted) return;
 
@@ -65,33 +76,112 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 60),
+                const SizedBox(height: 50),
                 const Icon(Icons.storefront, size: 72, color: AppColors.primary),
                 const SizedBox(height: 24),
                 Text(
-                  'Welcome Back!',
-                  style: Theme.of(context).textTheme.displayMedium,
+                  'Local Vyapari',
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to manage your store',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
+                  'Merchant Storefront Terminal',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 48),
-                CustomTextField(
-                  label: 'Email Address',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email_outlined,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Email is required';
-                    if (!val.contains('@')) return 'Enter a valid email';
-                    return null;
-                  },
+                const SizedBox(height: 40),
+
+                // Toggle tabs
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isEmailMode = true),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _isEmailMode ? AppColors.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Email Address',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _isEmailMode ? Colors.white : AppColors.textSecondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isEmailMode = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: !_isEmailMode ? AppColors.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Phone Number',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: !_isEmailMode ? Colors.white : AppColors.textSecondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 32),
+
+                // Fields based on selection
+                if (_isEmailMode) ...[
+                  CustomTextField(
+                    label: 'Email Address',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    prefixIcon: Icons.email_outlined,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Email is required';
+                      if (!val.contains('@')) return 'Enter a valid email address';
+                      return null;
+                    },
+                  ),
+                ] else ...[
+                  CustomTextField(
+                    label: 'Phone Number',
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    prefixIcon: Icons.phone_android,
+                    prefixText: '+91 ',
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Phone number is required';
+                      if (val.length != 10) return 'Enter a valid 10-digit number';
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 16),
+                
                 CustomTextField(
                   label: 'Password',
                   controller: _passwordController,
@@ -103,27 +193,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text('Forgot Password?'),
-                  ),
-                ),
+
                 const SizedBox(height: 24),
+                
                 PrimaryButton(
-                  text: 'Login',
+                  text: authState.isLoading ? 'Signing In...' : 'Sign In',
                   isLoading: authState.isLoading,
                   onPressed: _handleLogin,
                 ),
-                const SizedBox(height: 60),
+
+                const SizedBox(height: 16),
+                
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Don't have an account?",
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    TextButton(
+                      onPressed: () async {
+                        final resetSuccess = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => _ResetPasswordDialog(ref: ref),
+                        );
+                        if (resetSuccess == true && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Password reset successfully! You can now log in.'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Forgot Password?'),
                     ),
                     TextButton(
                       onPressed: () {
@@ -131,7 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           MaterialPageRoute(builder: (_) => const RegisterScreen()),
                         );
                       },
-                      child: const Text('Register Now'),
+                      child: const Text('Create Account'),
                     ),
                   ],
                 ),
@@ -140,6 +240,369 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ResetPasswordDialog extends StatefulWidget {
+  final WidgetRef ref;
+
+  const _ResetPasswordDialog({required this.ref});
+
+  @override
+  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _otpSent = false;
+  bool _isLoading = false;
+  String? _mockOtp;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _otpController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length != 10) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Invalid Number'),
+          content: const Text('Please enter a valid 10-digit number'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final fullPhone = '+91$phone';
+    final otp = await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(fullPhone);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (otp != null) {
+        setState(() {
+          _otpSent = true;
+          _mockOtp = otp;
+        });
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('OTP Sent'),
+            content: Text('OTP sent successfully.\n\nFor testing/development, use verification code: $otp'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        final error = widget.ref.read(authProvider).error;
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(error ?? 'Failed to send OTP'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  void _resetPassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final phone = _phoneController.text.trim();
+    final fullPhone = '+91$phone';
+    final code = _otpController.text.trim();
+    final newPassword = _passwordController.text.trim();
+
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text("Resetting password..."),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Verify OTP on client first to fail fast!
+    final otpValid = await widget.ref.read(authProvider.notifier).verifyOtpOnly(fullPhone, code);
+    if (!otpValid) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss progress dialog
+        final errorMsg = widget.ref.read(authProvider).error ?? 'Invalid or expired OTP';
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: AppColors.error),
+                SizedBox(width: 8),
+                Text('Verification Failed'),
+              ],
+            ),
+            content: Text(errorMsg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // Call resetPasswordWithOtp
+    final success = await widget.ref.read(authProvider.notifier).resetPasswordWithOtp(
+      phone: fullPhone,
+      otp: code,
+      newPassword: newPassword,
+    );
+
+    if (mounted) {
+      Navigator.pop(context); // Dismiss progress dialog
+      
+      if (success) {
+        Navigator.pop(context, true); // Close reset dialog, return true
+      } else {
+        final error = widget.ref.read(authProvider).error;
+        final isTimeout = error != null && error.contains('timed out');
+        
+        showDialog(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(isTimeout ? Icons.warning_amber_outlined : Icons.error_outline, 
+                     color: isTimeout ? Colors.orange : AppColors.error),
+                const SizedBox(width: 8),
+                Text(isTimeout ? 'Service Unavailable' : 'Error'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(error ?? 'Password reset failed'),
+                if (isTimeout) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Note: Cloud functions require the Firebase Blaze plan to run. If your project is on the Spark plan, you can use the email fallback below.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              if (isTimeout)
+                TextButton(
+                  onPressed: () async {
+                    if (!context.mounted) return;
+                    Navigator.pop(dialogCtx); // Close warning dialog
+                    
+                    if (!context.mounted) return;
+                    // Show progress
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const AlertDialog(
+                        content: Row(
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(width: 20),
+                            Text("Sending reset email..."),
+                          ],
+                        ),
+                      ),
+                    );
+                    
+                    // Look up email and send standard reset email
+                    try {
+                      final phoneSnap = await FirebaseDatabase.instance.ref('phones').child(fullPhone).get();
+                      if (phoneSnap.exists && phoneSnap.value != null) {
+                        final uid = phoneSnap.value as String;
+                        final userSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('email').get();
+                        if (userSnap.exists && userSnap.value != null) {
+                          final realEmail = userSnap.value as String;
+                          await FirebaseAuth.instance.sendPasswordResetEmail(email: realEmail);
+                          if (mounted) {
+                            Navigator.pop(context); // Dismiss progress
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Email Sent'),
+                                content: Text('A standard password reset email has been sent to $realEmail.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context); // Close success dialog
+                                      Navigator.pop(context); // Close main reset dialog
+                                    },
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                      }
+                      throw Exception('No registered email found for this phone number.');
+                    } catch (e) {
+                      if (mounted) {
+                        Navigator.pop(context); // Dismiss progress
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Failed to send email'),
+                            content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Send Email Reset Link'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Reset Password via OTP'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_mockOtp != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Mock OTP: $_mockOtp',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              CustomTextField(
+                label: 'Registered Phone Number',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                prefixIcon: Icons.phone_android,
+                prefixText: '+91 ',
+                readOnly: _otpSent,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Phone number is required';
+                  if (val.length != 10) return 'Enter a valid 10-digit number';
+                  return null;
+                },
+              ),
+              if (_otpSent) ...[
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: 'Enter 6-Digit OTP',
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.lock_outline,
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'OTP is required';
+                    if (val.length != 6) return 'OTP must be 6 digits';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: 'New Password',
+                  controller: _passwordController,
+                  obscureText: true,
+                  prefixIcon: Icons.lock_outline,
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'New password is required';
+                    if (val.length < 6) return 'At least 6 characters required';
+                    return null;
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : (_otpSent ? _resetPassword : _sendOtp),
+          child: _isLoading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(_otpSent ? 'Reset Password' : 'Send OTP'),
+        ),
+      ],
     );
   }
 }

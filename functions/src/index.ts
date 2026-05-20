@@ -146,3 +146,64 @@ export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId
 
     return null;
   });
+
+// 5. Password Reset via RTDB Trigger (Safe & Secure password updates)
+export const onPasswordResetRequest = functions.database.ref("/password_resets/{phone}")
+  .onCreate(async (snapshot, context) => {
+    const data = snapshot.val();
+    if (!data) return null;
+
+    const phone = context.params.phone;
+    const otp = data.otp;
+    const newPassword = data.newPassword;
+    const ref = snapshot.ref;
+
+    try {
+      // 1. Verify OTP in RTDB
+      const otpSnapshot = await admin.database().ref(`/otps/${phone}`).once("value");
+      if (!otpSnapshot.exists()) {
+        await ref.update({ status: "error", error: "OTP not found or expired" });
+        return null;
+      }
+
+      const { otp: storedOtp, expiresAt } = otpSnapshot.val();
+      if (storedOtp !== otp || Date.now() > expiresAt) {
+        await ref.update({ status: "error", error: "Invalid or expired OTP" });
+        return null;
+      }
+
+      // Delete OTP
+      await admin.database().ref(`/otps/${phone}`).remove();
+
+      // 2. Find UID by phone in RTDB
+      const phoneSnapshot = await admin.database().ref(`/phones/${phone}`).once("value");
+      if (!phoneSnapshot.exists()) {
+        await ref.update({ status: "error", error: "Phone number is not registered" });
+        return null;
+      }
+      const uid = phoneSnapshot.val();
+
+      // 3. Update password in Firebase Auth
+      await admin.auth().updateUser(uid, {
+        password: newPassword
+      });
+
+      await ref.update({ status: "success" });
+      
+      // Clean up reset request after 10 seconds
+      setTimeout(async () => {
+        try {
+          await ref.remove();
+        } catch (e) {
+          console.error("Error cleaning up reset request:", e);
+        }
+      }, 10000);
+
+    } catch (error: any) {
+      console.error("Error during password reset:", error);
+      await ref.update({ status: "error", error: error.message || "Internal server error" });
+    }
+
+    return null;
+  });
+

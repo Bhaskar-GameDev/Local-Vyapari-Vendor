@@ -1,21 +1,45 @@
 {
   "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "phones": {
+      "$phone": {
+        ".read": "true",
+        ".write": "auth != null"
+      }
+    },
+    "otps": {
+      "$phone": {
+        ".read": "true",
+        ".write": "true"
+      }
+    },
     "products": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
     },
     "offers": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
     },
     "shop": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
     },
     "inventory": {
       "$productId": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
+      }
+    },
+    "password_resets": {
+      "$phone": {
+        ".read": "true",
+        ".write": "true"
       }
     }
   }
