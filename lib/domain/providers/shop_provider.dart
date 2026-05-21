@@ -11,11 +11,10 @@ final shopProvider = StreamProvider<ShopModel?>((ref) {
   final user = authState.value;
   if (user == null) return Stream.value(null);
 
-  return FirebaseDatabase.instance
-      .ref('shop')
-      .child(user.uid)
-      .onValue
-      .map((event) {
+  final databaseRef = FirebaseDatabase.instance.ref('shop').child(user.uid);
+  databaseRef.keepSynced(true);
+
+  return databaseRef.onValue.map((event) {
         if (event.snapshot.value == null) return null;
         final data = Map<String, dynamic>.from(event.snapshot.value as Map);
         data['id'] = user.uid;

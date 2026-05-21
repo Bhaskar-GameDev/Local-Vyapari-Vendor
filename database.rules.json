@@ -2,7 +2,7 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "auth != null",
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }
     },
@@ -19,21 +19,21 @@
       }
     },
     "products": {
-      ".read": "auth != null",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
+      "$uid": {
+        ".read": "true",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     },
     "offers": {
-      ".read": "auth != null",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
+      "$uid": {
+        ".read": "true",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     },
     "shop": {
-      ".read": "auth != null",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
-    },
-    "inventory": {
-      "$productId": {
-        ".read": "auth != null",
-        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'merchant'"
+      "$uid": {
+        ".read": "true",
+        ".write": "auth != null && auth.uid === $uid"
       }
     },
     "password_resets": {

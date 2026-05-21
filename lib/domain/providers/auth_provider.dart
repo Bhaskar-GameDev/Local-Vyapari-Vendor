@@ -212,7 +212,22 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository(
 
 /// Stream provider that reacts to Firebase auth state in real-time
 final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges;
+  final authRepo = ref.watch(authRepositoryProvider);
+  return authRepo.authStateChanges.asyncMap((user) async {
+    if (user == null) return null;
+    try {
+      final roleSnap = await FirebaseDatabase.instance.ref('users').child(user.uid).child('role').get();
+      final role = roleSnap.value as String?;
+      if (role != 'merchant') {
+        await authRepo.logout();
+        return null;
+      }
+      return user;
+    } catch (e) {
+      await authRepo.logout();
+      return null;
+    }
+  });
 });
 
 // ─── Auth State ───────────────────────────────────────────────────────────────
@@ -231,10 +246,31 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
 
   AuthNotifier(this._repository) : super(const AuthNotifierState());
 
+  void clearError() {
+    state = AuthNotifierState(isLoading: state.isLoading, error: null);
+  }
+
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _repository.login(email, password);
+      final credential = await _repository.login(email, password);
+      final uid = credential.user?.uid;
+      if (uid == null) {
+        state = const AuthNotifierState(error: 'Authentication failed');
+        return false;
+      }
+
+      // Verify role is merchant
+      final roleSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('role').get();
+      final role = roleSnap.value as String?;
+      if (role != 'merchant') {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
+        );
+        return false;
+      }
+
       state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
@@ -274,6 +310,16 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
       
       final uid = phoneSnapshot.value as String;
+
+      // Verify role is merchant before logging in
+      final roleSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('role').get();
+      final role = roleSnap.value as String?;
+      if (role != 'merchant') {
+        state = const AuthNotifierState(
+          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
+        );
+        return false;
+      }
       
       // Look up the user's registered email
       final emailSnapshot = await FirebaseDatabase.instance.ref('users').child(uid).child('email').get();

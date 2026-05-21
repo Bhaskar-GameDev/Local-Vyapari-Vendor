@@ -11,6 +11,7 @@ import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
+import '../../common/app_animations.dart';
 import '../auth/login_screen.dart';
 
 class SetupShopScreen extends ConsumerStatefulWidget {
@@ -320,69 +321,236 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
               children: [
                 if (!isEditing) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    'Welcome to Local Vyapari!',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                    textAlign: TextAlign.center,
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: 20,
+                    child: Text(
+                      'Welcome to Local Vyapari!',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Please fill in your business details to build your digital storefront and start listing products.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                    textAlign: TextAlign.center,
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 100),
+                    slideOffset: 16,
+                    child: Text(
+                      'Please fill in your business details to build your digital storefront and start listing products.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 24),
                 
                 // --- Logo Picker ---
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickLogo,
-                    child: Stack(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 4),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 56,
-                            backgroundColor: AppColors.surfaceElevated,
-                            backgroundImage: _logoFile != null
-                                ? FileImage(_logoFile!)
-                                : (widget.existingShop?.logoUrl != null
-                                    ? NetworkImage(widget.existingShop!.logoUrl!)
-                                    : null) as ImageProvider?,
-                            child: _logoFile == null && widget.existingShop?.logoUrl == null
-                                ? const Icon(Icons.storefront_rounded, size: 48, color: AppColors.primary)
-                                : null,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 150),
+                  slideOffset: 16,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: _pickLogo,
+                      child: Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 18,
+                            child: CircleAvatar(
+                              radius: 56,
+                              backgroundColor: AppColors.surfaceElevated,
+                              backgroundImage: _logoFile != null
+                                  ? FileImage(_logoFile!)
+                                  : (widget.existingShop?.logoUrl != null
+                                      ? NetworkImage(widget.existingShop!.logoUrl!)
+                                      : null) as ImageProvider?,
+                              child: _logoFile == null && widget.existingShop?.logoUrl == null
+                                  ? const Icon(Icons.storefront_rounded, size: 48, color: AppColors.primary)
+                                  : null,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 200),
+                  slideOffset: 10,
+                  child: Text(
+                    'Upload Shop Logo',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // --- Business Details ---
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 250),
+                  slideOffset: 16,
+                  child: CustomTextField(
+                    label: 'Business / Shop Name',
+                    controller: _nameController,
+                    prefixIcon: Icons.business_outlined,
+                    validator: (val) => val == null || val.isEmpty ? 'Please enter business name' : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 300),
+                  slideOffset: 16,
+                  child: CustomTextField(
+                    label: 'Shop Description',
+                    controller: _descController,
+                    prefixIcon: Icons.description_outlined,
+                    validator: (val) => val == null || val.isEmpty ? 'Please describe your shop' : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 350),
+                  slideOffset: 16,
+                  child: CustomTextField(
+                    label: 'Shop Address',
+                    controller: _addressController,
+                    prefixIcon: Icons.location_on_outlined,
+                    validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 400),
+                  slideOffset: 16,
+                  child: CustomTextField(
+                    label: 'Contact Phone Number',
+                    controller: _phoneController,
+                    prefixIcon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Please enter phone number';
+                      if (val.replaceAll(RegExp(r'\D'), '').length < 10) {
+                        return 'Enter a valid 10-digit number';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // --- Location Coordinates ---
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 450),
+                  slideOffset: 16,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.map_outlined, color: AppColors.primary, size: 24),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Geolocational Storefront',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Accurate GPS coordinates help nearby shoppers find your store on their maps.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomTextField(
+                                label: 'Latitude',
+                                controller: _latController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: CustomTextField(
+                                label: 'Longitude',
+                                controller: _lngController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        ScaleOnTap(
+                          child: ElevatedButton.icon(
+                            onPressed: _isLocating ? null : _getCurrentLocation,
+                            icon: _isLocating
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.my_location_rounded, size: 18),
+                            label: const Text('Detect Current Location'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accent,
+                              minimumSize: const Size.fromHeight(48),
                             ),
                           ),
                         ),
@@ -390,153 +558,38 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Upload Shop Logo',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-
-                // --- Business Details ---
-                CustomTextField(
-                  label: 'Business / Shop Name',
-                  controller: _nameController,
-                  prefixIcon: Icons.business_outlined,
-                  validator: (val) => val == null || val.isEmpty ? 'Please enter business name' : null,
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Shop Description',
-                  controller: _descController,
-                  prefixIcon: Icons.description_outlined,
-                  validator: (val) => val == null || val.isEmpty ? 'Please describe your shop' : null,
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Shop Address',
-                  controller: _addressController,
-                  prefixIcon: Icons.location_on_outlined,
-                  validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Contact Phone Number',
-                  controller: _phoneController,
-                  prefixIcon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Please enter phone number';
-                    if (val.replaceAll(RegExp(r'\D'), '').length < 10) {
-                      return 'Enter a valid 10-digit number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // --- Location Coordinates ---
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.map_outlined, color: AppColors.primary, size: 24),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Geolocational Storefront',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Accurate GPS coordinates help nearby shoppers find your store on their maps.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              label: 'Latitude',
-                              controller: _latController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: CustomTextField(
-                              label: 'Longitude',
-                              controller: _lngController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _isLocating ? null : _getCurrentLocation,
-                        icon: _isLocating
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.my_location_rounded, size: 18),
-                        label: const Text('Detect Current Location'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 40),
 
                 // --- Submit Button ---
-                PrimaryButton(
-                  text: isEditing ? 'Save Changes' : 'Create Storefront',
-                  isLoading: _isSaving,
-                  onPressed: _submitShop,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 500),
+                  slideOffset: 16,
+                  child: ScaleOnTap(
+                    child: PrimaryButton(
+                      text: isEditing ? 'Save Changes' : 'Create Storefront',
+                      isLoading: _isSaving,
+                      onPressed: _submitShop,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
                 // --- Logout Option (if first-time setup only) ---
                 if (!isEditing) ...[
-                  TextButton.icon(
-                    onPressed: () async {
-                      await ref.read(authProvider.notifier).logout();
-                      if (context.mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => LoginScreen()),
-                          (route) => false,
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                    label: const Text(
-                      'Sign Out',
-                      style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 550),
+                    slideOffset: 16,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                      },
+                      icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                      label: const Text(
+                        'Sign Out',
+                        style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),

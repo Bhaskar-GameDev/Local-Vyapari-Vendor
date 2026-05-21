@@ -9,6 +9,7 @@ import 'profile/profile_screen.dart';
 import 'shop/setup_shop_screen.dart';
 import 'auth/login_screen.dart';
 import '../../core/theme/app_colors.dart';
+import '../common/app_animations.dart';
 
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
@@ -34,14 +35,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
 
     return shopState.when(
       data: (shop) {
-        if (shop == null || shop.address.isEmpty || shop.latitude == null || shop.longitude == null) {
-          // If shop is null or incomplete, redirect to SetupShopScreen
-          return SetupShopScreen(existingShop: shop);
-        }
-
-        // Show main navigation when shop profile is completed
+        // Show main navigation when shop profile is completed (delegated redirect to GoRouter)
         return Scaffold(
-          body: IndexedStack(
+          body: FadeIndexedStack(
             index: _currentIndex,
             children: _screens,
           ),
@@ -130,12 +126,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                       OutlinedButton.icon(
                         onPressed: () async {
                           await ref.read(authProvider.notifier).logout();
-                          if (context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
-                              (route) => false,
-                            );
-                          }
                         },
                         icon: const Icon(Icons.logout_rounded, color: AppColors.error),
                         label: const Text('Logout', style: TextStyle(color: AppColors.error)),

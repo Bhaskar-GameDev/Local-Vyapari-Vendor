@@ -12,6 +12,8 @@ class OfferRepository {
     final shopId = _currentShopId;
     if (shopId == null) return Stream.value([]);
 
+    _ref.child(shopId).keepSynced(true);
+
     return _ref.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
       if (data == null) return [];

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../domain/providers/product_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../common/app_animations.dart';
 import 'add_product_screen.dart';
 
 class ProductsListScreen extends ConsumerWidget {
@@ -14,6 +16,7 @@ class ProductsListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Products'),
+        automaticallyImplyLeading: false,
       ),
       body: productsState.when(
         data: (products) {
@@ -27,32 +30,39 @@ class ProductsListScreen extends ConsumerWidget {
               itemCount: products.length,
               itemBuilder: (context, index) {
                 final product = products[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
+                return FadeInSlide(
+                  duration: const Duration(milliseconds: 400),
+                  delay: Duration(milliseconds: index * 60),
+                  slideOffset: 16,
+                  child: ScaleOnTap(
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => AddProductScreen(existingProduct: product)),
+                        AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
                       );
                     },
-                    leading: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.inventory_2, color: AppColors.primary),
+                        ),
+                        title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${product.category} • ₹${product.actualPrice}'),
+                        trailing: Switch(
+                          value: product.isActive,
+                          onChanged: (val) {
+                            ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                          },
+                          activeColor: AppColors.success,
+                        ),
                       ),
-                      child: const Icon(Icons.inventory_2, color: AppColors.primary),
-                    ),
-                    title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${product.category} • ₹${product.actualPrice}'),
-                    trailing: Switch(
-                      value: product.isActive,
-                      onChanged: (val) {
-                        ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
-                      },
-                      activeColor: AppColors.success,
                     ),
                   ),
                 );
@@ -60,7 +70,7 @@ class ProductsListScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => _buildShimmerLoading(),
         error: (error, stack) => Center(child: Text('Error: $error')),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -68,12 +78,48 @@ class ProductsListScreen extends ConsumerWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddProductScreen()),
+            AppPageRoute.slideUp(const AddProductScreen()),
           );
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Product'),
       ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              title: Container(
+                height: 16,
+                color: Colors.white,
+                margin: const EdgeInsets.only(right: 80),
+              ),
+              subtitle: Container(
+                height: 12,
+                color: Colors.white,
+                margin: const EdgeInsets.only(right: 140, top: 8),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

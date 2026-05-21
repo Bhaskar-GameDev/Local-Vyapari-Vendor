@@ -6,8 +6,9 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
-import '../main_navigation.dart';
-import 'register_screen.dart';
+import '../../common/app_animations.dart';
+import '../../common/custom_snack_bar.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -25,6 +26,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isEmailMode = true;
 
   @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_clearErrorIfNeeded);
+    _phoneController.addListener(_clearErrorIfNeeded);
+    _passwordController.addListener(_clearErrorIfNeeded);
+  }
+
+  void _clearErrorIfNeeded() {
+    if (ref.read(authProvider).error != null) {
+      ref.read(authProvider.notifier).clearError();
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _phoneController.dispose();
@@ -35,7 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = _isEmailMode
+    _isEmailMode
         ? await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text.trim(),
@@ -44,23 +59,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             '+91${_phoneController.text.trim()}',
             _passwordController.text.trim(),
           );
-
-    if (!mounted) return;
-
-    if (success) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainNavigation()),
-      );
-    } else {
-      final error = ref.read(authProvider).error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error ?? 'Login failed'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 
   @override
@@ -77,163 +75,267 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 50),
-                const Icon(Icons.storefront, size: 72, color: AppColors.primary),
+                const FadeInSlide(
+                  duration: Duration(milliseconds: 600),
+                  slideOffset: 30,
+                  child: Icon(Icons.storefront, size: 72, color: AppColors.primary),
+                ),
                 const SizedBox(height: 24),
-                Text(
-                  'Local Vyapari',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 100),
+                  slideOffset: 24,
+                  child: Text(
+                    'Local Vyapari',
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Merchant Storefront Terminal',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 200),
+                  slideOffset: 16,
+                  child: Text(
+                    'Merchant Storefront Terminal',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
 
                 // Toggle tabs
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isEmailMode = true),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _isEmailMode ? AppColors.primary : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Email Address',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _isEmailMode ? Colors.white : AppColors.textSecondary,
-                                fontWeight: FontWeight.bold,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 300),
+                  slideOffset: 20,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                         Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (!_isEmailMode) {
+                                setState(() => _isEmailMode = true);
+                                ref.read(authProvider.notifier).clearError();
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isEmailMode ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Email Address',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _isEmailMode ? Colors.white : AppColors.textSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isEmailMode = false),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: !_isEmailMode ? AppColors.primary : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Phone Number',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: !_isEmailMode ? Colors.white : AppColors.textSecondary,
-                                fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_isEmailMode) {
+                                setState(() => _isEmailMode = false);
+                                ref.read(authProvider.notifier).clearError();
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isEmailMode ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Phone Number',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: !_isEmailMode ? Colors.white : AppColors.textSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Fields based on selection
-                if (_isEmailMode) ...[
-                  CustomTextField(
-                    label: 'Email Address',
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.email_outlined,
+                // Fields based on selection (AnimatedSwitcher to transition between fields!)
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 400),
+                  slideOffset: 20,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: _isEmailMode
+                        ? CustomTextField(
+                            key: const ValueKey('email_field'),
+                            label: 'Email Address',
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: Icons.email_outlined,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return 'Email is required';
+                              if (!val.contains('@')) return 'Enter a valid email address';
+                              return null;
+                            },
+                          )
+                        : CustomTextField(
+                            key: const ValueKey('phone_field'),
+                            label: 'Phone Number',
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            prefixIcon: Icons.phone_android,
+                            prefixText: '+91 ',
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return 'Phone number is required';
+                              if (val.length != 10) return 'Enter a valid 10-digit number';
+                              return null;
+                            },
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 500),
+                  slideOffset: 20,
+                  child: CustomTextField(
+                    label: 'Password',
+                    controller: _passwordController,
+                    obscureText: true,
+                    prefixIcon: Icons.lock_outline,
                     validator: (val) {
-                      if (val == null || val.isEmpty) return 'Email is required';
-                      if (!val.contains('@')) return 'Enter a valid email address';
+                      if (val == null || val.isEmpty) return 'Password is required';
+                      if (val.length < 6) return 'Password must be at least 6 characters';
                       return null;
                     },
                   ),
-                ] else ...[
-                  CustomTextField(
-                    label: 'Phone Number',
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_android,
-                    prefixText: '+91 ',
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Phone number is required';
-                      if (val.length != 10) return 'Enter a valid 10-digit number';
-                      return null;
-                    },
+                ),
+
+                if (authState.error != null) ...[
+                  const SizedBox(height: 16),
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 350),
+                    slideOffset: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.25),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.error,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Authentication Failure',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  authState.error!,
+                                  style: TextStyle(
+                                    color: AppColors.error.withOpacity(0.85),
+                                    fontSize: 13,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-                const SizedBox(height: 16),
-                
-                CustomTextField(
-                  label: 'Password',
-                  controller: _passwordController,
-                  obscureText: true,
-                  prefixIcon: Icons.lock_outline,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Password is required';
-                    if (val.length < 6) return 'Password must be at least 6 characters';
-                    return null;
-                  },
-                ),
-
                 const SizedBox(height: 24),
                 
-                PrimaryButton(
-                  text: authState.isLoading ? 'Signing In...' : 'Sign In',
-                  isLoading: authState.isLoading,
-                  onPressed: _handleLogin,
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 600),
+                  slideOffset: 20,
+                  child: ScaleOnTap(
+                    child: PrimaryButton(
+                      text: authState.isLoading ? 'Signing In...' : 'Sign In',
+                      isLoading: authState.isLoading,
+                      onPressed: _handleLogin,
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: 16),
                 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () async {
-                        final resetSuccess = await showDialog<bool>(
-                          context: context,
-                          builder: (_) => _ResetPasswordDialog(ref: ref),
-                        );
-                        if (resetSuccess == true && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Password reset successfully! You can now log in.'),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                FadeInSlide(
+                  duration: const Duration(milliseconds: 600),
+                  delay: const Duration(milliseconds: 700),
+                  slideOffset: 20,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          final resetSuccess = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => _ResetPasswordDialog(ref: ref),
                           );
-                        }
-                      },
-                      child: const Text('Forgot Password?'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        );
-                      },
-                      child: const Text('Create Account'),
-                    ),
-                  ],
+                          if (resetSuccess == true && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password reset successfully! You can now log in.'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Forgot Password?'),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/register'),
+                        child: const Text('Create Account'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

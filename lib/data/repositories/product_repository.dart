@@ -13,6 +13,8 @@ class ProductRepository {
     final shopId = _currentShopId;
     if (shopId == null) return Stream.value([]);
     
+    _dbRef.child(shopId).keepSynced(true);
+    
     return _dbRef.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
       if (data == null) return [];

@@ -17,7 +17,10 @@ class ProfileScreen extends ConsumerWidget {
     final profileState = ref.watch(userProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Shop Profile')),
+      appBar: AppBar(
+        title: const Text('My Shop Profile'),
+        automaticallyImplyLeading: false,
+      ),
       body: shopState.when(
         data: (shop) {
           final lat = shop?.latitude;
@@ -158,12 +161,6 @@ class ProfileScreen extends ConsumerWidget {
               OutlinedButton(
                 onPressed: () async {
                   await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
-                    );
-                  }
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
