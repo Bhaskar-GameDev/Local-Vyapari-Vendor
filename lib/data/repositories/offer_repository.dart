@@ -35,6 +35,14 @@ class OfferRepository {
     await _ref.child(shopId).push().set(data);
   }
 
+  Future<void> updateOffer(OfferModel offer) async {
+    final shopId = _currentShopId;
+    if (shopId == null) throw Exception("User not authenticated");
+
+    final data = offer.toJson()..remove('id');
+    await _ref.child(shopId).child(offer.id).update(data);
+  }
+
   Future<void> deleteOffer(String offerId) async {
     final shopId = _currentShopId;
     if (shopId == null) throw Exception("User not authenticated");

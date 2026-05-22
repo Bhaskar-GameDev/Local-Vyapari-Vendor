@@ -9,6 +9,53 @@ import 'add_product_screen.dart';
 class ProductsListScreen extends ConsumerWidget {
   const ProductsListScreen({super.key});
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String productId, String productName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text('Are you sure you want to delete "$productName"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(productsProvider.notifier).deleteProduct(productId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Product deleted successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting product: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsState = ref.watch(productsProvider);
@@ -55,12 +102,21 @@ class ProductsListScreen extends ConsumerWidget {
                         ),
                         title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('${product.category} • ₹${product.actualPrice}'),
-                        trailing: Switch(
-                          value: product.isActive,
-                          onChanged: (val) {
-                            ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
-                          },
-                          activeColor: AppColors.success,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch(
+                              value: product.isActive,
+                              onChanged: (val) {
+                                ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                              },
+                              activeColor: AppColors.success,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                              onPressed: () => _confirmDelete(context, ref, product.id, product.name),
+                            ),
+                          ],
                         ),
                       ),
                     ),

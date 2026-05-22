@@ -37,42 +37,50 @@ class OffersListScreen extends ConsumerWidget {
                 duration: const Duration(milliseconds: 400),
                 delay: Duration(milliseconds: index * 60),
                 slideOffset: 16,
-                child: Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: (effectiveActive ? AppColors.warning : Colors.grey).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
+                child: ScaleOnTap(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      AppPageRoute.slideUp(CreateOfferScreen(existingOffer: offer)),
+                    );
+                  },
+                  child: Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: (effectiveActive ? AppColors.warning : Colors.grey).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.local_offer, color: effectiveActive ? AppColors.warning : Colors.grey),
                       ),
-                      child: Icon(Icons.local_offer, color: effectiveActive ? AppColors.warning : Colors.grey),
-                    ),
-                    title: Text(offer.title, style: TextStyle(fontWeight: FontWeight.bold, color: effectiveActive ? null : Colors.grey)),
-                    subtitle: Text(
-                      isExpired 
-                          ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}' 
-                          : '${offer.discountPercentage}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
-                      style: TextStyle(color: isExpired ? AppColors.error : null),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Switch(
-                          value: effectiveActive,
-                          onChanged: isExpired ? null : (val) {
-                            ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
-                          },
-                          activeColor: AppColors.success,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                          onPressed: () {
-                            ref.read(offersProvider.notifier).deleteOffer(offer.id);
-                          },
-                        ),
-                      ],
+                      title: Text(offer.title, style: TextStyle(fontWeight: FontWeight.bold, color: effectiveActive ? null : Colors.grey)),
+                      subtitle: Text(
+                        isExpired 
+                            ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}' 
+                            : '${offer.discountPercentage}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
+                        style: TextStyle(color: isExpired ? AppColors.error : null),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: effectiveActive,
+                            onChanged: isExpired ? null : (val) {
+                              ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
+                            },
+                            activeColor: AppColors.success,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                            onPressed: () {
+                              ref.read(offersProvider.notifier).deleteOffer(offer.id);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -83,19 +91,16 @@ class OffersListScreen extends ConsumerWidget {
         loading: () => _buildShimmerLoading(),
         error: (error, stack) => Center(child: Text('Error: $error')),
       ),
-      floatingActionButton: ScaleOnTap(
-        onTap: () {
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'create_offer_fab',
+        onPressed: () {
           Navigator.push(
             context,
             AppPageRoute.slideUp(const CreateOfferScreen()),
           );
         },
-        child: FloatingActionButton.extended(
-          heroTag: 'create_offer_fab',
-          onPressed: () {}, // Handled by ScaleOnTap
-          icon: const Icon(Icons.local_offer),
-          label: const Text('Create Offer'),
-        ),
+        icon: const Icon(Icons.local_offer),
+        label: const Text('Create Offer'),
       ),
     );
   }

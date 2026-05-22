@@ -194,7 +194,7 @@ class AuthRepository {
       case 'user-disabled':
         return 'This account has been disabled.';
       case 'email-already-in-use':
-        return 'An account with this email already exists.';
+        return 'This email address is already registered. If it is registered as a customer, please sign in with your password to upgrade to a merchant account.';
       case 'weak-password':
         return 'Password must be at least 6 characters.';
       case 'invalid-email':
@@ -216,8 +216,47 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return authRepo.authStateChanges.asyncMap((user) async {
     if (user == null) return null;
     try {
-      final roleSnap = await FirebaseDatabase.instance.ref('users').child(user.uid).child('role').get();
-      final role = roleSnap.value as String?;
+      final userRef = FirebaseDatabase.instance.ref('users').child(user.uid);
+      final roleSnap = await userRef.child('role').get();
+      var role = roleSnap.value as String?;
+      
+      // If user is not registered as merchant, automatically upgrade them
+      if (role != 'merchant') {
+        final Map<String, dynamic> updates = {
+          'role': 'merchant',
+        };
+        
+        final emailSnap = await userRef.child('email').get();
+        if (!emailSnap.exists || emailSnap.value == null) {
+          if (user.email != null) {
+            updates['email'] = user.email!;
+          }
+        }
+        
+        final createdAtSnap = await userRef.child('createdAt').get();
+        if (!createdAtSnap.exists || createdAtSnap.value == null) {
+          updates['createdAt'] = ServerValue.timestamp;
+        }
+
+        await userRef.update(updates);
+        role = 'merchant';
+        
+        // Also ensure a default shop storefront exists if not already present
+        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(user.uid).get();
+        if (!shopSnap.exists || shopSnap.value == null) {
+          final phoneSnap = await userRef.child('phone').get();
+          final phoneVal = phoneSnap.value as String?;
+          await FirebaseDatabase.instance.ref('shop').child(user.uid).set({
+            'name': 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': phoneVal ?? '',
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
+      }
+      
       if (role != 'merchant') {
         await authRepo.logout();
         return null;
@@ -260,9 +299,45 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      // Verify role is merchant
-      final roleSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('role').get();
-      final role = roleSnap.value as String?;
+      // Verify and handle role
+      final userRef = FirebaseDatabase.instance.ref('users').child(uid);
+      final roleSnap = await userRef.child('role').get();
+      var role = roleSnap.value as String?;
+      
+      if (role != 'merchant') {
+        final Map<String, dynamic> updates = {
+          'role': 'merchant',
+        };
+        
+        final emailSnap = await userRef.child('email').get();
+        if (!emailSnap.exists || emailSnap.value == null) {
+          updates['email'] = email.trim();
+        }
+        
+        final createdAtSnap = await userRef.child('createdAt').get();
+        if (!createdAtSnap.exists || createdAtSnap.value == null) {
+          updates['createdAt'] = ServerValue.timestamp;
+        }
+
+        await userRef.update(updates);
+        role = 'merchant';
+        
+        // Also ensure a default shop storefront exists if not already present
+        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(uid).get();
+        if (!shopSnap.exists || shopSnap.value == null) {
+          final phoneSnap = await userRef.child('phone').get();
+          final phoneVal = phoneSnap.value as String?;
+          await FirebaseDatabase.instance.ref('shop').child(uid).set({
+            'name': 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': phoneVal ?? '',
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
+      }
+
       if (role != 'merchant') {
         await _repository.logout();
         state = const AuthNotifierState(
@@ -285,6 +360,16 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
   Future<bool> register(String email, String password, String role, String? shopName, {String? phone}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
+      if (phone != null && phone.isNotEmpty) {
+        final formattedPhone = phone.trim();
+        final isPhoneReg = await _repository.isPhoneRegistered(formattedPhone);
+        if (isPhoneReg) {
+          state = const AuthNotifierState(
+            error: 'This phone number is already registered. If it is registered as a customer, please sign in with your password to upgrade to a merchant account.',
+          );
+          return false;
+        }
+      }
       await _repository.register(email, password, role, shopName: shopName, phone: phone);
       state = const AuthNotifierState();
       return true;
@@ -311,16 +396,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       
       final uid = phoneSnapshot.value as String;
 
-      // Verify role is merchant before logging in
-      final roleSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('role').get();
-      final role = roleSnap.value as String?;
-      if (role != 'merchant') {
-        state = const AuthNotifierState(
-          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
-        );
-        return false;
-      }
-      
       // Look up the user's registered email
       final emailSnapshot = await FirebaseDatabase.instance.ref('users').child(uid).child('email').get();
       if (!emailSnapshot.exists || emailSnapshot.value == null) {
@@ -330,8 +405,59 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       
       final realEmail = emailSnapshot.value as String;
       
-      // Log in using the resolved real email and password
-      await _repository.login(realEmail, password);
+      // Log in using the resolved real email and password FIRST
+      final credential = await _repository.login(realEmail, password);
+      final loggedInUid = credential.user?.uid;
+      if (loggedInUid == null) {
+        state = const AuthNotifierState(error: 'Authentication failed');
+        return false;
+      }
+
+      // Verify and handle role AFTER successful authentication
+      final userRef = FirebaseDatabase.instance.ref('users').child(loggedInUid);
+      final roleSnap = await userRef.child('role').get();
+      var role = roleSnap.value as String?;
+      
+      if (role != 'merchant') {
+        final Map<String, dynamic> updates = {
+          'role': 'merchant',
+        };
+        
+        final emailSnap = await userRef.child('email').get();
+        if (!emailSnap.exists || emailSnap.value == null) {
+          updates['email'] = realEmail;
+        }
+        
+        final createdAtSnap = await userRef.child('createdAt').get();
+        if (!createdAtSnap.exists || createdAtSnap.value == null) {
+          updates['createdAt'] = ServerValue.timestamp;
+        }
+
+        await userRef.update(updates);
+        role = 'merchant';
+        
+        // Also ensure a default shop storefront exists if not already present
+        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(loggedInUid).get();
+        if (!shopSnap.exists || shopSnap.value == null) {
+          await FirebaseDatabase.instance.ref('shop').child(loggedInUid).set({
+            'name': 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': formattedPhone,
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
+      }
+
+      if (role != 'merchant') {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
+        );
+        return false;
+      }
+      
       state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {

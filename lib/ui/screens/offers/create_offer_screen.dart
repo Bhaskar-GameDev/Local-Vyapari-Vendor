@@ -8,7 +8,8 @@ import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 
 class CreateOfferScreen extends ConsumerStatefulWidget {
-  const CreateOfferScreen({super.key});
+  final OfferModel? existingOffer;
+  const CreateOfferScreen({super.key, this.existingOffer});
 
   @override
   ConsumerState<CreateOfferScreen> createState() => _CreateOfferScreenState();
@@ -26,11 +27,34 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    final o = widget.existingOffer;
+    if (o != null) {
+      _titleController.text = o.title;
+      _descController.text = o.description;
+      _discountController.text = o.discountPercentage.toString();
+      try {
+        _startDate = DateTime.parse(o.startDate);
+        _endDate = DateTime.parse(o.endDate);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    _discountController.dispose();
+    super.dispose();
+  }
+
   Future<DateTime?> _pickDateTime(DateTime initialDate) async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime.now(),
+      initialDate: initialDate.isBefore(DateTime.now()) ? DateTime.now() : initialDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)), // allow picking past dates if needed, or keep within reasonable range
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (pickedDate == null || !mounted) return null;
@@ -55,24 +79,38 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
     setState(() => _isLoading = true);
 
     final newOffer = OfferModel(
-      id: '',
+      id: widget.existingOffer?.id ?? '',
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       discountPercentage: double.parse(_discountController.text.trim()),
       startDate: _startDate.toIso8601String(),
       endDate: _endDate.toIso8601String(),
-      isActive: true,
+      isActive: widget.existingOffer?.isActive ?? true,
     );
 
     try {
-      await ref.read(offersProvider.notifier).addOffer(newOffer);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer created!'), backgroundColor: AppColors.success));
-        Navigator.pop(context);
+      if (widget.existingOffer != null) {
+        await ref.read(offersProvider.notifier).updateOffer(newOffer);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Offer updated!'), backgroundColor: AppColors.success),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        await ref.read(offersProvider.notifier).addOffer(newOffer);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Offer created!'), backgroundColor: AppColors.success),
+          );
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -82,7 +120,9 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Flash Sale')),
+      appBar: AppBar(
+        title: Text(widget.existingOffer != null ? 'Edit Flash Sale' : 'Create Flash Sale'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -174,7 +214,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
             ),
             const SizedBox(height: 32),
             PrimaryButton(
-              text: 'Launch Offer',
+              text: widget.existingOffer != null ? 'Update Offer' : 'Launch Offer',
               isLoading: _isLoading,
               onPressed: _submitOffer,
               color: AppColors.warning,

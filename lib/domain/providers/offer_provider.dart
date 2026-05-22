@@ -35,6 +35,10 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
     await _repository.addOffer(offer);
   }
 
+  Future<void> updateOffer(OfferModel offer) async {
+    await _repository.updateOffer(offer);
+  }
+
   Future<void> deleteOffer(String offerId) async {
     await _repository.deleteOffer(offerId);
   }
