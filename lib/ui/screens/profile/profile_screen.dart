@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
+import '../../../domain/providers/review_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
 import '../shop/setup_shop_screen.dart';
+import '../reviews/vendor_reviews_screen.dart';
 import '../../../data/repositories/shop_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -18,6 +20,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shopState = ref.watch(shopProvider);
     final profileState = ref.watch(userProfileProvider);
+    final ratingDist = ref.watch(vendorRatingDistributionProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -108,8 +111,6 @@ class ProfileScreen extends ConsumerWidget {
                       Icons.map_outlined,
                     ),
                     _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
-                    _buildListTile('Opening Time', shop?.openingTime ?? 'Not Set', Icons.wb_sunny_outlined),
-                    _buildListTile('Closing Time', shop?.closingTime ?? 'Not Set', Icons.nights_stay_outlined),
                     
                     AppSpacing.verticalLg,
                     const Divider(),

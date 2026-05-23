@@ -11,6 +11,7 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/cloudinary_service.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
+import '../reviews/product_reviews_screen.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final ProductModel? existingProduct;
@@ -306,12 +307,33 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         return null;
                       },
                     ),
-                    AppSpacing.verticalMd,
+                     AppSpacing.verticalMd,
                     CustomTextField(
                       label: 'Description',
                       controller: _descController,
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
+                    if (widget.existingProduct != null) ...[
+                      AppSpacing.verticalLg,
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.star_outline_rounded),
+                        label: const Text('View Product Reviews'),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (context) => ProductReviewsScreen(product: widget.existingProduct!),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: AppColors.primary),
+                          foregroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMedium),
+                        ),
+                      ),
+                    ],
                     AppSpacing.verticalXl,
                     PrimaryButton(
                       text: 'Publish Product',

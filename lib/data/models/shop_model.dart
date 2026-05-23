@@ -16,6 +16,8 @@ class ShopModel with _$ShopModel {
     String? logoUrl,
     @Default(false) bool isVerified,
     @Default(true) bool isOpen,
+    double? rating,
+    int? totalReviews,
     String? openingTime,
     String? closingTime,
   }) = _ShopModel;

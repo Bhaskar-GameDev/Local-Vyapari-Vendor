@@ -20,6 +20,8 @@ _$ProductModelImpl _$$ProductModelImplFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const [],
       isActive: json['isActive'] as bool? ?? true,
+      rating: (json['rating'] as num?)?.toDouble(),
+      totalRatings: (json['totalRatings'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$$ProductModelImplToJson(_$ProductModelImpl instance) =>
@@ -33,4 +35,6 @@ Map<String, dynamic> _$$ProductModelImplToJson(_$ProductModelImpl instance) =>
       'stockQuantity': instance.stockQuantity,
       'images': instance.images,
       'isActive': instance.isActive,
+      'rating': instance.rating,
+      'totalRatings': instance.totalRatings,
     };

@@ -18,6 +18,8 @@ _$ShopModelImpl _$$ShopModelImplFromJson(Map<String, dynamic> json) =>
       logoUrl: json['logoUrl'] as String?,
       isVerified: json['isVerified'] as bool? ?? false,
       isOpen: json['isOpen'] as bool? ?? true,
+      rating: (json['rating'] as num?)?.toDouble(),
+      totalReviews: (json['totalReviews'] as num?)?.toInt(),
       openingTime: json['openingTime'] as String?,
       closingTime: json['closingTime'] as String?,
     );
@@ -34,6 +36,4 @@ Map<String, dynamic> _$$ShopModelImplToJson(_$ShopModelImpl instance) =>
       'logoUrl': instance.logoUrl,
       'isVerified': instance.isVerified,
       'isOpen': instance.isOpen,
-      'openingTime': instance.openingTime,
-      'closingTime': instance.closingTime,
     };

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../domain/providers/product_provider.dart';
+import '../../../domain/providers/review_provider.dart';
 import '../../../data/models/product_model.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../common/app_animations.dart';
 import 'add_product_screen.dart';
+import '../reviews/product_reviews_screen.dart';
 
 class ProductsListScreen extends ConsumerWidget {
   const ProductsListScreen({super.key});
@@ -143,6 +145,10 @@ class ProductsListScreen extends ConsumerWidget {
 
   Widget _buildProductListCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
     final hasImage = product.images.isNotEmpty;
+    final ratingDist = ref.watch(productRatingProvider(product.id));
+    final rating = ratingDist.averageRating;
+    final totalRatings = ratingDist.totalCount;
+    
     return FadeInSlide(
       duration: const Duration(milliseconds: 400),
       delay: Duration(milliseconds: index * 50),
@@ -189,9 +195,64 @@ class ProductsListScreen extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       AppSpacing.verticalXs,
-                      Text(
-                        product.category,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      Row(
+                        children: [
+                          Text(
+                            product.category,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          AppSpacing.horizontalSm,
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: AppColors.textHint,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          AppSpacing.horizontalSm,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (context) => ProductReviewsScreen(product: product),
+                                ),
+                              );
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  color: totalRatings > 0 ? Colors.amber : AppColors.textHint,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  totalRatings > 0
+                                      ? '${rating.toStringAsFixed(1)} ($totalRatings)'
+                                      : 'No ratings',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: totalRatings > 0 ? AppColors.primary : AppColors.textSecondary,
+                                    decoration: totalRatings > 0 ? TextDecoration.underline : TextDecoration.none,
+                                  ),
+                                ),
+                                if (totalRatings > 0) ...[
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 12,
+                                    color: AppColors.primary,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       AppSpacing.verticalXs,
                       Row(
@@ -243,6 +304,10 @@ class ProductsListScreen extends ConsumerWidget {
 
   Widget _buildProductGridCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
     final hasImage = product.images.isNotEmpty;
+    final ratingDist = ref.watch(productRatingProvider(product.id));
+    final rating = ratingDist.averageRating;
+    final totalRatings = ratingDist.totalCount;
+
     return FadeInSlide(
       duration: const Duration(milliseconds: 400),
       delay: Duration(milliseconds: index * 50),
@@ -283,6 +348,49 @@ class ProductsListScreen extends ConsumerWidget {
                         child: Text(
                           product.category,
                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (context) => ProductReviewsScreen(product: product),
+                            ),
+                          );
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: AppRadius.borderXs,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.star_rounded,
+                                color: totalRatings > 0 ? Colors.amber : Colors.white70,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                totalRatings > 0
+                                    ? '${rating.toStringAsFixed(1)} ($totalRatings)'
+                                    : 'No ratings',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

@@ -3,19 +3,22 @@
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "role": {
+          ".validate": "newData.val() === 'merchant' || newData.val() === 'customer'"
+        }
       }
     },
     "phones": {
       "$phone": {
         ".read": "true",
-        ".write": "auth != null"
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
       }
     },
     "otps": {
       "$phone": {
         ".read": "true",
-        ".write": "true"
+        ".write": "!data.exists() && newData.hasChildren(['otp', 'expiresAt']) && newData.child('otp').val().matches(/^\\d{6}$/) && newData.child('expiresAt').val() > now"
       }
     },
     "products": {
@@ -33,19 +36,25 @@
     "shop": {
       "$uid": {
         ".read": "true",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "latitude": {
+          ".validate": "newData.isNumber()"
+        },
+        "longitude": {
+          ".validate": "newData.isNumber()"
+        }
       }
     },
     "password_resets": {
       "$phone": {
         ".read": "true",
-        ".write": "true"
+        ".write": "!data.exists() && newData.child('status').val() === 'pending'"
       }
     },
     "analytics": {
       "$vendorUid": {
         ".read": "auth != null && auth.uid === $vendorUid",
-        ".write": "auth != null"
+        ".write": "auth != null && auth.uid === $vendorUid"
       }
     },
     "chats": {
