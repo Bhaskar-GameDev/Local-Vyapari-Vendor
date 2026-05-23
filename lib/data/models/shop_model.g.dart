@@ -36,4 +36,8 @@ Map<String, dynamic> _$$ShopModelImplToJson(_$ShopModelImpl instance) =>
       'logoUrl': instance.logoUrl,
       'isVerified': instance.isVerified,
       'isOpen': instance.isOpen,
+      'rating': instance.rating,
+      'totalReviews': instance.totalReviews,
+      'openingTime': instance.openingTime,
+      'closingTime': instance.closingTime,
     };

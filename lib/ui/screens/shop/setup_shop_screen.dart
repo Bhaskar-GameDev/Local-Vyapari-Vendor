@@ -304,6 +304,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         logoUrl: logoUrl,
         isVerified: widget.existingShop?.isVerified ?? false,
         isOpen: widget.existingShop?.isOpen ?? true,
+        rating: widget.existingShop?.rating,
+        totalReviews: widget.existingShop?.totalReviews,
         openingTime: _openingTime != null ? '${_openingTime!.hour.toString().padLeft(2, '0')}:${_openingTime!.minute.toString().padLeft(2, '0')}' : null,
         closingTime: _closingTime != null ? '${_closingTime!.hour.toString().padLeft(2, '0')}:${_closingTime!.minute.toString().padLeft(2, '0')}' : null,
       );
