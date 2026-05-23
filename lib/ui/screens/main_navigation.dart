@@ -6,13 +6,13 @@ import 'dashboard/dashboard_screen.dart';
 import 'products/products_list_screen.dart';
 import 'offers/offers_list_screen.dart';
 import 'profile/profile_screen.dart';
-import 'shop/setup_shop_screen.dart';
-import 'auth/login_screen.dart';
+import 'chat/chats_list_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../common/app_animations.dart';
 
 import '../../core/theme/app_dimensions.dart';
 import '../../core/providers/navigation_provider.dart';
+import '../../domain/providers/chat_provider.dart';
 
 class MainNavigation extends ConsumerWidget {
   const MainNavigation({super.key});
@@ -21,7 +21,7 @@ class MainNavigation extends ConsumerWidget {
     DashboardScreen(),
     ProductsListScreen(),
     OffersListScreen(),
-    Center(child: Text('Notifications')), // Stub
+    ChatsListScreen(),
     ProfileScreen(),
   ];
 
@@ -29,6 +29,12 @@ class MainNavigation extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shopState = ref.watch(shopProvider);
     final currentIndex = ref.watch(navigationIndexProvider);
+    
+    final chatsState = ref.watch(vendorChatsProvider);
+    final hasUnread = chatsState.maybeWhen(
+      data: (chats) => chats.any((chat) => chat.unread),
+      orElse: () => false,
+    );
 
     return shopState.when(
       data: (shop) {
@@ -56,12 +62,18 @@ class MainNavigation extends ConsumerWidget {
               unselectedFontSize: 11,
               iconSize: 20,
               elevation: 0,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-                BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: 'Products'),
-                BottomNavigationBarItem(icon: Icon(Icons.local_offer_rounded), label: 'Offers'),
-                BottomNavigationBarItem(icon: Icon(Icons.notifications_rounded), label: 'Alerts'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+              items: [
+                const BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
+                const BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: 'Products'),
+                const BottomNavigationBarItem(icon: Icon(Icons.local_offer_rounded), label: 'Offers'),
+                BottomNavigationBarItem(
+                  icon: Badge(
+                    isLabelVisible: hasUnread,
+                    child: const Icon(Icons.chat_bubble_rounded),
+                  ),
+                  label: 'Chats',
+                ),
+                const BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
               ],
             ),
           ),
