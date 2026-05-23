@@ -9,6 +9,7 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
 import '../shop/setup_shop_screen.dart';
+import '../../../data/repositories/shop_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -65,6 +66,39 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     AppSpacing.verticalLg,
+                    Card(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: SwitchListTile(
+                        value: shop?.isOpen ?? false,
+                        onChanged: shop == null ? null : (value) async {
+                          final updatedShop = shop.copyWith(isOpen: value);
+                          try {
+                            await ref.read(shopRepositoryProvider).updateShopProfile(updatedShop);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(value ? 'Shop marked as Open' : 'Shop marked as Closed'),
+                                  backgroundColor: value ? AppColors.success : AppColors.warning,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to update status: $e'), backgroundColor: AppColors.error),
+                              );
+                            }
+                          }
+                        },
+                        title: Text('Shop is Open', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(shop?.isOpen == true ? 'Customers can see you as open' : 'Customers will see your shop as closed'),
+                        activeColor: AppColors.success,
+                        secondary: Icon(
+                          shop?.isOpen == true ? Icons.storefront : Icons.storefront_outlined,
+                          color: shop?.isOpen == true ? AppColors.success : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
                     _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
                     _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
                     _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
@@ -74,6 +108,8 @@ class ProfileScreen extends ConsumerWidget {
                       Icons.map_outlined,
                     ),
                     _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
+                    _buildListTile('Opening Time', shop?.openingTime ?? 'Not Set', Icons.wb_sunny_outlined),
+                    _buildListTile('Closing Time', shop?.closingTime ?? 'Not Set', Icons.nights_stay_outlined),
                     
                     AppSpacing.verticalLg,
                     const Divider(),

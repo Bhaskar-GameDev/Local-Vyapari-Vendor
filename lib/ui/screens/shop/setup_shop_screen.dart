@@ -34,6 +34,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   late final TextEditingController _phoneController;
   late final TextEditingController _latController;
   late final TextEditingController _lngController;
+  TimeOfDay? _openingTime;
+  TimeOfDay? _closingTime;
 
   File? _logoFile;
   bool _isSaving = false;
@@ -52,6 +54,26 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     _lngController = TextEditingController(
       text: widget.existingShop?.longitude != null ? widget.existingShop!.longitude.toString() : '',
     );
+    if (widget.existingShop?.openingTime != null) {
+      _parseTime(widget.existingShop!.openingTime!, isOpening: true);
+    }
+    if (widget.existingShop?.closingTime != null) {
+      _parseTime(widget.existingShop!.closingTime!, isOpening: false);
+    }
+  }
+
+  void _parseTime(String timeString, {required bool isOpening}) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length >= 2) {
+        final time = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1].split(' ')[0]));
+        if (isOpening) {
+          _openingTime = time;
+        } else {
+          _closingTime = time;
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -71,6 +93,31 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     if (pickedFile != null) {
       setState(() => _logoFile = File(pickedFile.path));
     }
+  }
+
+  Future<void> _pickTime({required bool isOpening}) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: isOpening 
+          ? (_openingTime ?? const TimeOfDay(hour: 9, minute: 0)) 
+          : (_closingTime ?? const TimeOfDay(hour: 21, minute: 0)),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isOpening) {
+          _openingTime = picked;
+        } else {
+          _closingTime = picked;
+        }
+      });
+    }
+  }
+
+  String _formatTime(TimeOfDay? time) {
+    if (time == null) return 'Select Time';
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   Future<void> _getCurrentLocation() async {
@@ -257,6 +304,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         logoUrl: logoUrl,
         isVerified: widget.existingShop?.isVerified ?? false,
         isOpen: widget.existingShop?.isOpen ?? true,
+        openingTime: _openingTime != null ? '${_openingTime!.hour.toString().padLeft(2, '0')}:${_openingTime!.minute.toString().padLeft(2, '0')}' : null,
+        closingTime: _closingTime != null ? '${_closingTime!.hour.toString().padLeft(2, '0')}:${_closingTime!.minute.toString().padLeft(2, '0')}' : null,
       );
 
       await ref.read(shopRepositoryProvider).updateShopProfile(shop);
@@ -479,6 +528,84 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                           }
                           return null;
                         },
+                      ),
+                    ),
+                    AppSpacing.verticalLg,
+
+                    // --- Shop Timings ---
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 420),
+                      slideOffset: 16,
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: AppRadius.borderLg,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 24),
+                                AppSpacing.horizontalSm,
+                                Expanded(
+                                  child: Text(
+                                    'Shop Timings',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            AppSpacing.verticalXs,
+                            Text(
+                              'Let customers know when your shop is open.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+                            AppSpacing.verticalMd,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => _pickTime(isOpening: true),
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Opens At',
+                                        prefixIcon: const Icon(Icons.wb_sunny_outlined),
+                                        border: OutlineInputBorder(
+                                          borderRadius: AppRadius.borderMd,
+                                        ),
+                                      ),
+                                      child: Text(_formatTime(_openingTime)),
+                                    ),
+                                  ),
+                                ),
+                                AppSpacing.horizontalSm,
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => _pickTime(isOpening: false),
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Closes At',
+                                        prefixIcon: const Icon(Icons.nights_stay_outlined),
+                                        border: OutlineInputBorder(
+                                          borderRadius: AppRadius.borderMd,
+                                        ),
+                                      ),
+                                      child: Text(_formatTime(_closingTime)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     AppSpacing.verticalLg,
