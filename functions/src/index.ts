@@ -207,3 +207,216 @@ export const onPasswordResetRequest = functions.database.ref("/password_resets/{
     return null;
   });
 
+// --- Helper function to encode coordinates to Geohash ---
+const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+function encodeGeohash(latitude: number, longitude: number, precision: number = 9): string {
+  let latMin = -90, latMax = 90;
+  let lonMin = -180, lonMax = 180;
+  let geohash = "";
+  let isEven = true;
+  let bit = 0;
+  let ch = 0;
+
+  while (geohash.length < precision) {
+    let mid;
+    if (isEven) {
+      mid = (lonMin + lonMax) / 2;
+      if (longitude > mid) {
+        ch |= (1 << (4 - bit));
+        lonMin = mid;
+      } else {
+        lonMax = mid;
+      }
+    } else {
+      mid = (latMin + latMax) / 2;
+      if (latitude > mid) {
+        ch |= (1 << (4 - bit));
+        latMin = mid;
+      } else {
+        latMax = mid;
+      }
+    }
+
+    isEven = !isEven;
+    if (bit < 4) {
+      bit++;
+    } else {
+      geohash += BASE32[ch];
+      bit = 0;
+      ch = 0;
+    }
+  }
+  return geohash;
+}
+
+// 6. Shop Profile Sync (RTDB -> Firestore index for geohash search)
+export const onShopProfileUpdate = functions.database.ref("/shop/{shopId}")
+  .onWrite(async (change, context) => {
+    const after = change.after.val();
+    const shopId = context.params.shopId;
+
+    if (!after) {
+      // Shop deleted from RTDB, delete the searchable index in Firestore
+      try {
+        await db.collection("searchable_shops").doc(shopId).delete();
+      } catch (e) {
+        console.error("Error deleting searchable shop index:", e);
+      }
+      return null;
+    }
+
+    const name = after.name || after.shopName || "";
+    const description = after.description || "";
+    const latitude = after.latitude;
+    const longitude = after.longitude;
+
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+      const latNum = parseFloat(latitude);
+      const lngNum = parseFloat(longitude);
+
+      if (!isNaN(latNum) && !isNaN(lngNum)) {
+        const geohash = encodeGeohash(latNum, lngNum, 9);
+
+        try {
+          // 1. Sync to Firestore searchable_shops for customer geo-location searches
+          await db.collection("searchable_shops").doc(shopId).set({
+            shopName: name,
+            description: description,
+            geo: {
+              geohash: geohash,
+              geopoint: new admin.firestore.GeoPoint(latNum, lngNum)
+            }
+          }, { merge: true });
+
+          console.log(`Successfully indexed shop ${shopId} with geohash ${geohash}`);
+        } catch (e) {
+          console.error("Error writing searchable shop to Firestore:", e);
+        }
+
+        try {
+          // 2. Write the geohash back to RTDB shop profile if it's missing or different
+          if (after.geohash !== geohash) {
+            await change.after.ref.child("geohash").set(geohash);
+            console.log(`Updated geohash in RTDB for shop ${shopId}`);
+          }
+        } catch (e) {
+          console.error("Error updating geohash in RTDB:", e);
+        }
+      }
+    }
+
+    return null;
+  });
+
+// Recalculates average rating and review counts for a shop
+async function updateShopRating(shopId: string) {
+  const reviewsSnap = await db.collection("shop_reviews")
+    .where("shopId", "==", shopId)
+    .get();
+
+  const totalRatings = reviewsSnap.size;
+  let avgRating = 0;
+
+  if (totalRatings > 0) {
+    let sum = 0;
+    reviewsSnap.docs.forEach(doc => {
+      sum += doc.data().rating || 0;
+    });
+    avgRating = Math.round((sum / totalRatings) * 10) / 10;
+  }
+
+  // Update Firestore shops document
+  await db.collection("shops").doc(shopId).set({
+    avgRating: avgRating,
+    totalRatings: totalRatings
+  }, { merge: true });
+
+  // Update RTDB shop node to keep in sync
+  await admin.database().ref(`shop/${shopId}`).update({
+    rating: avgRating,
+    totalReviews: totalRatings
+  });
+
+  console.log(`Updated ratings for Shop ${shopId}: avgRating = ${avgRating}, totalRatings = ${totalRatings}`);
+}
+
+// Recalculates average rating and review counts for a product
+async function updateProductRating(productId: string) {
+  const reviewsSnap = await db.collection("product_reviews")
+    .where("productId", "==", productId)
+    .get();
+
+  const totalRatings = reviewsSnap.size;
+  let avgRating = 0;
+
+  if (totalRatings > 0) {
+    let sum = 0;
+    reviewsSnap.docs.forEach(doc => {
+      sum += doc.data().rating || 0;
+    });
+    avgRating = Math.round((sum / totalRatings) * 10) / 10;
+  }
+
+  // Update Firestore products document
+  await db.collection("products").doc(productId).set({
+    avgRating: avgRating,
+    totalRatings: totalRatings
+  }, { merge: true });
+
+  // Update RTDB product node
+  const productDoc = await db.collection("products").doc(productId).get();
+  if (productDoc.exists) {
+    const shopId = productDoc.data()?.shopId;
+    if (shopId) {
+      await admin.database().ref(`products/${shopId}/${productId}`).update({
+        avgRating: avgRating,
+        totalRatings: totalRatings,
+        rating: avgRating
+      });
+    }
+  }
+
+  console.log(`Updated ratings for Product ${productId}: avgRating = ${avgRating}, totalRatings = ${totalRatings}`);
+}
+
+export const onShopReviewWrite = functions.firestore.document("/shop_reviews/{reviewId}")
+  .onWrite(async (change, context) => {
+    const data = change.after.exists ? change.after.data() : change.before.data();
+    if (!data) return null;
+    const shopId = data.shopId;
+    if (shopId) {
+      await updateShopRating(shopId);
+    }
+    return null;
+  });
+
+export const onProductReviewWrite = functions.firestore.document("/product_reviews/{reviewId}")
+  .onWrite(async (change, context) => {
+    const data = change.after.exists ? change.after.data() : change.before.data();
+    if (!data) return null;
+    const productId = data.productId;
+    if (productId) {
+      await updateProductRating(productId);
+    }
+    return null;
+  });
+
+export const addMockProductReview = functions.https.onRequest(async (req, res) => {
+  const { productId, rating, comment } = req.query;
+  if (!productId) {
+    res.status(400).send("Missing productId");
+    return;
+  }
+  const ref = await db.collection("product_reviews").add({
+    productId,
+    rating: parseFloat(rating as string) || 5,
+    comment: comment || "Great product!",
+    userId: "mock_user_id",
+    userDisplayName: "Test Customer",
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  res.status(200).send(`Added mock review: ${ref.id}`);
+});
+
+
+

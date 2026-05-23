@@ -29,6 +29,8 @@ mixin _$ProductModel {
   int get stockQuantity => throw _privateConstructorUsedError;
   List<String> get images => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
+  double? get rating => throw _privateConstructorUsedError;
+  int? get totalRatings => throw _privateConstructorUsedError;
 
   /// Serializes this ProductModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -55,7 +57,9 @@ abstract class $ProductModelCopyWith<$Res> {
       double? offerPrice,
       int stockQuantity,
       List<String> images,
-      bool isActive});
+      bool isActive,
+      double? rating,
+      int? totalRatings});
 }
 
 /// @nodoc
@@ -82,6 +86,8 @@ class _$ProductModelCopyWithImpl<$Res, $Val extends ProductModel>
     Object? stockQuantity = null,
     Object? images = null,
     Object? isActive = null,
+    Object? rating = freezed,
+    Object? totalRatings = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -120,6 +126,14 @@ class _$ProductModelCopyWithImpl<$Res, $Val extends ProductModel>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      rating: freezed == rating
+          ? _value.rating
+          : rating // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalRatings: freezed == totalRatings
+          ? _value.totalRatings
+          : totalRatings // ignore: cast_nullable_to_non_nullable
+              as int?,
     ) as $Val);
   }
 }
@@ -141,7 +155,9 @@ abstract class _$$ProductModelImplCopyWith<$Res>
       double? offerPrice,
       int stockQuantity,
       List<String> images,
-      bool isActive});
+      bool isActive,
+      double? rating,
+      int? totalRatings});
 }
 
 /// @nodoc
@@ -166,6 +182,8 @@ class __$$ProductModelImplCopyWithImpl<$Res>
     Object? stockQuantity = null,
     Object? images = null,
     Object? isActive = null,
+    Object? rating = freezed,
+    Object? totalRatings = freezed,
   }) {
     return _then(_$ProductModelImpl(
       id: null == id
@@ -204,6 +222,14 @@ class __$$ProductModelImplCopyWithImpl<$Res>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      rating: freezed == rating
+          ? _value.rating
+          : rating // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalRatings: freezed == totalRatings
+          ? _value.totalRatings
+          : totalRatings // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
@@ -220,7 +246,9 @@ class _$ProductModelImpl implements _ProductModel {
       this.offerPrice,
       required this.stockQuantity,
       final List<String> images = const [],
-      this.isActive = true})
+      this.isActive = true,
+      this.rating,
+      this.totalRatings})
       : _images = images;
 
   factory _$ProductModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -252,10 +280,14 @@ class _$ProductModelImpl implements _ProductModel {
   @override
   @JsonKey()
   final bool isActive;
+  @override
+  final double? rating;
+  @override
+  final int? totalRatings;
 
   @override
   String toString() {
-    return 'ProductModel(id: $id, name: $name, description: $description, category: $category, actualPrice: $actualPrice, offerPrice: $offerPrice, stockQuantity: $stockQuantity, images: $images, isActive: $isActive)';
+    return 'ProductModel(id: $id, name: $name, description: $description, category: $category, actualPrice: $actualPrice, offerPrice: $offerPrice, stockQuantity: $stockQuantity, images: $images, isActive: $isActive, rating: $rating, totalRatings: $totalRatings)';
   }
 
   @override
@@ -277,7 +309,10 @@ class _$ProductModelImpl implements _ProductModel {
                 other.stockQuantity == stockQuantity) &&
             const DeepCollectionEquality().equals(other._images, _images) &&
             (identical(other.isActive, isActive) ||
-                other.isActive == isActive));
+                other.isActive == isActive) &&
+            (identical(other.rating, rating) || other.rating == rating) &&
+            (identical(other.totalRatings, totalRatings) ||
+                other.totalRatings == totalRatings));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -292,7 +327,9 @@ class _$ProductModelImpl implements _ProductModel {
       offerPrice,
       stockQuantity,
       const DeepCollectionEquality().hash(_images),
-      isActive);
+      isActive,
+      rating,
+      totalRatings);
 
   /// Create a copy of ProductModel
   /// with the given fields replaced by the non-null parameter values.
@@ -320,7 +357,9 @@ abstract class _ProductModel implements ProductModel {
       final double? offerPrice,
       required final int stockQuantity,
       final List<String> images,
-      final bool isActive}) = _$ProductModelImpl;
+      final bool isActive,
+      final double? rating,
+      final int? totalRatings}) = _$ProductModelImpl;
 
   factory _ProductModel.fromJson(Map<String, dynamic> json) =
       _$ProductModelImpl.fromJson;
@@ -343,6 +382,10 @@ abstract class _ProductModel implements ProductModel {
   List<String> get images;
   @override
   bool get isActive;
+  @override
+  double? get rating;
+  @override
+  int? get totalRatings;
 
   /// Create a copy of ProductModel
   /// with the given fields replaced by the non-null parameter values.

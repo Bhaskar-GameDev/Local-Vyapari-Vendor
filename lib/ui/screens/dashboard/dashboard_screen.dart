@@ -17,6 +17,8 @@ import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/analytics_provider.dart';
 import '../../common/app_animations.dart';
 import '../products/add_product_screen.dart';
+import '../../../domain/providers/review_provider.dart';
+import '../reviews/vendor_reviews_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -27,6 +29,7 @@ class DashboardScreen extends ConsumerWidget {
     final offersState = ref.watch(offersProvider);
     final shopState = ref.watch(shopProvider);
     final analyticsState = ref.watch(analyticsProvider);
+    final ratingDist = ref.watch(vendorRatingDistributionProvider);
 
     final analytics = analyticsState.value ?? const AnalyticsModel();
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
@@ -168,6 +171,43 @@ class DashboardScreen extends ConsumerWidget {
                   Text(
                     'Your shop is live and visible to nearby customers.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  ),
+                  shopState.maybeWhen(
+                    data: (shop) {
+                      if (shop?.rating != null && shop!.rating! > 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const VendorReviewsScreen(),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${shop.rating} (${shop.totalReviews ?? 0} reviews)',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    orElse: () => const SizedBox.shrink(),
                   ),
                 ],
               ),

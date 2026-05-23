@@ -30,6 +30,8 @@ mixin _$ShopModel {
   String? get logoUrl => throw _privateConstructorUsedError;
   bool get isVerified => throw _privateConstructorUsedError;
   bool get isOpen => throw _privateConstructorUsedError;
+  double? get rating => throw _privateConstructorUsedError;
+  int? get totalReviews => throw _privateConstructorUsedError;
 
   /// Serializes this ShopModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -56,7 +58,9 @@ abstract class $ShopModelCopyWith<$Res> {
       double? longitude,
       String? logoUrl,
       bool isVerified,
-      bool isOpen});
+      bool isOpen,
+      double? rating,
+      int? totalReviews});
 }
 
 /// @nodoc
@@ -84,6 +88,8 @@ class _$ShopModelCopyWithImpl<$Res, $Val extends ShopModel>
     Object? logoUrl = freezed,
     Object? isVerified = null,
     Object? isOpen = null,
+    Object? rating = freezed,
+    Object? totalReviews = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -126,6 +132,14 @@ class _$ShopModelCopyWithImpl<$Res, $Val extends ShopModel>
           ? _value.isOpen
           : isOpen // ignore: cast_nullable_to_non_nullable
               as bool,
+      rating: freezed == rating
+          ? _value.rating
+          : rating // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalReviews: freezed == totalReviews
+          ? _value.totalReviews
+          : totalReviews // ignore: cast_nullable_to_non_nullable
+              as int?,
     ) as $Val);
   }
 }
@@ -148,7 +162,9 @@ abstract class _$$ShopModelImplCopyWith<$Res>
       double? longitude,
       String? logoUrl,
       bool isVerified,
-      bool isOpen});
+      bool isOpen,
+      double? rating,
+      int? totalReviews});
 }
 
 /// @nodoc
@@ -174,6 +190,8 @@ class __$$ShopModelImplCopyWithImpl<$Res>
     Object? logoUrl = freezed,
     Object? isVerified = null,
     Object? isOpen = null,
+    Object? rating = freezed,
+    Object? totalReviews = freezed,
   }) {
     return _then(_$ShopModelImpl(
       id: null == id
@@ -216,6 +234,14 @@ class __$$ShopModelImplCopyWithImpl<$Res>
           ? _value.isOpen
           : isOpen // ignore: cast_nullable_to_non_nullable
               as bool,
+      rating: freezed == rating
+          ? _value.rating
+          : rating // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalReviews: freezed == totalReviews
+          ? _value.totalReviews
+          : totalReviews // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
@@ -233,7 +259,9 @@ class _$ShopModelImpl implements _ShopModel {
       this.longitude,
       this.logoUrl,
       this.isVerified = false,
-      this.isOpen = true});
+      this.isOpen = true,
+      this.rating,
+      this.totalReviews});
 
   factory _$ShopModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$ShopModelImplFromJson(json);
@@ -260,10 +288,14 @@ class _$ShopModelImpl implements _ShopModel {
   @override
   @JsonKey()
   final bool isOpen;
+  @override
+  final double? rating;
+  @override
+  final int? totalReviews;
 
   @override
   String toString() {
-    return 'ShopModel(id: $id, name: $name, description: $description, address: $address, phone: $phone, latitude: $latitude, longitude: $longitude, logoUrl: $logoUrl, isVerified: $isVerified, isOpen: $isOpen)';
+    return 'ShopModel(id: $id, name: $name, description: $description, address: $address, phone: $phone, latitude: $latitude, longitude: $longitude, logoUrl: $logoUrl, isVerified: $isVerified, isOpen: $isOpen, rating: $rating, totalReviews: $totalReviews)';
   }
 
   @override
@@ -284,13 +316,28 @@ class _$ShopModelImpl implements _ShopModel {
             (identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl) &&
             (identical(other.isVerified, isVerified) ||
                 other.isVerified == isVerified) &&
-            (identical(other.isOpen, isOpen) || other.isOpen == isOpen));
+            (identical(other.isOpen, isOpen) || other.isOpen == isOpen) &&
+            (identical(other.rating, rating) || other.rating == rating) &&
+            (identical(other.totalReviews, totalReviews) ||
+                other.totalReviews == totalReviews));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, description, address,
-      phone, latitude, longitude, logoUrl, isVerified, isOpen);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      description,
+      address,
+      phone,
+      latitude,
+      longitude,
+      logoUrl,
+      isVerified,
+      isOpen,
+      rating,
+      totalReviews);
 
   /// Create a copy of ShopModel
   /// with the given fields replaced by the non-null parameter values.
@@ -319,7 +366,9 @@ abstract class _ShopModel implements ShopModel {
       final double? longitude,
       final String? logoUrl,
       final bool isVerified,
-      final bool isOpen}) = _$ShopModelImpl;
+      final bool isOpen,
+      final double? rating,
+      final int? totalReviews}) = _$ShopModelImpl;
 
   factory _ShopModel.fromJson(Map<String, dynamic> json) =
       _$ShopModelImpl.fromJson;
@@ -344,6 +393,10 @@ abstract class _ShopModel implements ShopModel {
   bool get isVerified;
   @override
   bool get isOpen;
+  @override
+  double? get rating;
+  @override
+  int? get totalReviews;
 
   /// Create a copy of ShopModel
   /// with the given fields replaced by the non-null parameter values.
