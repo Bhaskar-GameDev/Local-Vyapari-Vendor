@@ -11,49 +11,51 @@ import 'auth/login_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../common/app_animations.dart';
 
-class MainNavigation extends ConsumerStatefulWidget {
+import '../../core/theme/app_dimensions.dart';
+import '../../core/providers/navigation_provider.dart';
+
+class MainNavigation extends ConsumerWidget {
   const MainNavigation({super.key});
 
-  @override
-  ConsumerState<MainNavigation> createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends ConsumerState<MainNavigation> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const ProductsListScreen(),
-    const OffersListScreen(),
-    const Center(child: Text('Notifications')), // Stub
-    const ProfileScreen(),
+  static const List<Widget> _screens = [
+    DashboardScreen(),
+    ProductsListScreen(),
+    OffersListScreen(),
+    Center(child: Text('Notifications')), // Stub
+    ProfileScreen(),
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final shopState = ref.watch(shopProvider);
+    final currentIndex = ref.watch(navigationIndexProvider);
 
     return shopState.when(
       data: (shop) {
         // Show main navigation when shop profile is completed (delegated redirect to GoRouter)
         return Scaffold(
           body: FadeIndexedStack(
-            index: _currentIndex,
+            index: currentIndex,
             children: _screens,
           ),
           bottomNavigationBar: Container(
+            height: AppDimensions.bottomNavBarHeight,
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
             child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
+              currentIndex: currentIndex,
+              onTap: (index) => ref.read(navigationIndexProvider.notifier).setIndex(index),
+              selectedFontSize: 11,
+              unselectedFontSize: 11,
+              iconSize: 20,
+              elevation: 0,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
                 BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: 'Products'),

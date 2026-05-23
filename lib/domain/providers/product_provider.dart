@@ -12,7 +12,7 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<ProductModel>>> {
   ProductsNotifier(this._repository) : super(const AsyncValue.loading()) {
     _subscription = _repository.watchProducts().listen((products) {
       state = AsyncValue.data(products);
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace st) {
       state = AsyncValue.error(e, st);
     });
   }

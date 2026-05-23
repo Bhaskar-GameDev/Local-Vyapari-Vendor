@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../domain/providers/product_provider.dart';
+import '../../../data/models/product_model.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
 import '../../common/app_animations.dart';
 import 'add_product_screen.dart';
 
@@ -59,75 +63,69 @@ class ProductsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsState = ref.watch(productsProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isTablet = width >= 600;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Products'),
         automaticallyImplyLeading: false,
       ),
-      body: productsState.when(
-        data: (products) {
-          if (products.isEmpty) {
-            return const Center(child: Text('No products found. Add one!'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(productsProvider),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-                return FadeInSlide(
-                  duration: const Duration(milliseconds: 400),
-                  delay: Duration(milliseconds: index * 60),
-                  slideOffset: 16,
-                  child: ScaleOnTap(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
-                      );
-                    },
-                    child: Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.inventory_2, color: AppColors.primary),
-                        ),
-                        title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${product.category} • ₹${product.actualPrice}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Switch(
-                              value: product.isActive,
-                              onChanged: (val) {
-                                ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
-                              },
-                              activeColor: AppColors.success,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                              onPressed: () => _confirmDelete(context, ref, product.id, product.name),
-                            ),
-                          ],
-                        ),
+      body: SafeArea(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            child: productsState.when(
+              data: (products) {
+                if (products.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Text(
+                        'No products found. Add one!',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                       ),
                     ),
-                  ),
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () async => ref.invalidate(productsProvider),
+                  child: isTablet
+                      ? GridView.builder(
+                          padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isLandscape ? 3 : 2,
+                            mainAxisSpacing: AppSpacing.md,
+                            crossAxisSpacing: AppSpacing.md,
+                            childAspectRatio: 0.85,
+                          ),
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final product = products[index];
+                            return _buildProductGridCard(context, ref, product, index);
+                          },
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final product = products[index];
+                            return _buildProductListCard(context, ref, product, index);
+                          },
+                        ),
                 );
               },
+              loading: () => _buildShimmerLoading(isTablet, isLandscape),
+              error: (error, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+                ),
+              ),
             ),
-          );
-        },
-        loading: () => _buildShimmerLoading(),
-        error: (error, stack) => Center(child: Text('Error: $error')),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'add_product_fab',
@@ -143,35 +141,273 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildShimmerLoading() {
+  Widget _buildProductListCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
+    final hasImage = product.images.isNotEmpty;
+    return FadeInSlide(
+      duration: const Duration(milliseconds: 400),
+      delay: Duration(milliseconds: index * 50),
+      slideOffset: 16,
+      child: ScaleOnTap(
+        onTap: () {
+          Navigator.push(
+            context,
+            AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
+          );
+        },
+        child: Card(
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: AppRadius.borderSm,
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    color: AppColors.surfaceElevated,
+                    child: hasImage
+                        ? Image.network(
+                            product.images.first,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
+                          )
+                        : const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 28),
+                  ),
+                ),
+                AppSpacing.horizontalMd,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      AppSpacing.verticalXs,
+                      Text(
+                        product.category,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      AppSpacing.verticalXs,
+                      Row(
+                        children: [
+                          Text(
+                            '₹${product.offerPrice ?? product.actualPrice}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+                          ),
+                          if (product.offerPrice != null) ...[
+                            AppSpacing.horizontalXs,
+                            Text(
+                              '₹${product.actualPrice}',
+                              style: const TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: AppColors.textHint,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Switch(
+                      value: product.isActive,
+                      onChanged: (val) {
+                        ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                      },
+                      activeColor: AppColors.success,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                      onPressed: () => _confirmDelete(context, ref, product.id, product.name),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductGridCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
+    final hasImage = product.images.isNotEmpty;
+    return FadeInSlide(
+      duration: const Duration(milliseconds: 400),
+      delay: Duration(milliseconds: index * 50),
+      slideOffset: 16,
+      child: ScaleOnTap(
+        onTap: () {
+          Navigator.push(
+            context,
+            AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
+          );
+        },
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    hasImage
+                        ? Image.network(
+                            product.images.first,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 40),
+                          )
+                        : const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 40),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated.withOpacity(0.9),
+                          borderRadius: AppRadius.borderXs,
+                        ),
+                        child: Text(
+                          product.category,
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    AppSpacing.verticalXs,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '₹${product.offerPrice ?? product.actualPrice}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13),
+                            ),
+                            if (product.offerPrice != null) ...[
+                              AppSpacing.horizontalXs,
+                              Text(
+                                '₹${product.actualPrice}',
+                                style: const TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: AppColors.textHint,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          'Stock: ${product.stockQuantity}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: product.stockQuantity < 5 ? AppColors.error : AppColors.textSecondary,
+                            fontWeight: product.stockQuantity < 5 ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    AppSpacing.verticalXs,
+                    const Divider(height: 1),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('Active', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            Transform.scale(
+                              scale: 0.75,
+                              child: Switch(
+                                value: product.isActive,
+                                onChanged: (val) {
+                                  ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                                },
+                                activeColor: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                          onPressed: () => _confirmDelete(context, ref, product.id, product.name),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoading(bool isTablet, bool isLandscape) {
+    if (isTablet) {
+      return GridView.builder(
+        padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: isLandscape ? 3 : 2,
+          mainAxisSpacing: AppSpacing.md,
+          crossAxisSpacing: AppSpacing.md,
+          childAspectRatio: 0.85,
+        ),
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Card(
+              child: Container(
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
       itemCount: 6,
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              title: Container(
-                height: 16,
-                color: Colors.white,
-                margin: const EdgeInsets.only(right: 80),
-              ),
-              subtitle: Container(
-                height: 12,
-                color: Colors.white,
-                margin: const EdgeInsets.only(right: 140, top: 8),
-              ),
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Container(
+              height: 86,
+              color: Colors.white,
             ),
           ),
         );

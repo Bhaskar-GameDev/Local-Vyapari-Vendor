@@ -28,7 +28,7 @@ class CloudinaryService {
       final response = await dio.post(_uploadUrl, data: formData);
 
       if (response.statusCode == 200) {
-        return response.data['secure_url']; 
+        return response.data['secure_url'] as String?; 
       }
       return null;
     } catch (e) {

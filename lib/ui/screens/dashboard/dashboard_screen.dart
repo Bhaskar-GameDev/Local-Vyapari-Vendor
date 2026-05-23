@@ -4,6 +4,9 @@ import 'package:shimmer/shimmer.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/offer_model.dart';
 import '../../../data/models/shop_model.dart';
@@ -31,7 +34,17 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              height: 32,
+              fit: BoxFit.contain,
+            ),
+            AppSpacing.horizontalSm,
+            const Text('Vendor Portal'),
+          ],
+        ),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -40,46 +53,74 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeSection(context, shopState),
-            const SizedBox(height: 24),
-            FadeInSlide(
-              duration: const Duration(milliseconds: 500),
-              delay: const Duration(milliseconds: 150),
-              slideOffset: 10,
-              child: Text('Quick Stats', style: Theme.of(context).textTheme.titleLarge),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.horizontalPadding,
+              vertical: AppSpacing.md,
             ),
-            const SizedBox(height: 16),
-            _buildStatsGrid(
-              productsState,
-              offersState,
-              todayStats,
-              analytics,
-              analyticsState.isLoading,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: AppDimensions.maxTabletContentWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeSection(context, shopState),
+                  AppSpacing.verticalMd,
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 150),
+                    slideOffset: 10,
+                    child: Text(
+                      'Quick Stats',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  AppSpacing.verticalSm,
+                  _buildStatsGrid(
+                    productsState,
+                    offersState,
+                    todayStats,
+                    analytics,
+                    analyticsState.isLoading,
+                  ),
+                  AppSpacing.verticalMd,
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 250),
+                    slideOffset: 10,
+                    child: Text(
+                      'Performance (Last 7 Days)',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  AppSpacing.verticalSm,
+                  _buildChartSection(context, analytics),
+                  AppSpacing.verticalMd,
+                  FadeInSlide(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 400),
+                    slideOffset: 10,
+                    child: Text(
+                      'Low Stock Alerts',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  AppSpacing.verticalSm,
+                  _buildLowStockList(context, productsState),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            FadeInSlide(
-              duration: const Duration(milliseconds: 500),
-              delay: const Duration(milliseconds: 250),
-              slideOffset: 10,
-              child: Text('Performance (Last 7 Days)', style: Theme.of(context).textTheme.titleLarge),
-            ),
-            const SizedBox(height: 16),
-            _buildChartSection(context, analytics),
-            const SizedBox(height: 24),
-            FadeInSlide(
-              duration: const Duration(milliseconds: 500),
-              delay: const Duration(milliseconds: 400),
-              slideOffset: 10,
-              child: Text('Low Stock Alerts', style: Theme.of(context).textTheme.titleLarge),
-            ),
-            const SizedBox(height: 16),
-            _buildLowStockList(productsState),
-          ],
+          ),
         ),
       ),
     );
@@ -90,10 +131,21 @@ class DashboardScreen extends ConsumerWidget {
       duration: const Duration(milliseconds: 600),
       slideOffset: 20,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: AppRadius.borderLg,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -107,9 +159,12 @@ class DashboardScreen extends ConsumerWidget {
                       loading: () => 'Loading...',
                       error: (_, __) => 'Hello, Vendor',
                     ),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  AppSpacing.verticalXs,
                   Text(
                     'Your shop is live and visible to nearby customers.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
@@ -117,11 +172,11 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            AppSpacing.horizontalMd,
             CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              child: const Icon(Icons.rocket_launch, color: Colors.white, size: 30),
+              radius: 28,
+              backgroundColor: Colors.white.withOpacity(0.2),
+              child: const Icon(Icons.rocket_launch, color: Colors.white, size: 26),
             )
           ],
         ),
@@ -140,9 +195,9 @@ class DashboardScreen extends ConsumerWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1.5,
+      mainAxisSpacing: AppSpacing.md,
+      crossAxisSpacing: AppSpacing.md,
+      childAspectRatio: 1.6,
       children: [
         FadeInSlide(
           duration: const Duration(milliseconds: 500),
@@ -218,11 +273,18 @@ class DashboardScreen extends ConsumerWidget {
     final hasData = analytics.daily.values.any((stat) => stat.views > 0 || stat.clicks > 0);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.borderMedium,
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,18 +292,18 @@ class DashboardScreen extends ConsumerWidget {
           Row(
             children: [
               _buildLegendItem('Views', AppColors.primary),
-              const SizedBox(width: 16),
+              AppSpacing.horizontalMd,
               _buildLegendItem('Clicks', AppColors.warning),
             ],
           ),
-          const SizedBox(height: 24),
+          AppSpacing.verticalMd,
           SizedBox(
-            height: 200,
+            height: 180,
             child: !hasData
                 ? Center(
                     child: Text(
                       'No traffic data recorded yet for the last 7 days.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textHint),
                     ),
                   )
                 : LineChart(
@@ -261,12 +323,12 @@ class DashboardScreen extends ConsumerWidget {
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 30,
+                            reservedSize: 26,
                             getTitlesWidget: (value, meta) {
                               if (value == value.toInt()) {
                                 return Text(
                                   value.toInt().toString(),
-                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                                 );
                               }
                               return const SizedBox();
@@ -281,10 +343,10 @@ class DashboardScreen extends ConsumerWidget {
                               if (index >= 0 && index < last7Days.length) {
                                 final date = last7Days[index];
                                 return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
+                                  padding: const EdgeInsets.only(top: 6.0),
                                   child: Text(
                                     DateFormat('E').format(date),
-                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                                   ),
                                 );
                               }
@@ -308,7 +370,7 @@ class DashboardScreen extends ConsumerWidget {
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color: AppColors.primary.withOpacity(0.08),
                           ),
                         ),
                         LineChartBarData(
@@ -320,7 +382,7 @@ class DashboardScreen extends ConsumerWidget {
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: AppColors.warning.withValues(alpha: 0.1),
+                            color: AppColors.warning.withOpacity(0.08),
                           ),
                         ),
                       ],
@@ -336,23 +398,23 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 6),
+        AppSpacing.horizontalXs,
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
         ),
       ],
     );
   }
 
-  Widget _buildLowStockList(AsyncValue<List<ProductModel>> productsState) {
+  Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> productsState) {
     if (productsState.isLoading) {
       return ListView.builder(
         shrinkWrap: true,
@@ -363,14 +425,14 @@ class DashboardScreen extends ConsumerWidget {
             baseColor: Colors.grey[300]!,
             highlightColor: Colors.grey[100]!,
             child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: ListTile(
                 leading: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadius.borderSm,
                   ),
                 ),
                 title: Container(
@@ -389,20 +451,24 @@ class DashboardScreen extends ConsumerWidget {
         },
       );
     }
-    if (productsState.hasError) return const Text('Error loading inventory.');
+    if (productsState.hasError) return const Text('Error loading inventory.', style: TextStyle(color: AppColors.textSecondary));
     
     final allProducts = (productsState.asData?.value ?? []);
     final lowStock = allProducts.where((p) => p.stockQuantity < 5).toList();
 
     if (lowStock.isEmpty) {
-      return const FadeInSlide(
-        duration: Duration(milliseconds: 500),
-        delay: Duration(milliseconds: 450),
+      return FadeInSlide(
+        duration: const Duration(milliseconds: 500),
+        delay: const Duration(milliseconds: 450),
         slideOffset: 12,
         child: Card(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('Inventory is healthy! No low stock alerts.'),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(
+              'Inventory is healthy! No low stock alerts.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ),
           ),
         ),
       );
@@ -428,18 +494,25 @@ class DashboardScreen extends ConsumerWidget {
               );
             },
             child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+              clipBehavior: Clip.antiAlias,
               child: ListTile(
                 leading: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.error.withOpacity(0.1),
+                    borderRadius: AppRadius.borderSm,
                   ),
                   child: const Icon(Icons.warning_amber_rounded, color: AppColors.error),
                 ),
-                title: Text(product.name),
-                subtitle: Text('Only ${product.stockQuantity} left in stock'),
+                title: Text(
+                  product.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+                subtitle: Text(
+                  'Only ${product.stockQuantity} left in stock',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
                 trailing: TextButton(
                   onPressed: () {
                     Navigator.push(
@@ -480,11 +553,18 @@ class _StatCard extends StatelessWidget {
     return ScaleOnTap(
       onTap: () {},
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadius.borderMedium,
           border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,32 +572,37 @@ class _StatCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 24),
+                Icon(icon, color: color, size: 22),
                 const Spacer(),
                 if (isLoading)
                   Shimmer.fromColors(
                     baseColor: Colors.grey[300]!,
                     highlightColor: Colors.grey[100]!,
                     child: Container(
-                      width: 40,
-                      height: 24,
+                      width: 32,
+                      height: 20,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadius.borderXs,
                       ),
                     ),
                   )
                 else
                   Text(
                     value,
-                    style: Theme.of(context).textTheme.headlineLarge,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            AppSpacing.verticalXs,
             Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

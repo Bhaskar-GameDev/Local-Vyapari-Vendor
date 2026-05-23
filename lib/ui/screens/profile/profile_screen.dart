@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
 import '../shop/setup_shop_screen.dart';
-import '../auth/login_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -21,171 +23,182 @@ class ProfileScreen extends ConsumerWidget {
         title: const Text('My Shop Profile'),
         automaticallyImplyLeading: false,
       ),
-      body: shopState.when(
-        data: (shop) {
-          final lat = shop?.latitude;
-          final lng = shop?.longitude;
-          final coordinatesText = (lat != null && lng != null)
-              ? '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'
-              : 'Not Set (Required for discovery)';
+      body: SafeArea(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            child: shopState.when(
+              data: (shop) {
+                final lat = shop?.latitude;
+                final lng = shop?.longitude;
+                final coordinatesText = (lat != null && lng != null)
+                    ? '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'
+                    : 'Not Set (Required for discovery)';
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Center(
-                child: Stack(
+                return ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.horizontalPadding,
+                    vertical: AppSpacing.md,
+                  ),
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.surfaceElevated,
-                      backgroundImage: shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
-                      child: shop?.logoUrl == null
-                          ? const Icon(Icons.storefront, size: 50, color: AppColors.primary)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                        child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 48,
+                            backgroundColor: AppColors.surfaceElevated,
+                            backgroundImage: shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
+                            child: shop?.logoUrl == null
+                                ? const Icon(Icons.storefront, size: 44, color: AppColors.primary)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(AppSpacing.xs),
+                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    AppSpacing.verticalLg,
+                    _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
+                    _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
+                    _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
+                    _buildListTile(
+                      'Storefront GPS Coordinates',
+                      coordinatesText,
+                      Icons.map_outlined,
+                    ),
+                    _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
+                    
+                    AppSpacing.verticalLg,
+                    const Divider(),
+                    AppSpacing.verticalMd,
+                    
+                    Text(
+                      'Security & Linked Accounts',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                    ),
+                    AppSpacing.verticalSm,
+
+                    profileState.when(
+                      data: (profile) {
+                        final email = profile?['email'] as String?;
+                        final phone = profile?['phone'] as String?;
+
+                        return Column(
+                          children: [
+                            Card(
+                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              child: ListTile(
+                                leading: const Icon(Icons.email_outlined, color: AppColors.primary),
+                                title: const Text('Bound Email Address'),
+                                subtitle: Text(email != null && email.isNotEmpty ? email : 'Not Bound'),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () async {
+                                    final updated = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => _BindEmailDialog(initialEmail: email, ref: ref),
+                                    );
+                                    if (updated == true && context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Email bound successfully!'),
+                                          backgroundColor: AppColors.success,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                            Card(
+                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              child: ListTile(
+                                leading: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
+                                title: const Text('Bound Phone Number'),
+                                subtitle: Text(phone != null && phone.isNotEmpty ? phone : 'Not Bound'),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () async {
+                                    final updated = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => _BindPhoneDialog(ref: ref),
+                                    );
+                                    if (updated == true && context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Phone number bound successfully!'),
+                                          backgroundColor: AppColors.success,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => Center(child: Text('Error loading accounts: $e', style: const TextStyle(color: AppColors.error))),
+                    ),
+
+                    AppSpacing.verticalXl,
+                    PrimaryButton(
+                      text: 'Edit Profile',
+                      onPressed: () {
+                        if (shop != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SetupShopScreen(existingShop: shop),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    AppSpacing.verticalMd,
+                    OutlinedButton(
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMedium),
+                      ),
+                      child: const Text('Logout'),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
-              _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
-              _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
-              _buildListTile(
-                'Storefront GPS Coordinates',
-                coordinatesText,
-                Icons.map_outlined,
-              ),
-              _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
-              
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              
-              Text(
-                'Security & Linked Accounts',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-              const SizedBox(height: 12),
-
-              profileState.when(
-                data: (profile) {
-                  final email = profile?['email'] as String?;
-                  final phone = profile?['phone'] as String?;
-
-                  return Column(
-                    children: [
-                      Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.email_outlined, color: AppColors.primary),
-                          title: const Text('Bound Email Address'),
-                          subtitle: Text(email != null && email.isNotEmpty ? email : 'Not Bound'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () async {
-                              final updated = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => _BindEmailDialog(initialEmail: email, ref: ref),
-                              );
-                              if (updated == true && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Email bound successfully!'),
-                                    backgroundColor: AppColors.success,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
-                          title: const Text('Bound Phone Number'),
-                          subtitle: Text(phone != null && phone.isNotEmpty ? phone : 'Not Bound'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () async {
-                              final updated = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => _BindPhoneDialog(ref: ref),
-                              );
-                              if (updated == true && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Phone number bound successfully!'),
-                                    backgroundColor: AppColors.success,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error loading accounts: $e')),
-              ),
-
-              const SizedBox(height: 32),
-              PrimaryButton(
-                text: 'Edit Profile',
-                onPressed: () {
-                  if (shop != null) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SetupShopScreen(existingShop: shop),
-                      ),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () async {
-                  await ref.read(authProvider.notifier).logout();
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: const BorderSide(color: AppColors.error),
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Logout'),
-              ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildListTile(String title, String subtitle, IconData icon) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: Icon(icon, color: AppColors.textSecondary),
-        title: Text(title, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 16, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        title: Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -386,18 +399,18 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
             children: [
               if (_mockOtp != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(8),
-                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: AppRadius.borderSm,
+                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
+                      AppSpacing.horizontalSm,
                       Text(
                         'Mock OTP: $_mockOtp',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -420,7 +433,7 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
                 },
               ),
               if (_otpSent) ...[
-                const SizedBox(height: 16),
+                AppSpacing.verticalMd,
                 CustomTextField(
                   label: 'Enter 6-Digit OTP',
                   controller: _otpController,

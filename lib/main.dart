@@ -36,6 +36,26 @@ class LocalVyapariVendorApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,
+      builder: (context, child) {
+        final mediaQueryData = MediaQuery.of(context);
+        // Protect layouts from clipping by clamping text scaler within safe boundaries
+        try {
+          final textScaler = mediaQueryData.textScaler.clamp(
+            minScaleFactor: 0.85,
+            maxScaleFactor: 1.15,
+          );
+          return MediaQuery(
+            data: mediaQueryData.copyWith(textScaler: textScaler),
+            child: child!,
+          );
+        } catch (_) {
+          final double clampedScale = mediaQueryData.textScaleFactor.clamp(0.85, 1.15);
+          return MediaQuery(
+            data: mediaQueryData.copyWith(textScaleFactor: clampedScale),
+            child: child!,
+          );
+        }
+      },
     );
   }
 }

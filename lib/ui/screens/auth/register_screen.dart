@@ -8,6 +8,10 @@ import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
 import '../../common/custom_snack_bar.dart';
 
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
+
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -67,160 +71,168 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 10),
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  slideOffset: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.storefront, color: AppColors.primary, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Join Local Vyapari',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Reach thousands of nearby customers',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                              ),
-                            ],
-                          ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.horizontalPadding,
+              vertical: AppSpacing.lg,
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppSpacing.verticalSm,
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      slideOffset: 20,
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: AppRadius.borderMedium,
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            const Icon(Icons.storefront, color: AppColors.primary, size: 28),
+                            AppSpacing.horizontalMd,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Join Local Vyapari',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  AppSpacing.verticalXs,
+                                  Text(
+                                    'Reach thousands of nearby customers',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 100),
-                  slideOffset: 16,
-                  child: CustomTextField(
-                    label: 'Email Address',
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.email_outlined,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Email is required';
-                      if (!val.contains('@')) return 'Enter a valid email';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
+                    AppSpacing.verticalXl,
+                    
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 100),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Email Address',
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Email is required';
+                          if (!val.contains('@')) return 'Enter a valid email';
+                          return null;
+                        },
+                      ),
+                    ),
+                    AppSpacing.verticalMd,
 
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 200),
-                  slideOffset: 16,
-                  child: CustomTextField(
-                    label: 'Phone Number',
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_android,
-                    prefixText: '+91 ',
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Phone number is required';
-                      if (val.length != 10) return 'Enter a valid 10-digit number';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 300),
-                  slideOffset: 16,
-                  child: CustomTextField(
-                    label: 'Password',
-                    controller: _passwordController,
-                    obscureText: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Password is required';
-                      if (val.length < 6) return 'At least 6 characters required';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 400),
-                  slideOffset: 16,
-                  child: CustomTextField(
-                    label: 'Confirm Password',
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Please confirm your password';
-                      if (val != _passwordController.text) return 'Passwords do not match';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 32),
-                
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 500),
-                  slideOffset: 16,
-                  child: ScaleOnTap(
-                    child: PrimaryButton(
-                      text: 'Create My Store',
-                      isLoading: authState.isLoading,
-                      onPressed: _handleRegister,
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 200),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Phone Number',
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        prefixIcon: Icons.phone_android,
+                        prefixText: '+91 ',
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Phone number is required';
+                          if (val.length != 10) return 'Enter a valid 10-digit number';
+                          return null;
+                        },
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                FadeInSlide(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 600),
-                  slideOffset: 16,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Already have an account?',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                    AppSpacing.verticalMd,
+                    
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 300),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        obscureText: true,
+                        prefixIcon: Icons.lock_outline,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Password is required';
+                          if (val.length < 6) return 'At least 6 characters required';
+                          return null;
+                        },
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Sign In'),
+                    ),
+                    AppSpacing.verticalMd,
+                    
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 400),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Confirm Password',
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        prefixIcon: Icons.lock_outline,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) return 'Please confirm your password';
+                          if (val != _passwordController.text) return 'Passwords do not match';
+                          return null;
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                    AppSpacing.verticalXl,
+                    
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 500),
+                      slideOffset: 16,
+                      child: ScaleOnTap(
+                        child: PrimaryButton(
+                          text: 'Create My Store',
+                          isLoading: authState.isLoading,
+                          onPressed: _handleRegister,
+                        ),
+                      ),
+                    ),
+                    AppSpacing.verticalMd,
+                    
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 600),
+                      slideOffset: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Already have an account?',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Sign In'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

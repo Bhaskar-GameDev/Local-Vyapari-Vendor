@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../domain/providers/product_provider.dart';
 import '../../../data/models/product_model.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/cloudinary_service.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
@@ -230,85 +233,95 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ]
             : null,
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildImageUploader(),
-              const SizedBox(height: 24),
-              CustomTextField(
-                label: 'Product Name',
-                controller: _nameController,
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                onChanged: (val) => setState(() => _selectedCategory = val!),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomTextField(
-                      label: 'Actual Price (₹)',
-                      controller: _priceController,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.horizontalPadding,
+              vertical: AppSpacing.md,
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildImageUploader(),
+                    AppSpacing.verticalLg,
+                    CustomTextField(
+                      label: 'Product Name',
+                      controller: _nameController,
+                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                    ),
+                    AppSpacing.verticalMd,
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
+                      ),
+                      items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (val) => setState(() => _selectedCategory = val!),
+                    ),
+                    AppSpacing.verticalMd,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomTextField(
+                            label: 'Actual Price (₹)',
+                            controller: _priceController,
+                            keyboardType: TextInputType.number,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return 'Required';
+                              if (double.tryParse(val) == null) return 'Invalid';
+                              return null;
+                            },
+                          ),
+                        ),
+                        AppSpacing.horizontalMd,
+                        Expanded(
+                          child: CustomTextField(
+                            label: 'Offer Price (₹)',
+                            controller: _offerPriceController,
+                            keyboardType: TextInputType.number,
+                            validator: (val) {
+                              if (val != null && val.isNotEmpty && double.tryParse(val) == null) return 'Invalid';
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    AppSpacing.verticalMd,
+                    CustomTextField(
+                      label: 'Stock Qty',
+                      controller: _stockController,
                       keyboardType: TextInputType.number,
                       validator: (val) {
                         if (val == null || val.isEmpty) return 'Required';
-                        if (double.tryParse(val) == null) return 'Invalid';
+                        if (int.tryParse(val) == null) return 'Invalid';
                         return null;
                       },
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: CustomTextField(
-                      label: 'Offer Price (₹)',
-                      controller: _offerPriceController,
-                      keyboardType: TextInputType.number,
-                      validator: (val) {
-                        if (val != null && val.isNotEmpty && double.tryParse(val) == null) return 'Invalid';
-                        return null;
-                      },
+                    AppSpacing.verticalMd,
+                    CustomTextField(
+                      label: 'Description',
+                      controller: _descController,
+                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
-                  ),
-                ],
+                    AppSpacing.verticalXl,
+                    PrimaryButton(
+                      text: 'Publish Product',
+                      isLoading: _isLoading,
+                      onPressed: _submitProduct,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Stock Qty',
-                controller: _stockController,
-                keyboardType: TextInputType.number,
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Required';
-                  if (int.tryParse(val) == null) return 'Invalid';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Description',
-                controller: _descController,
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 32),
-              PrimaryButton(
-                text: 'Publish Product',
-                isLoading: _isLoading,
-                onPressed: _submitProduct,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -339,9 +352,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        AppSpacing.verticalSm,
         SizedBox(
-          height: 120,
+          height: 110,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: _images.length + (_images.length < 5 ? 1 : 0),
@@ -363,23 +376,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return GestureDetector(
       onTap: _pickImages,
       child: Container(
-        width: 120,
-        margin: const EdgeInsets.only(right: 8),
+        width: 110,
+        margin: const EdgeInsets.only(right: AppSpacing.sm),
         decoration: BoxDecoration(
           color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.borderMedium,
           border: Border.all(
             color: AppColors.primary.withOpacity(0.3),
             style: BorderStyle.solid,
             width: 1.5,
           ),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_photo_alternate_outlined, size: 36, color: AppColors.primary),
-            SizedBox(height: 8),
-            Text(
+            const Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
+            AppSpacing.verticalXs,
+            const Text(
               'Add Image',
               style: TextStyle(
                 fontSize: 12,
@@ -395,13 +408,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   Widget _buildImageCard(dynamic image, int index) {
     return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 8),
+      width: 110,
+      margin: const EdgeInsets.only(right: AppSpacing.sm),
       child: Stack(
         children: [
           Positioned.fill(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.borderMedium,
               child: image is File
                   ? Image.file(image, fit: BoxFit.cover)
                   : Image.network(image as String, fit: BoxFit.cover),

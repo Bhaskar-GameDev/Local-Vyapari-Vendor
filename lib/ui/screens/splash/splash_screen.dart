@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../common/app_animations.dart';
 
@@ -42,50 +43,43 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const FadeInSlide(
-              duration: Duration(milliseconds: 800),
-              slideOffset: 40.0,
-              child: Icon(Icons.storefront_rounded, size: 80, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
             FadeInSlide(
               duration: const Duration(milliseconds: 800),
-              delay: const Duration(milliseconds: 200),
-              slideOffset: 30.0,
-              child: Text(
-                'Local Vyapari',
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              slideOffset: 40.0,
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 180,
+                fit: BoxFit.contain,
               ),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.verticalMd,
             FadeInSlide(
               duration: const Duration(milliseconds: 800),
-              delay: const Duration(milliseconds: 450),
+              delay: const Duration(milliseconds: 400),
               slideOffset: 20.0,
               child: Text(
-                'Vendor App',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white70,
-                  letterSpacing: 1.2,
+                'Merchant Partner',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                  color: AppColors.primary.withOpacity(0.8),
                 ),
               ),
             ),
-            const SizedBox(height: 56),
-            const FadeInSlide(
-              duration: Duration(milliseconds: 800),
+            AppSpacing.verticalXl,
+            FadeInSlide(
+              duration: const Duration(milliseconds: 800),
               delay: const Duration(milliseconds: 700),
               slideOffset: 10.0,
               child: CircularProgressIndicator(
-                color: Colors.white54,
-                strokeWidth: 2,
+                color: AppColors.primary,
+                strokeWidth: 2.5,
               ),
             ),
           ],
@@ -94,4 +88,3 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
   }
 }
-

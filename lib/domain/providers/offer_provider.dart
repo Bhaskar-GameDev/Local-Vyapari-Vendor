@@ -26,7 +26,7 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
         }
       }
 
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace st) {
       state = AsyncValue.error(e, st);
     });
   }

@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../domain/providers/offer_provider.dart';
 import '../../../data/models/offer_model.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_dimensions.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 
@@ -54,7 +57,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate.isBefore(DateTime.now()) ? DateTime.now() : initialDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)), // allow picking past dates if needed, or keep within reasonable range
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (pickedDate == null || !mounted) return null;
@@ -123,103 +126,122 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
       appBar: AppBar(
         title: Text(widget.existingOffer != null ? 'Edit Flash Sale' : 'Create Flash Sale'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            CustomTextField(
-              label: 'Offer Title (e.g. Weekend Flash Sale)',
-              controller: _titleController,
-              validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.horizontalPadding,
+              vertical: AppSpacing.md,
             ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              label: 'Discount %',
-              controller: _discountController,
-              keyboardType: TextInputType.number,
-              validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              label: 'Description',
-              controller: _descController,
-              validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(12),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CustomTextField(
+                      label: 'Offer Title (e.g. Weekend Flash Sale)',
+                      controller: _titleController,
+                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                    ),
+                    AppSpacing.verticalMd,
+                    CustomTextField(
+                      label: 'Discount %',
+                      controller: _discountController,
+                      keyboardType: TextInputType.number,
+                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                    ),
+                    AppSpacing.verticalMd,
+                    CustomTextField(
+                      label: 'Description',
+                      controller: _descController,
+                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                    ),
+                    AppSpacing.verticalMd,
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: AppRadius.borderMedium,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time_filled_rounded, color: AppColors.primary),
+                              AppSpacing.horizontalSm,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Starts At', 
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                    AppSpacing.verticalXs,
+                                    Text(
+                                      DateFormat('MMM dd, yyyy - hh:mm a').format(_startDate),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  final dt = await _pickDateTime(_startDate);
+                                  if (dt != null) setState(() => _startDate = dt);
+                                },
+                                child: const Text('Change'),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: AppSpacing.lg),
+                          Row(
+                            children: [
+                              const Icon(Icons.event_busy_rounded, color: AppColors.error),
+                              AppSpacing.horizontalSm,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ends At', 
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                    AppSpacing.verticalXs,
+                                    Text(
+                                      DateFormat('MMM dd, yyyy - hh:mm a').format(_endDate),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  final dt = await _pickDateTime(_endDate);
+                                  if (dt != null) setState(() => _endDate = dt);
+                                },
+                                child: const Text('Change'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppSpacing.verticalXl,
+                    PrimaryButton(
+                      text: widget.existingOffer != null ? 'Update Offer' : 'Launch Offer',
+                      isLoading: _isLoading,
+                      onPressed: _submitOffer,
+                      color: AppColors.warning,
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time_filled, color: AppColors.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Starts At', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat('MMM dd, yyyy - hh:mm a').format(_startDate),
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final dt = await _pickDateTime(_startDate);
-                          if (dt != null) setState(() => _startDate = dt);
-                        },
-                        child: const Text('Change'),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  Row(
-                    children: [
-                      const Icon(Icons.event_busy, color: AppColors.error),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Ends At', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat('MMM dd, yyyy - hh:mm a').format(_endDate),
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final dt = await _pickDateTime(_endDate);
-                          if (dt != null) setState(() => _endDate = dt);
-                        },
-                        child: const Text('Change'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
-            const SizedBox(height: 32),
-            PrimaryButton(
-              text: widget.existingOffer != null ? 'Update Offer' : 'Launch Offer',
-              isLoading: _isLoading,
-              onPressed: _submitOffer,
-              color: AppColors.warning,
-            ),
-          ],
+          ),
         ),
       ),
     );
