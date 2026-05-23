@@ -41,6 +41,12 @@
         ".read": "true",
         ".write": "true"
       }
+    },
+    "analytics": {
+      "$vendorUid": {
+        ".read": "auth != null && auth.uid === $vendorUid",
+        ".write": "auth != null"
+      }
     }
   }
 }
