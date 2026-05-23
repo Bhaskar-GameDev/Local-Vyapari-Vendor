@@ -8,6 +8,7 @@ import '../../ui/screens/auth/register_screen.dart';
 import '../../ui/screens/main_navigation.dart';
 import '../../ui/screens/shop/setup_shop_screen.dart';
 import '../../ui/screens/splash/splash_screen.dart';
+import '../../ui/screens/chat/chat_screen.dart';
 
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -63,6 +64,18 @@ final appRouter = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const MainNavigation(),
         ),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final userId = extra?['userId'] as String? ?? '';
+          final userName = extra?['userName'] as String? ?? '';
+          return ChatScreen(
+            userId: userId,
+            userName: userName,
+          );
+        },
       ),
     ],
     redirect: (context, state) {

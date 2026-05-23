@@ -47,6 +47,22 @@
         ".read": "auth != null && auth.uid === $vendorUid",
         ".write": "auth != null"
       }
+    },
+    "chats": {
+      "$firstId": {
+        ".read": "auth != null && auth.uid === $firstId",
+        ".write": "auth != null && auth.uid === $firstId",
+        "$secondId": {
+          "messages": {
+            "$messageId": {
+              ".write": "auth != null && (auth.uid === $firstId || auth.uid === $secondId)"
+            }
+          },
+          "lastMessage": {
+            ".write": "auth != null && (auth.uid === $firstId || auth.uid === $secondId)"
+          }
+        }
+      }
     }
   }
 }
