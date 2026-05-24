@@ -1,33 +1,27 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiClient {
-  final Dio _dio;
-
-  ApiClient() : _dio = Dio(BaseOptions(
-    baseUrl: 'https://local-vyapari-838cd-default-rtdb.firebaseio.com',
+  static final Dio _dio = Dio(BaseOptions(
+    // Default config. Could be configured via env
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  )) {
+  ));
+
+  static void initialize() {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        // Add JWT token here
-        // final token = await SecureStorage.getToken();
-        // options.headers['Authorization'] = 'Bearer $token';
+      onRequest: (options, handler) async {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final token = await user.getIdToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+        }
         return handler.next(options);
-      },
-      onResponse: (response, handler) {
-        return handler.next(response);
-      },
-      onError: (DioException e, handler) {
-        // Handle global errors, e.g., token expiration
-        return handler.next(e);
       },
     ));
   }
 
-  Dio get dio => _dio;
+  static Dio get instance => _dio;
 }

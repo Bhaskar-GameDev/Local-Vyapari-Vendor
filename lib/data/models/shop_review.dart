@@ -23,11 +23,11 @@ class ShopReview {
     final data = doc.data() as Map<String, dynamic>;
     return ShopReview(
       id: doc.id,
-      userId: data['userId'] ?? '',
-      userDisplayName: data['userDisplayName'] ?? 'Anonymous User',
-      shopId: data['shopId'] ?? '',
-      rating: (data['rating'] ?? 0.0).toDouble(),
-      comment: data['comment'] ?? '',
+      userId: (data['userId'] ?? '') as String,
+      userDisplayName: (data['userDisplayName'] ?? 'Anonymous User') as String,
+      shopId: (data['shopId'] ?? '') as String,
+      rating: ((data['rating'] ?? 0.0) as num).toDouble(),
+      comment: (data['comment'] ?? '') as String,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

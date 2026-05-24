@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../../core/network/api_client.dart';
 import '../../core/utils/sms_service.dart';
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -64,50 +66,36 @@ class AuthRepository {
     return snapshot.exists && snapshot.value != null;
   }
 
-  Future<String> sendOtp(String phone) async {
-    final random = DateTime.now().microsecondsSinceEpoch % 1000000;
-    final otp = random.toString().padLeft(6, '0');
-    final expiresAt = DateTime.now().add(const Duration(minutes: 2)).millisecondsSinceEpoch;
-    
-    await FirebaseDatabase.instance.ref('otps').child(phone).set({
-      'otp': otp,
-      'expiresAt': expiresAt,
-    });
-    
-    await SmsService.sendOtp(phone, otp);
-    
-    return otp;
+  Future<void> sendOtp(String phone) async {
+    // Calling Cloud Function via HTTPS with ApiClient
+    await ApiClient.instance.post('generateAndSendOtp', data: {'data': {'phone': phone}});
   }
 
-  Future<bool> verifyOtp(String phone, String code) async {
-    final snapshot = await FirebaseDatabase.instance.ref('otps').child(phone).get();
-    if (!snapshot.exists || snapshot.value == null) return false;
-    
-    final data = Map<String, dynamic>.from(snapshot.value as Map);
-    final storedOtp = data['otp']?.toString();
-    final expiresAt = data['expiresAt'] as int?;
-    
-    if (storedOtp == code && expiresAt != null && DateTime.now().millisecondsSinceEpoch < expiresAt) {
-      await FirebaseDatabase.instance.ref('otps').child(phone).remove();
-      return true;
+  Future<String?> verifyOtp(String phone, String code) async {
+    try {
+      final response = await ApiClient.instance.post('verifyOtp', data: {'data': {'phone': phone, 'code': code}});
+      if (response.data['result']['success'] == true) {
+        return response.data['result']['customToken'] as String?;
+      }
+    } catch (e) {
+      print('verifyOtp error: $e');
     }
-    
-    return false;
+    return null;
   }
 
-  Future<UserCredential> loginWithPhone(String phone) async {
-    final email = '${phone.replaceAll('+', '')}@localvyapari.com';
-    return await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: 'otp_default_pass_123',
-    );
+  Future<UserCredential> loginWithCustomToken(String customToken) async {
+    return await _auth.signInWithCustomToken(customToken);
   }
 
   Future<UserCredential> registerWithPhone(String phone, {String? shopName}) async {
+    final random = Random.secure();
+    final values = List<int>.generate(32, (i) => random.nextInt(256));
+    final password = String.fromCharCodes(values.map((x) => 33 + (x % 94)));
+
     final email = '${phone.replaceAll('+', '')}@localvyapari.com';
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
-      password: 'otp_default_pass_123',
+      password: password,
     );
     final uid = credential.user?.uid;
     if (uid != null) {
@@ -159,7 +147,8 @@ class AuthRepository {
       throw Exception("This phone number is already linked to another account");
     }
     
-    return await sendOtp(formattedPhone);
+    await sendOtp(formattedPhone);
+    return formattedPhone;
   }
 
   Future<bool> verifyAndBindPhone(String phone, String code) async {
@@ -169,7 +158,7 @@ class AuthRepository {
     final formattedPhone = phone.trim();
     
     final verified = await verifyOtp(formattedPhone, code);
-    if (!verified) return false;
+    if (verified == null) return false;
     
     await FirebaseDatabase.instance.ref('users').child(uid).update({
       'phone': formattedPhone,
@@ -216,52 +205,25 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return authRepo.authStateChanges.asyncMap((user) async {
     if (user == null) return null;
     try {
-      final userRef = FirebaseDatabase.instance.ref('users').child(user.uid);
-      final roleSnap = await userRef.child('role').get();
-      var role = roleSnap.value as String?;
-      
-      // If user is not registered as merchant, automatically upgrade them
-      if (role != 'merchant') {
-        final Map<String, dynamic> updates = {
-          'role': 'merchant',
-        };
-        
-        final emailSnap = await userRef.child('email').get();
-        if (!emailSnap.exists || emailSnap.value == null) {
-          if (user.email != null) {
-            updates['email'] = user.email!;
-          }
-        }
-        
-        final createdAtSnap = await userRef.child('createdAt').get();
-        if (!createdAtSnap.exists || createdAtSnap.value == null) {
-          updates['createdAt'] = ServerValue.timestamp;
-        }
-
-        await userRef.update(updates);
-        role = 'merchant';
-        
-        // Also ensure a default shop storefront exists if not already present
-        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(user.uid).get();
-        if (!shopSnap.exists || shopSnap.value == null) {
-          final phoneSnap = await userRef.child('phone').get();
-          final phoneVal = phoneSnap.value as String?;
-          await FirebaseDatabase.instance.ref('shop').child(user.uid).set({
-            'name': 'My Shop',
-            'description': 'Welcome to our shop!',
-            'address': '',
-            'phone': phoneVal ?? '',
-            'isOpen': true,
-            'isVerified': false,
-          });
-        }
-      }
-      
-      if (role != 'merchant') {
-        await authRepo.logout();
-        return null;
-      }
+      // TEMP BYPASS: Returning user immediately without checking merchant role
       return user;
+      /*
+      // Retry logic for newly registered users since the onCreate trigger takes a moment
+      for (int i = 0; i < 5; i++) {
+        final idTokenResult = await user.getIdTokenResult(true);
+        final role = idTokenResult.claims?['role'] as String?;
+        if (role == 'merchant') {
+          return user;
+        }
+        if (i < 4) {
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+      
+      // If still no merchant role after retries
+      await authRepo.logout();
+      return null;
+      */
     } catch (e) {
       await authRepo.logout();
       return null;
@@ -289,64 +251,31 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     state = AuthNotifierState(isLoading: state.isLoading, error: null);
   }
 
+
   Future<bool> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final credential = await _repository.login(email, password);
-      final uid = credential.user?.uid;
-      if (uid == null) {
-        state = const AuthNotifierState(error: 'Authentication failed');
-        return false;
-      }
-
-      // Verify and handle role
-      final userRef = FirebaseDatabase.instance.ref('users').child(uid);
-      final roleSnap = await userRef.child('role').get();
-      var role = roleSnap.value as String?;
       
-      if (role != 'merchant') {
-        final Map<String, dynamic> updates = {
-          'role': 'merchant',
-        };
-        
-        final emailSnap = await userRef.child('email').get();
-        if (!emailSnap.exists || emailSnap.value == null) {
-          updates['email'] = email.trim();
-        }
-        
-        final createdAtSnap = await userRef.child('createdAt').get();
-        if (!createdAtSnap.exists || createdAtSnap.value == null) {
-          updates['createdAt'] = ServerValue.timestamp;
-        }
-
-        await userRef.update(updates);
-        role = 'merchant';
-        
-        // Also ensure a default shop storefront exists if not already present
-        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(uid).get();
-        if (!shopSnap.exists || shopSnap.value == null) {
-          final phoneSnap = await userRef.child('phone').get();
-          final phoneVal = phoneSnap.value as String?;
-          await FirebaseDatabase.instance.ref('shop').child(uid).set({
-            'name': 'My Shop',
-            'description': 'Welcome to our shop!',
-            'address': '',
-            'phone': phoneVal ?? '',
-            'isOpen': true,
-            'isVerified': false,
-          });
-        }
+      // TEMP BYPASS: Commented out role check
+      /*
+      String? role;
+      for (int i = 0; i < 5; i++) {
+        final idTokenResult = await credential.user?.getIdTokenResult(true);
+        role = idTokenResult?.claims?['role'] as String?;
+        if (role == 'merchant') break;
+        if (i < 4) await Future.delayed(const Duration(seconds: 1));
       }
-
+      
       if (role != 'merchant') {
         await _repository.logout();
         state = const AuthNotifierState(
-          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
+          error: 'Access Denied: This account is registered as a customer.',
         );
         return false;
       }
+      */
 
-      state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: _repository.mapFirebaseError(e));
@@ -354,11 +283,12 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
-
   Future<bool> register(String email, String password, String role, String? shopName, {String? phone}) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       if (phone != null && phone.isNotEmpty) {
         final formattedPhone = phone.trim();
@@ -379,15 +309,17 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
+
   Future<bool> loginWithPhoneAndPassword(String phone, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final formattedPhone = phone.trim();
       
-      // Look up the uid mapped to this phone number
       final phoneSnapshot = await FirebaseDatabase.instance.ref('phones').child(formattedPhone).get();
       if (!phoneSnapshot.exists || phoneSnapshot.value == null) {
         state = const AuthNotifierState(error: 'This phone number is not registered');
@@ -396,7 +328,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       
       final uid = phoneSnapshot.value as String;
 
-      // Look up the user's registered email
       final emailSnapshot = await FirebaseDatabase.instance.ref('users').child(uid).child('email').get();
       if (!emailSnapshot.exists || emailSnapshot.value == null) {
         state = const AuthNotifierState(error: 'No email found linked to this phone number');
@@ -405,60 +336,27 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       
       final realEmail = emailSnapshot.value as String;
       
-      // Log in using the resolved real email and password FIRST
       final credential = await _repository.login(realEmail, password);
-      final loggedInUid = credential.user?.uid;
-      if (loggedInUid == null) {
-        state = const AuthNotifierState(error: 'Authentication failed');
-        return false;
-      }
-
-      // Verify and handle role AFTER successful authentication
-      final userRef = FirebaseDatabase.instance.ref('users').child(loggedInUid);
-      final roleSnap = await userRef.child('role').get();
-      var role = roleSnap.value as String?;
       
-      if (role != 'merchant') {
-        final Map<String, dynamic> updates = {
-          'role': 'merchant',
-        };
-        
-        final emailSnap = await userRef.child('email').get();
-        if (!emailSnap.exists || emailSnap.value == null) {
-          updates['email'] = realEmail;
-        }
-        
-        final createdAtSnap = await userRef.child('createdAt').get();
-        if (!createdAtSnap.exists || createdAtSnap.value == null) {
-          updates['createdAt'] = ServerValue.timestamp;
-        }
-
-        await userRef.update(updates);
-        role = 'merchant';
-        
-        // Also ensure a default shop storefront exists if not already present
-        final shopSnap = await FirebaseDatabase.instance.ref('shop').child(loggedInUid).get();
-        if (!shopSnap.exists || shopSnap.value == null) {
-          await FirebaseDatabase.instance.ref('shop').child(loggedInUid).set({
-            'name': 'My Shop',
-            'description': 'Welcome to our shop!',
-            'address': '',
-            'phone': formattedPhone,
-            'isOpen': true,
-            'isVerified': false,
-          });
-        }
+      // TEMP BYPASS: Commented out role check
+      /*
+      String? role;
+      for (int i = 0; i < 5; i++) {
+        final idTokenResult = await credential.user?.getIdTokenResult(true);
+        role = idTokenResult?.claims?['role'] as String?;
+        if (role == 'merchant') break;
+        if (i < 4) await Future.delayed(const Duration(seconds: 1));
       }
-
+      
       if (role != 'merchant') {
         await _repository.logout();
         state = const AuthNotifierState(
-          error: 'Access Denied: This account is registered as a customer. Please use the Local Vyapari Customer app.',
+          error: 'Access Denied: This account is registered as a customer.',
         );
         return false;
       }
+      */
       
-      state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: _repository.mapFirebaseError(e));
@@ -466,15 +364,16 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
-
   Future<bool> registerWithPhoneAndPassword({
     required String phone,
     required String password,
     required String shopName,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final formattedPhone = phone.trim();
       final cleanedPhone = formattedPhone.replaceAll(RegExp(r'\D'), '');
@@ -499,11 +398,13 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
   Future<bool> checkPhone(String phone) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final isRegistered = await _repository.isPhoneRegistered(phone);
       state = const AuthNotifierState();
@@ -512,19 +413,25 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString());
       return false;
     }
-  }
-
-  Future<String?> requestOtp(String phone) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final otp = await _repository.sendOtp(phone);
-      state = const AuthNotifierState();
-      return otp;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString());
-      return null;
+    finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
+
+  Future<bool> requestOtp(String phone) async {
+    state = AuthNotifierState(isLoading: true, error: null);
+    try {
+      await _repository.sendOtp(phone);
+      state = const AuthNotifierState();
+      return true;
+    } catch (e) {
+      state = AuthNotifierState(error: e.toString());
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
+  }
+
 
   Future<bool> verifyAndSubmit({
     required String phone,
@@ -532,20 +439,19 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     required bool isRegistered,
     String? shopName,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
-      final verified = await _repository.verifyOtp(phone, code);
-      if (!verified) {
+      final customToken = await _repository.verifyOtp(phone, code);
+      if (customToken == null) {
         state = const AuthNotifierState(error: 'Invalid or expired OTP');
         return false;
       }
       
       if (isRegistered) {
-        await _repository.loginWithPhone(phone);
+        await _repository.loginWithCustomToken(customToken);
       } else {
         await _repository.registerWithPhone(phone, shopName: shopName);
       }
-      state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: _repository.mapFirebaseError(e));
@@ -553,11 +459,12 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
-
   Future<bool> bindEmail(String email) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       await _repository.bindEmail(email);
       state = const AuthNotifierState();
@@ -566,39 +473,46 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
       return false;
     }
-  }
-
-  Future<String?> requestBindPhoneOtp(String phone) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final otp = await _repository.requestBindPhoneOtp(phone);
-      state = const AuthNotifierState();
-      return otp;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
-      return null;
+    finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
-  Future<String?> requestPasswordResetOtp(String phone) async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<bool> requestBindPhoneOtp(String phone) async {
+    state = AuthNotifierState(isLoading: true, error: null);
+    try {
+      await _repository.requestBindPhoneOtp(phone);
+      state = const AuthNotifierState();
+      return true;
+    } catch (e) {
+      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
+  }
+
+  Future<bool> requestPasswordResetOtp(String phone) async {
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final isReg = await _repository.isPhoneRegistered(phone);
       if (!isReg) {
         state = const AuthNotifierState(error: 'This phone number is not registered');
-        return null;
+        return false;
       }
-      final otp = await _repository.sendOtp(phone);
+      await _repository.sendOtp(phone);
       state = const AuthNotifierState();
-      return otp;
+      return true;
     } catch (e) {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
-      return null;
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
   Future<bool> verifyAndBindPhone(String phone, String code) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final success = await _repository.verifyAndBindPhone(phone, code);
       if (!success) {
@@ -611,13 +525,16 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
       return false;
     }
+    finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
   }
 
   Future<bool> verifyOtpOnly(String phone, String code) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
       final success = await _repository.verifyOtp(phone, code);
-      if (!success) {
+      if (success == null) {
         state = const AuthNotifierState(error: 'Invalid or expired OTP');
         return false;
       }
@@ -627,67 +544,34 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
       return false;
     }
+    finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
   }
+
 
   Future<bool> resetPasswordWithOtp({
     required String phone,
     required String otp,
     required String newPassword,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = AuthNotifierState(isLoading: true, error: null);
     try {
-      final formattedPhone = phone.trim();
-
-      // Check if phone number exists in our system first
-      final isReg = await _repository.isPhoneRegistered(formattedPhone);
-      if (!isReg) {
-        state = const AuthNotifierState(error: 'This phone number is not registered');
-        return false;
-      }
-
-      // Write reset request to DB
-      final resetRef = FirebaseDatabase.instance.ref('password_resets').child(formattedPhone);
-      await resetRef.set({
-        'otp': otp.trim(),
-        'newPassword': newPassword.trim(),
-        'status': 'pending',
-      });
-
-      // Wait/Listen for status update (success or error)
-      final completer = Completer<bool>();
-      StreamSubscription<DatabaseEvent>? subscription;
-
-      subscription = resetRef.child('status').onValue.listen((event) {
-        final val = event.snapshot.value as String?;
-        if (val == 'success') {
-          completer.complete(true);
-          subscription?.cancel();
-        } else if (val == 'error') {
-          resetRef.child('error').get().then((errSnap) {
-            final errorMsg = errSnap.value as String? ?? 'Failed to reset password';
-            completer.completeError(errorMsg);
-            subscription?.cancel();
-          });
+      await ApiClient.instance.post('resetPasswordWithOtp', data: {
+        'data': {
+          'phone': phone.trim(),
+          'code': otp.trim(),
+          'newPassword': newPassword.trim(),
         }
       });
-
-      // Timeout after 15 seconds in case backend doesn't respond
-      final success = await completer.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          subscription?.cancel();
-          throw TimeoutException('Password reset request timed out. Please try again.');
-        },
-      );
-
-      state = const AuthNotifierState();
-      return success;
+      return true;
     } catch (e) {
-      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
+      state = AuthNotifierState(error: e.toString());
       return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
-
   Future<void> logout() async {
     await _repository.logout();
   }

@@ -177,9 +177,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     final fullPhone = phoneNum.startsWith('+') ? phoneNum : '+91$phoneNum';
 
     final authNotifier = ref.read(authProvider.notifier);
-    final otp = await authNotifier.requestBindPhoneOtp(fullPhone);
+    final success = await authNotifier.requestBindPhoneOtp(fullPhone);
 
-    if (otp == null) {
+    if (!success) {
       if (mounted) {
         final error = ref.read(authProvider).error;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -199,7 +199,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
       builder: (dialogContext) {
         final codeController = TextEditingController();
         bool isVerifying = false;
-        String? mockOtp = otp;
+        
 
         return StatefulBuilder(
           builder: (context, setState) {
@@ -210,26 +210,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                 children: [
                   Text('We have sent a verification OTP to $fullPhone.'),
                   AppSpacing.verticalMd,
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
-                      borderRadius: AppRadius.borderSm,
-                      border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-                        AppSpacing.horizontalSm,
-                        Text(
-                          'Mock OTP: $mockOtp',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
-                      ],
-                    ),
-                  ),
+
                   CustomTextField(
                     label: '6-Digit OTP',
                     controller: codeController,

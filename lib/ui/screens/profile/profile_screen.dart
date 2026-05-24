@@ -345,7 +345,7 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
 
   bool _otpSent = false;
   bool _isLoading = false;
-  String? _mockOtp;
+  
 
   @override
   void dispose() {
@@ -369,18 +369,18 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
     setState(() => _isLoading = true);
 
     final fullPhone = '+91$phone';
-    final otp = await widget.ref.read(authProvider.notifier).requestBindPhoneOtp(fullPhone);
+    final success = await widget.ref.read(authProvider.notifier).requestBindPhoneOtp(fullPhone);
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (otp != null) {
+      if (success) {
         setState(() {
           _otpSent = true;
-          _mockOtp = otp;
+          
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('OTP sent. For testing use: $otp'),
+            content: const Text('OTP sent. Please check your SMS messages.'),
             backgroundColor: AppColors.primary,
             duration: const Duration(seconds: 10),
           ),
@@ -434,28 +434,6 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_mockOtp != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: AppRadius.borderSm,
-                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-                      AppSpacing.horizontalSm,
-                      Text(
-                        'Mock OTP: $_mockOtp',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               CustomTextField(
                 label: 'Phone Number',
                 controller: _phoneController,

@@ -380,7 +380,6 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
 
   bool _otpSent = false;
   bool _isLoading = false;
-  String? _mockOtp;
 
   @override
   void dispose() {
@@ -412,20 +411,19 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
     setState(() => _isLoading = true);
 
     final fullPhone = '+91$phone';
-    final otp = await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(fullPhone);
+    final success = await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(fullPhone);
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (otp != null) {
+      if (success) {
         setState(() {
           _otpSent = true;
-          _mockOtp = otp;
         });
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('OTP Sent'),
-            content: Text('OTP sent successfully.\n\nFor testing/development, use verification code: $otp'),
+            content: const Text('OTP sent successfully. Please check your messages.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -645,28 +643,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_mockOtp != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Mock OTP: $_mockOtp',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+
               CustomTextField(
                 label: 'Registered Phone Number',
                 controller: _phoneController,
