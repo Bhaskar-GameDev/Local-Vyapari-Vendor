@@ -54,3 +54,4 @@ android/local.properties
 .vscode/
 
 node_modules/
+**/node_modules/node_modules/ 
