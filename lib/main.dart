@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'ui/screens/splash/splash_screen.dart';
 
+import 'core/network/api_client.dart';
 import 'core/config/app_router.dart';
 
 void main() async {
@@ -13,6 +14,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize API client
+  ApiClient.initialize();
   
   // Enable local caching / offline persistence
   FirebaseDatabase.instance.setPersistenceEnabled(true);

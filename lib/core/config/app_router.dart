@@ -14,8 +14,16 @@ class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
 
   RouterNotifier(this._ref) {
-    _ref.listen(authStateProvider, (_, __) => notifyListeners());
-    _ref.listen(shopProvider, (_, __) => notifyListeners());
+    _ref.listen(
+      authStateProvider,
+      (_, __) => notifyListeners(),
+      onError: (err, stack) => notifyListeners(),
+    );
+    _ref.listen(
+      shopProvider,
+      (_, __) => notifyListeners(),
+      onError: (err, stack) => notifyListeners(),
+    );
   }
 }
 

@@ -38,10 +38,10 @@
         ".read": "true",
         ".write": "auth != null && auth.uid === $uid",
         "latitude": {
-          ".validate": "newData.isNumber()"
+          ".validate": "!newData.exists() || newData.isNumber()"
         },
         "longitude": {
-          ".validate": "newData.isNumber()"
+          ".validate": "!newData.exists() || newData.isNumber()"
         }
       }
     },

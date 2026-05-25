@@ -52,3 +52,5 @@ android/local.properties
 *.iml
 .idea/
 .vscode/
+
+node_modules/
