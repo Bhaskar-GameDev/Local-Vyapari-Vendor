@@ -3,8 +3,6 @@ import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_database/firebase_database.dart';
-import '../../core/network/api_client.dart';
-import '../../core/utils/sms_service.dart';
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 class AuthRepository {
@@ -59,66 +57,70 @@ class AuthRepository {
     return credential;
   }
 
-  // --- OTP Authentication Support ---
+  // --- Native Firebase Phone Auth Support ---
 
   Future<bool> isPhoneRegistered(String phone) async {
     final snapshot = await FirebaseDatabase.instance.ref('phones').child(phone).get();
     return snapshot.exists && snapshot.value != null;
   }
 
-  Future<void> sendOtp(String phone) async {
-    // Calling Cloud Function via HTTPS with ApiClient
-    await ApiClient.instance.post('generateAndSendOtp', data: {'data': {'phone': phone}});
-  }
-
-  Future<String?> verifyOtp(String phone, String code) async {
-    try {
-      final response = await ApiClient.instance.post('verifyOtp', data: {'data': {'phone': phone, 'code': code}});
-      if (response.data['result']['success'] == true) {
-        return response.data['result']['customToken'] as String?;
-      }
-    } catch (e) {
-      print('verifyOtp error: $e');
-    }
-    return null;
-  }
-
-  Future<UserCredential> loginWithCustomToken(String customToken) async {
-    return await _auth.signInWithCustomToken(customToken);
-  }
-
-  Future<UserCredential> registerWithPhone(String phone, {String? shopName}) async {
-    final random = Random.secure();
-    final values = List<int>.generate(32, (i) => random.nextInt(256));
-    final password = String.fromCharCodes(values.map((x) => 33 + (x % 94)));
-
-    final email = '${phone.replaceAll('+', '')}@localvyapari.com';
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
+  Future<void> sendFirebaseOtp({
+    required String phone,
+    required Function(String verificationId, int? resendToken) onCodeSent,
+    required Function(FirebaseAuthException e) onFailed,
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phone,
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        try {
+          final user = _auth.currentUser;
+          if (user != null) {
+            await user.linkWithCredential(credential);
+            // Update database records
+            await FirebaseDatabase.instance.ref('users').child(user.uid).update({
+              'phone': phone,
+              'verified': true,
+            });
+            await FirebaseDatabase.instance.ref('phones').child(phone).set(user.uid);
+          } else {
+            await _auth.signInWithCredential(credential);
+          }
+        } catch (_) {}
+      },
+      verificationFailed: onFailed,
+      codeSent: onCodeSent,
+      codeAutoRetrievalTimeout: (String verificationId) {},
     );
-    final uid = credential.user?.uid;
-    if (uid != null) {
-      await FirebaseDatabase.instance.ref('users').child(uid).set({
-        'email': email,
+  }
+
+  Future<UserCredential> verifyAndSignInWithPhone(String verificationId, String smsCode) async {
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    return await _auth.signInWithCredential(credential);
+  }
+
+  Future<void> verifyAndLinkPhone(String verificationId, String smsCode) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("User not logged in");
+
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+
+    await user.linkWithCredential(credential);
+
+    // Update database records
+    final phone = user.phoneNumber ?? '';
+    if (phone.isNotEmpty) {
+      await FirebaseDatabase.instance.ref('users').child(user.uid).update({
         'phone': phone,
-        'role': 'merchant',
-        'createdAt': ServerValue.timestamp,
         'verified': true,
       });
-
-      await FirebaseDatabase.instance.ref('phones').child(phone).set(uid);
-
-      await FirebaseDatabase.instance.ref('shop').child(uid).set({
-        'name': shopName ?? 'My Shop',
-        'description': 'Welcome to our shop!',
-        'address': '',
-        'phone': phone,
-        'isOpen': true,
-        'isVerified': false,
-      });
+      await FirebaseDatabase.instance.ref('phones').child(phone).set(user.uid);
     }
-    return credential;
   }
 
   // --- Bind Email & Phone Support ---
@@ -134,40 +136,6 @@ class AuthRepository {
     } catch (e) {
       print("Firebase Auth email update: $e");
     }
-  }
-
-  Future<String> requestBindPhoneOtp(String phone) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
-    
-    final formattedPhone = phone.trim();
-    
-    final existingUidSnapshot = await FirebaseDatabase.instance.ref('phones').child(formattedPhone).get();
-    if (existingUidSnapshot.exists && existingUidSnapshot.value != uid) {
-      throw Exception("This phone number is already linked to another account");
-    }
-    
-    await sendOtp(formattedPhone);
-    return formattedPhone;
-  }
-
-  Future<bool> verifyAndBindPhone(String phone, String code) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
-    
-    final formattedPhone = phone.trim();
-    
-    final verified = await verifyOtp(formattedPhone, code);
-    if (verified == null) return false;
-    
-    await FirebaseDatabase.instance.ref('users').child(uid).update({
-      'phone': formattedPhone,
-      'verified': true,
-    });
-    
-    await FirebaseDatabase.instance.ref('phones').child(formattedPhone).set(uid);
-    
-    return true;
   }
 
   Future<void> logout() async => await _auth.signOut();
@@ -418,39 +386,71 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     }
   }
 
-  Future<bool> requestOtp(String phone) async {
+  Future<bool> requestOtp(
+    String phone, {
+    required Function(String verificationId) onCodeSent,
+    required Function(String error) onFailed,
+  }) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
-      await _repository.sendOtp(phone);
-      state = const AuthNotifierState();
+      await _repository.sendFirebaseOtp(
+        phone: phone,
+        onCodeSent: (verificationId, _) {
+          state = const AuthNotifierState();
+          onCodeSent(verificationId);
+        },
+        onFailed: (e) {
+          state = AuthNotifierState(error: e.message ?? 'Verification failed');
+          onFailed(state.error!);
+        },
+      );
       return true;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
+      onFailed(e.toString());
       return false;
     } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
-
   Future<bool> verifyAndSubmit({
-    required String phone,
+    required String verificationId,
     required String code,
     required bool isRegistered,
     String? shopName,
+    String? phone,
   }) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
-      final customToken = await _repository.verifyOtp(phone, code);
-      if (customToken == null) {
-        state = const AuthNotifierState(error: 'Invalid or expired OTP');
-        return false;
-      }
-      
       if (isRegistered) {
-        await _repository.loginWithCustomToken(customToken);
+        await _repository.verifyAndSignInWithPhone(verificationId, code);
       } else {
-        await _repository.registerWithPhone(phone, shopName: shopName);
+        final credential = await _repository.verifyAndSignInWithPhone(verificationId, code);
+        final user = credential.user;
+        if (user != null) {
+          final phoneNum = phone ?? user.phoneNumber ?? '';
+          final email = '${phoneNum.replaceAll('+', '')}@localvyapari.com';
+
+          await FirebaseDatabase.instance.ref('users').child(user.uid).set({
+            'email': email,
+            'phone': phoneNum,
+            'role': 'merchant',
+            'createdAt': ServerValue.timestamp,
+            'verified': true,
+          });
+
+          await FirebaseDatabase.instance.ref('phones').child(phoneNum).set(user.uid);
+
+          await FirebaseDatabase.instance.ref('shop').child(user.uid).set({
+            'name': shopName ?? 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': phoneNum,
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
       }
       return true;
     } on FirebaseAuthException catch (e) {
@@ -463,6 +463,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
+
   Future<bool> bindEmail(String email) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
@@ -472,35 +473,88 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } catch (e) {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
       return false;
-    }
-    finally {
+    } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
-  Future<bool> requestBindPhoneOtp(String phone) async {
+  Future<bool> requestBindPhoneOtp(
+    String phone, {
+    required Function(String verificationId) onCodeSent,
+    required Function(String error) onFailed,
+  }) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
-      await _repository.requestBindPhoneOtp(phone);
-      state = const AuthNotifierState();
+      final uid = _repository.currentUser?.uid;
+      if (uid == null) throw Exception("User not logged in");
+      
+      final formattedPhone = phone.trim();
+      
+      final existingUidSnapshot = await FirebaseDatabase.instance.ref('phones').child(formattedPhone).get();
+      if (existingUidSnapshot.exists && existingUidSnapshot.value != uid) {
+        throw Exception("This phone number is already linked to another account");
+      }
+      
+      await _repository.sendFirebaseOtp(
+        phone: formattedPhone,
+        onCodeSent: (verificationId, _) {
+          state = const AuthNotifierState();
+          onCodeSent(verificationId);
+        },
+        onFailed: (e) {
+          state = AuthNotifierState(error: e.message ?? 'Verification failed');
+          onFailed(state.error!);
+        },
+      );
       return true;
     } catch (e) {
       state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
+      onFailed(state.toString());
       return false;
     } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
-  Future<bool> requestPasswordResetOtp(String phone) async {
+  Future<bool> requestPasswordResetOtp(
+    String phone, {
+    required Function(String verificationId) onCodeSent,
+    required Function(String error) onFailed,
+  }) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
-      final isReg = await _repository.isPhoneRegistered(phone);
+      final formattedPhone = phone.trim();
+      final isReg = await _repository.isPhoneRegistered(formattedPhone);
       if (!isReg) {
         state = const AuthNotifierState(error: 'This phone number is not registered');
+        onFailed(state.error!);
         return false;
       }
-      await _repository.sendOtp(phone);
+      await _repository.sendFirebaseOtp(
+        phone: formattedPhone,
+        onCodeSent: (verificationId, _) {
+          state = const AuthNotifierState();
+          onCodeSent(verificationId);
+        },
+        onFailed: (e) {
+          state = AuthNotifierState(error: e.message ?? 'Verification failed');
+          onFailed(state.error!);
+        },
+      );
+      return true;
+    } catch (e) {
+      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
+      onFailed(state.toString());
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
+  }
+
+  Future<bool> verifyAndBindPhone(String verificationId, String code) async {
+    state = AuthNotifierState(isLoading: true, error: null);
+    try {
+      await _repository.verifyAndLinkPhone(verificationId, code);
       state = const AuthNotifierState();
       return true;
     } catch (e) {
@@ -511,60 +565,25 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     }
   }
 
-  Future<bool> verifyAndBindPhone(String phone, String code) async {
-    state = AuthNotifierState(isLoading: true, error: null);
-    try {
-      final success = await _repository.verifyAndBindPhone(phone, code);
-      if (!success) {
-        state = const AuthNotifierState(error: 'Invalid or expired OTP');
-        return false;
-      }
-      state = const AuthNotifierState();
-      return true;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
-      return false;
-    }
-    finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
-    }
-  }
-
-  Future<bool> verifyOtpOnly(String phone, String code) async {
-    state = AuthNotifierState(isLoading: true, error: null);
-    try {
-      final success = await _repository.verifyOtp(phone, code);
-      if (success == null) {
-        state = const AuthNotifierState(error: 'Invalid or expired OTP');
-        return false;
-      }
-      state = const AuthNotifierState();
-      return true;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString().replaceFirst('Exception: ', ''));
-      return false;
-    }
-    finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
-    }
-  }
-
-
-  Future<bool> resetPasswordWithOtp({
-    required String phone,
-    required String otp,
+  Future<bool> resetPasswordWithPhoneOtp({
+    required String verificationId,
+    required String code,
     required String newPassword,
   }) async {
     state = AuthNotifierState(isLoading: true, error: null);
     try {
-      await ApiClient.instance.post('resetPasswordWithOtp', data: {
-        'data': {
-          'phone': phone.trim(),
-          'code': otp.trim(),
-          'newPassword': newPassword.trim(),
-        }
-      });
+      final credential = await _repository.verifyAndSignInWithPhone(verificationId, code);
+      final user = credential.user;
+      if (user == null) throw Exception("Failed to sign in");
+      
+      await user.updatePassword(newPassword);
+      await _repository.logout();
+      
+      state = const AuthNotifierState();
       return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
       return false;
@@ -572,6 +591,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
+
   Future<void> logout() async {
     await _repository.logout();
   }

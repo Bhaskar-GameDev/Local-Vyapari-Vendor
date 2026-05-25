@@ -16,6 +16,8 @@ class CloudinaryService {
       final signature = result['signature'] as String;
       final timestamp = result['timestamp'] as int;
 
+      print('[CloudinaryService] Signature: $signature, Timestamp: $timestamp');
+
       // 2. Upload file
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(filePath),
@@ -35,6 +37,10 @@ class CloudinaryService {
       }
       return null;
     } catch (e) {
+      if (e is DioException) {
+        print('Cloudinary Upload Error Response: ${e.response?.data}');
+        print('Cloudinary Upload Response Headers: ${e.response?.headers}');
+      }
       print('Cloudinary Upload Error: $e');
       return null;
     }

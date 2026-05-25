@@ -345,7 +345,7 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
 
   bool _otpSent = false;
   bool _isLoading = false;
-  
+  String? _verificationId;
 
   @override
   void dispose() {
@@ -369,44 +369,47 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
     setState(() => _isLoading = true);
 
     final fullPhone = '+91$phone';
-    final success = await widget.ref.read(authProvider.notifier).requestBindPhoneOtp(fullPhone);
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        setState(() {
-          _otpSent = true;
-          
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('OTP sent. Please check your SMS messages.'),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 10),
-          ),
-        );
-      } else {
-        final error = widget.ref.read(authProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error ?? 'Failed to send OTP'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
+    await widget.ref.read(authProvider.notifier).requestBindPhoneOtp(
+      fullPhone,
+      onCodeSent: (verificationId) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _otpSent = true;
+            _verificationId = verificationId;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('OTP sent. Please check your SMS messages.'),
+              backgroundColor: AppColors.primary,
+              duration: Duration(seconds: 10),
+            ),
+          );
+        }
+      },
+      onFailed: (error) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _verifyOtp() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_verificationId == null) return;
 
     setState(() => _isLoading = true);
 
-    final phone = _phoneController.text.trim();
-    final fullPhone = '+91$phone';
     final code = _otpController.text.trim();
 
-    final success = await widget.ref.read(authProvider.notifier).verifyAndBindPhone(fullPhone, code);
+    final success = await widget.ref.read(authProvider.notifier).verifyAndBindPhone(_verificationId!, code);
 
     if (mounted) {
       setState(() => _isLoading = false);

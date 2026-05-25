@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -177,79 +178,101 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     final fullPhone = phoneNum.startsWith('+') ? phoneNum : '+91$phoneNum';
 
     final authNotifier = ref.read(authProvider.notifier);
-    final success = await authNotifier.requestBindPhoneOtp(fullPhone);
+    final completer = Completer<bool>();
 
-    if (!success) {
-      if (mounted) {
-        final error = ref.read(authProvider).error;
+    // Show request loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text("Requesting verification..."),
+          ],
+        ),
+      ),
+    );
+
+    await authNotifier.requestBindPhoneOtp(
+      fullPhone,
+      onCodeSent: (verificationId) {
+        // Dismiss requesting dialog
+        Navigator.pop(context);
+
+        // Show OTP dialog
+        showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            final codeController = TextEditingController();
+            bool isVerifying = false;
+
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  title: const Text('Verify Phone Number'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('We have sent a verification OTP to $fullPhone.'),
+                      AppSpacing.verticalMd,
+                      CustomTextField(
+                        label: '6-Digit OTP',
+                        controller: codeController,
+                        keyboardType: TextInputType.number,
+                        prefixIcon: Icons.lock_outline,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: isVerifying ? null : () async {
+                        final code = codeController.text.trim();
+                        if (code.length != 6) return;
+
+                        setState(() => isVerifying = true);
+
+                        final success = await authNotifier.verifyAndBindPhone(verificationId, code);
+
+                        if (context.mounted) {
+                          setState(() => isVerifying = false);
+                          Navigator.pop(dialogContext, success);
+                        }
+                      },
+                      child: isVerifying
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Verify'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ).then((verified) {
+          completer.complete(verified ?? false);
+        });
+      },
+      onFailed: (error) {
+        // Dismiss requesting dialog
+        Navigator.pop(context);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error ?? 'Failed to send verification OTP'),
+            content: Text(error),
             backgroundColor: AppColors.error,
           ),
         );
-      }
-      return false;
-    }
-
-    if (!mounted) return false;
-    final verified = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        final codeController = TextEditingController();
-        bool isVerifying = false;
-        
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Verify Phone Number'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('We have sent a verification OTP to $fullPhone.'),
-                  AppSpacing.verticalMd,
-
-                  CustomTextField(
-                    label: '6-Digit OTP',
-                    controller: codeController,
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icons.lock_outline,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: isVerifying ? null : () async {
-                    final code = codeController.text.trim();
-                    if (code.length != 6) return;
-
-                    setState(() => isVerifying = true);
-
-                    final success = await authNotifier.verifyOtpOnly(fullPhone, code);
-
-                    if (context.mounted) {
-                      setState(() => isVerifying = false);
-                      Navigator.pop(dialogContext, success);
-                    }
-                  },
-                  child: isVerifying
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Verify'),
-                ),
-              ],
-            );
-          },
-        );
+        completer.complete(false);
       },
     );
 
-    return verified ?? false;
+    return completer.future;
   }
 
   Future<void> _submitShop() async {

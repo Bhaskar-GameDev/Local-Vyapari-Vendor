@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.onUserCreate = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const https_1 = require("firebase-functions/v2/https");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 admin.initializeApp();
@@ -136,12 +135,79 @@ exports.onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId}")
     }
     return null;
 });
+async function sendTwilioSms(phone, otp) {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_FROM_NUMBER;
+    if (!accountSid || !authToken || !fromNumber) {
+        console.error("❌ Twilio credentials are not set in environment variables");
+        return false;
+    }
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+    const params = new URLSearchParams();
+    params.append("To", phone);
+    params.append("From", fromNumber);
+    params.append("Body", `Your Local Vyapari verification OTP code is: ${otp}. Valid for 5 minutes.`);
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": `Basic ${auth}`,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: params.toString()
+        });
+        if (response.ok) {
+            console.log(`✅ Twilio SMS sent successfully to ${phone}`);
+            return true;
+        }
+        else {
+            const errText = await response.text();
+            console.error(`❌ Twilio SMS failed: ${errText}`);
+            return false;
+        }
+    }
+    catch (e) {
+        console.error(`❌ Exception during Twilio SMS send: ${e}`);
+        return false;
+    }
+}
+async function sendFast2Sms(phone, otp) {
+    const apiKey = process.env.FAST2SMS_API_KEY;
+    if (!apiKey) {
+        console.error("❌ Fast2SMS API Key is not set in environment variables");
+        return false;
+    }
+    let cleanedPhone = phone.replace(/\D/g, "");
+    if (cleanedPhone.startsWith("91") && cleanedPhone.length === 12) {
+        cleanedPhone = cleanedPhone.substring(2);
+    }
+    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&route=otp&variables_values=${otp}&numbers=${cleanedPhone}`;
+    try {
+        const response = await fetch(url);
+        const resData = await response.json();
+        if (resData && resData.return === true) {
+            console.log(`✅ Fast2SMS SMS sent successfully to ${phone}`);
+            return true;
+        }
+        else {
+            console.error(`❌ Fast2SMS failed: ${(resData === null || resData === void 0 ? void 0 : resData.message) || JSON.stringify(resData)}`);
+            return false;
+        }
+    }
+    catch (e) {
+        console.error(`❌ Exception during Fast2SMS send: ${e}`);
+        return false;
+    }
+}
 // BUG-2 & BUG-8: Generate and send OTP via HTTPS Callable
 // Security Rationale: Generate OTP server-side with high entropy and rate-limit to prevent abuse
-exports.generateAndSendOtp = (0, https_1.onCall)(async (request) => {
-    const phone = request.data.phone;
+exports.generateAndSendOtp = functions.https.onCall(async (data, context) => {
+    const phone = data.phone;
+    console.log("Generating OTP for phone:", phone);
     if (!phone) {
-        throw new https_1.HttpsError("invalid-argument", "Phone number is required");
+        throw new functions.https.HttpsError("invalid-argument", "Phone number is required");
     }
     const now = Date.now();
     const rateLimitRef = admin.database().ref(`/otp_rate_limit/${phone}`);
@@ -156,12 +222,12 @@ exports.generateAndSendOtp = (0, https_1.onCall)(async (request) => {
         windowStart = data.windowStart || now;
         // Check 60s cooldown
         if (now - lastSentAt < 60000) {
-            throw new https_1.HttpsError("resource-exhausted", "Please wait 60 seconds before requesting a new OTP.");
+            throw new functions.https.HttpsError("resource-exhausted", "Please wait 60 seconds before requesting a new OTP.");
         }
         // Check 10m window for 5 max requests
         if (now - windowStart < 600000) {
             if (count >= 5) {
-                throw new https_1.HttpsError("resource-exhausted", "Too many requests. Please try again in 10 minutes.");
+                throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again in 10 minutes.");
             }
         }
         else {
@@ -184,28 +250,37 @@ exports.generateAndSendOtp = (0, https_1.onCall)(async (request) => {
         lastSentAt: now,
         windowStart
     });
-    // Mock SMS Send (In production you would call Twilio/Msg91 here)
-    console.log(`Sending OTP ${otp} to ${phone}`);
+    // Send SMS (Real or Mock Gateway)
+    const gateway = process.env.SMS_GATEWAY || "mock";
+    if (gateway.toLowerCase() === "twilio") {
+        await sendTwilioSms(phone, otp);
+    }
+    else if (gateway.toLowerCase() === "fast2sms") {
+        await sendFast2Sms(phone, otp);
+    }
+    else {
+        console.log(`[MOCK SMS] Sending OTP ${otp} to ${phone}`);
+    }
     return { success: true };
 });
 // BUG-2: Verify OTP via HTTPS Callable
 // Security Rationale: Compare bcrypt hash instead of plaintext and don't expose OTP to client
-exports.verifyOtp = (0, https_1.onCall)(async (request) => {
-    const { phone, code } = request.data;
+exports.verifyOtp = functions.https.onCall(async (data, context) => {
+    const { phone, code } = data;
     if (!phone || !code) {
-        throw new https_1.HttpsError("invalid-argument", "Phone and code are required");
+        throw new functions.https.HttpsError("invalid-argument", "Phone and code are required");
     }
     const otpSnap = await admin.database().ref(`/otps/${phone}`).once("value");
     if (!otpSnap.exists()) {
-        throw new https_1.HttpsError("not-found", "OTP not found or expired");
+        throw new functions.https.HttpsError("not-found", "OTP not found or expired");
     }
     const { hash, expiresAt } = otpSnap.val();
     if (Date.now() > expiresAt) {
-        throw new https_1.HttpsError("failed-precondition", "OTP expired");
+        throw new functions.https.HttpsError("failed-precondition", "OTP expired");
     }
     const isValid = bcrypt.compareSync(code, hash);
     if (!isValid) {
-        throw new https_1.HttpsError("invalid-argument", "Invalid OTP");
+        throw new functions.https.HttpsError("invalid-argument", "Invalid OTP");
     }
     // Clear OTP
     await admin.database().ref(`/otps/${phone}`).remove();
@@ -213,7 +288,7 @@ exports.verifyOtp = (0, https_1.onCall)(async (request) => {
     const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
     const uid = phoneSnap.exists() ? phoneSnap.val() : null;
     if (!uid) {
-        throw new https_1.HttpsError("not-found", "User not registered");
+        throw new functions.https.HttpsError("not-found", "User not registered");
     }
     const customToken = await admin.auth().createCustomToken(uid);
     // Return success to the client
@@ -221,28 +296,28 @@ exports.verifyOtp = (0, https_1.onCall)(async (request) => {
 });
 // BUG-3: Reset Password over HTTPS
 // Security Rationale: Update password directly over secure HTTPS, never store plaintext in RTDB
-exports.resetPasswordWithOtp = (0, https_1.onCall)(async (request) => {
-    const { phone, code, newPassword } = request.data;
+exports.resetPasswordWithOtp = functions.https.onCall(async (data, context) => {
+    const { phone, code, newPassword } = data;
     const otpSnap = await admin.database().ref(`/otps/${phone}`).once("value");
     if (!otpSnap.exists() || Date.now() > otpSnap.val().expiresAt) {
-        throw new https_1.HttpsError("failed-precondition", "OTP expired or not found");
+        throw new functions.https.HttpsError("failed-precondition", "OTP expired or not found");
     }
     const isValid = bcrypt.compareSync(code, otpSnap.val().hash);
     if (!isValid) {
-        throw new https_1.HttpsError("invalid-argument", "Invalid OTP");
+        throw new functions.https.HttpsError("invalid-argument", "Invalid OTP");
     }
     await admin.database().ref(`/otps/${phone}`).remove();
     const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
     const uid = phoneSnap.exists() ? phoneSnap.val() : null;
     if (!uid) {
-        throw new https_1.HttpsError("not-found", "User not found");
+        throw new functions.https.HttpsError("not-found", "User not found");
     }
     await admin.auth().updateUser(uid, { password: newPassword });
     return { success: true };
 });
 // BUG-6: getCloudinarySignature
 // Security Rationale: Compute signature server-side using secure secret from environment
-exports.getCloudinarySignature = (0, https_1.onCall)(async (request) => {
+exports.getCloudinarySignature = functions.https.onCall(async (data, context) => {
     const apiSecret = process.env.CLOUDINARY_API_SECRET || "cV_hIAno_zl_MGSeG5e7rPhutBs";
     const timestamp = Math.round(new Date().getTime() / 1000);
     const strToSign = `timestamp=${timestamp}${apiSecret}`;

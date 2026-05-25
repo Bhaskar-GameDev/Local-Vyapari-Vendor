@@ -380,6 +380,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
 
   bool _otpSent = false;
   bool _isLoading = false;
+  String? _verificationId;
 
   @override
   void dispose() {
@@ -411,51 +412,55 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
     setState(() => _isLoading = true);
 
     final fullPhone = '+91$phone';
-    final success = await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(fullPhone);
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        setState(() {
-          _otpSent = true;
-        });
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('OTP Sent'),
-            content: const Text('OTP sent successfully. Please check your messages.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        final error = widget.ref.read(authProvider).error;
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(error ?? 'Failed to send OTP'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
+    await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(
+      fullPhone,
+      onCodeSent: (verificationId) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _otpSent = true;
+            _verificationId = verificationId;
+          });
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('OTP Sent'),
+              content: const Text('OTP sent successfully. Please check your messages.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+      onFailed: (error) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Error'),
+              content: Text(error),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_verificationId == null) return;
 
-    final phone = _phoneController.text.trim();
-    final fullPhone = '+91$phone';
     final code = _otpController.text.trim();
     final newPassword = _passwordController.text.trim();
 
@@ -476,39 +481,9 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
       },
     );
 
-    // Verify OTP on client first to fail fast!
-    final otpValid = await widget.ref.read(authProvider.notifier).verifyOtpOnly(fullPhone, code);
-    if (!otpValid) {
-      if (mounted) {
-        Navigator.pop(context); // Dismiss progress dialog
-        final errorMsg = widget.ref.read(authProvider).error ?? 'Invalid or expired OTP';
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error_outline, color: AppColors.error),
-                SizedBox(width: 8),
-                Text('Verification Failed'),
-              ],
-            ),
-            content: Text(errorMsg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-
-    // Call resetPasswordWithOtp
-    final success = await widget.ref.read(authProvider.notifier).resetPasswordWithOtp(
-      phone: fullPhone,
-      otp: code,
+    final success = await widget.ref.read(authProvider.notifier).resetPasswordWithPhoneOtp(
+      verificationId: _verificationId!,
+      code: code,
       newPassword: newPassword,
     );
 
@@ -519,112 +494,21 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
         Navigator.pop(context, true); // Close reset dialog, return true
       } else {
         final error = widget.ref.read(authProvider).error;
-        final isTimeout = error != null && error.contains('timed out');
-        
         showDialog(
           context: context,
           builder: (dialogCtx) => AlertDialog(
-            title: Row(
+            title: const Row(
               children: [
-                Icon(isTimeout ? Icons.warning_amber_outlined : Icons.error_outline, 
-                     color: isTimeout ? Colors.orange : AppColors.error),
-                const SizedBox(width: 8),
-                Text(isTimeout ? 'Service Unavailable' : 'Error'),
+                Icon(Icons.error_outline, color: AppColors.error),
+                SizedBox(width: 8),
+                Text('Error'),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(error ?? 'Password reset failed'),
-                if (isTimeout) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Note: Cloud functions require the Firebase Blaze plan to run. If your project is on the Spark plan, you can use the email fallback below.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ],
-            ),
+            content: Text(error ?? 'Password reset failed'),
             actions: [
-              if (isTimeout)
-                TextButton(
-                  onPressed: () async {
-                    if (!context.mounted) return;
-                    Navigator.pop(dialogCtx); // Close warning dialog
-                    
-                    if (!context.mounted) return;
-                    // Show progress
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const AlertDialog(
-                        content: Row(
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(width: 20),
-                            Text("Sending reset email..."),
-                          ],
-                        ),
-                      ),
-                    );
-                    
-                    // Look up email and send standard reset email
-                    try {
-                      final phoneSnap = await FirebaseDatabase.instance.ref('phones').child(fullPhone).get();
-                      if (phoneSnap.exists && phoneSnap.value != null) {
-                        final uid = phoneSnap.value as String;
-                        final userSnap = await FirebaseDatabase.instance.ref('users').child(uid).child('email').get();
-                        if (userSnap.exists && userSnap.value != null) {
-                          final realEmail = userSnap.value as String;
-                          await FirebaseAuth.instance.sendPasswordResetEmail(email: realEmail);
-                          if (mounted) {
-                            Navigator.pop(context); // Dismiss progress
-                            showDialog(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text('Email Sent'),
-                                content: Text('A standard password reset email has been sent to $realEmail.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context); // Close success dialog
-                                      Navigator.pop(context); // Close main reset dialog
-                                    },
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return;
-                        }
-                      }
-                      throw Exception('No registered email found for this phone number.');
-                    } catch (e) {
-                      if (mounted) {
-                        Navigator.pop(context); // Dismiss progress
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text('Failed to send email'),
-                            content: Text(e.toString().replaceFirst('Exception: ', '')),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Send Email Reset Link'),
-                ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('Cancel'),
+                child: const Text('OK'),
               ),
             ],
           ),
