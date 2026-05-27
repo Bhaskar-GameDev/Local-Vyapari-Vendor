@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+<<<<<<< HEAD
 exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.validateSession = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+=======
+exports.validateSession = exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+>>>>>>> d8743d6005b6cf5f736bf37d76ad517a00d7350d
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -695,4 +699,47 @@ exports.onProductReviewWrite = functions.firestore.document("/product_reviews/{r
     return null;
 });
 // Mock Product Review Function has been deleted as per BUG-7
+// Validate session and ensure claims are in sync
+exports.validateSession = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+    }
+    const uid = context.auth.uid;
+    const targetRole = data.targetRole || "customer";
+    const deviceInfo = data.deviceInfo || {};
+    // 1. Fetch user data from Realtime Database
+    const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+    if (!userSnap.exists()) {
+        throw new functions.https.HttpsError("not-found", "User record not found in database.");
+    }
+    const userData = userSnap.val();
+    // 2. Check for Account Suspension/Ban
+    if (userData.status === "suspended" || userData.status === "banned") {
+        throw new functions.https.HttpsError("permission-denied", "This account has been suspended.");
+    }
+    // 3. Validate Role Access
+    const roles = userData.roles || {};
+    const hasRole = roles[targetRole] === true || (targetRole === "customer" && userData.role === "customer") || (targetRole === "merchant" && userData.role === "merchant");
+    if (!hasRole) {
+        throw new functions.https.HttpsError("permission-denied", `User does not possess the '${targetRole}' role.`);
+    }
+    // 4. Create Active Session Record in Firestore
+    const sessionRef = db.collection("sessions").doc();
+    await sessionRef.set({
+        sessionId: sessionRef.id,
+        uid: uid,
+        deviceInfo: deviceInfo,
+        lastActive: admin.firestore.FieldValue.serverTimestamp(),
+        status: "active"
+    });
+    // 5. Ensure Claims are In-Sync with database roles
+    const userRecord = await admin.auth().getUser(uid);
+    const existingClaims = userRecord.customClaims || {};
+    const currentRoles = {
+        customer: roles.customer || userData.role === "customer" || false,
+        merchant: roles.merchant || userData.role === "merchant" || false
+    };
+    await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, existingClaims), { roles: currentRoles, activeRole: targetRole }));
+    return { success: true, sessionId: sessionRef.id };
+});
 //# sourceMappingURL=index.js.map

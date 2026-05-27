@@ -424,7 +424,9 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
     roles: {
       customer: true
     },
-    activeRole: "customer"
+    activeRole: "customer",
+    customer: true,
+    merchant: false
   });
 
   console.log(`Initialized user ${uid} with customer role and claims.`);
@@ -463,7 +465,8 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
       ...existingRoles,
       merchant: true
     },
-    activeRole: "merchant"
+    activeRole: "merchant",
+    merchant: true
   });
 
   console.log(`Assigned merchant role to user ${uid}`);
@@ -577,7 +580,9 @@ export const migrateUserRoles = functions.https.onCall(async (data, context) => 
 
       await admin.auth().setCustomUserClaims(uid, {
         roles: roles,
-        activeRole: legacyRole
+        activeRole: legacyRole,
+        customer: roles.customer || false,
+        merchant: roles.merchant || false
       });
 
       count++;
@@ -816,3 +821,62 @@ export const onProductReviewWrite = functions.firestore.document("/product_revie
   });
 
 // Mock Product Review Function has been deleted as per BUG-7
+
+// Validate session and ensure claims are in sync
+export const validateSession = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const uid = context.auth.uid;
+  const targetRole = data.targetRole || "customer";
+  const deviceInfo = data.deviceInfo || {};
+
+  // 1. Fetch user data from Realtime Database
+  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+  if (!userSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "User record not found in database.");
+  }
+
+  const userData = userSnap.val();
+
+  // 2. Check for Account Suspension/Ban
+  if (userData.status === "suspended" || userData.status === "banned") {
+    throw new functions.https.HttpsError("permission-denied", "This account has been suspended.");
+  }
+
+  // 3. Validate Role Access
+  const roles = userData.roles || {};
+  const hasRole = roles[targetRole] === true || (targetRole === "customer" && userData.role === "customer") || (targetRole === "merchant" && userData.role === "merchant");
+  if (!hasRole) {
+    throw new functions.https.HttpsError("permission-denied", `User does not possess the '${targetRole}' role.`);
+  }
+
+  // 4. Create Active Session Record in Firestore
+  const sessionRef = db.collection("sessions").doc();
+  await sessionRef.set({
+    sessionId: sessionRef.id,
+    uid: uid,
+    deviceInfo: deviceInfo,
+    lastActive: admin.firestore.FieldValue.serverTimestamp(),
+    status: "active"
+  });
+
+  // 5. Ensure Claims are In-Sync with database roles
+  const userRecord = await admin.auth().getUser(uid);
+  const existingClaims = userRecord.customClaims || {};
+  const currentRoles = {
+    customer: roles.customer || userData.role === "customer" || false,
+    merchant: roles.merchant || userData.role === "merchant" || false
+  };
+
+  await admin.auth().setCustomUserClaims(uid, {
+    ...existingClaims,
+    roles: currentRoles,
+    activeRole: targetRole,
+    customer: currentRoles.customer,
+    merchant: currentRoles.merchant
+  });
+
+  return { success: true, sessionId: sessionRef.id };
+});
