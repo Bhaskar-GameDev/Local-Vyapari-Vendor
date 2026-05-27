@@ -3,8 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isAuthenticated() { return request.auth != null; }
+    function isMerchant() {
+      return isAuthenticated() && (request.auth.token.merchant == true || (request.auth.token.roles != null && request.auth.token.roles.merchant == true));
+    }
     function isVendor(shopId) {
-      return isAuthenticated() && get(/databases/$(database)/documents/shops/$(shopId)).data.vendorId == request.auth.uid;
+      return isMerchant() && get(/databases/$(database)/documents/shops/$(shopId)).data.vendorId == request.auth.uid;
     }
 
     match /users/{userId} {
@@ -13,7 +16,7 @@ service cloud.firestore {
 
     match /shops/{shopId} {
       allow read: if true;
-      allow create: if isAuthenticated();
+      allow create: if isMerchant();
       allow update: if isVendor(shopId) && 
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['avgRating', 'totalRatings']));
       allow delete: if isVendor(shopId);

@@ -38,7 +38,7 @@ class AuthRepository {
         updates['verified'] = true;
       }
       
-      await FirebaseDatabase.instance.ref('users').child(uid).set(updates);
+      await FirebaseDatabase.instance.ref('users').child(uid).update(updates);
 
       if (phone != null && phone.isNotEmpty) {
         await FirebaseDatabase.instance.ref('phones').child(phone.trim()).set(uid);
@@ -59,8 +59,26 @@ class AuthRepository {
   }
 
   Future<bool> isMerchantUser(User user) async {
-    final roles = await RoleService.instance.getRoles(forceRefresh: true);
-    return roles['merchant'] == true;
+    return await validateUserSession(user, 'merchant');
+  }
+
+  Future<bool> validateUserSession(User user, String role) async {
+    try {
+      final result = await _functions.httpsCallable('validateSession').call({
+        'targetRole': role,
+        'deviceInfo': {
+          'platform': 'flutter-client',
+        }
+      });
+      final data = Map<String, dynamic>.from(result.data as Map);
+      if (data['success'] == true) {
+        await user.getIdToken(true);
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   // --- Native Firebase Phone Auth Support ---
@@ -244,6 +262,18 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
+      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
+
+      final isValid = await _repository.validateUserSession(user, targetRole);
+      if (!isValid) {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: Invalid account role or suspended.',
+        );
+        return false;
+      }
+
       final roles = await RoleService.instance.getRoles(forceRefresh: true);
       final isCustomer = roles['customer'] == true;
       final isMerchant = roles['merchant'] == true;
@@ -309,6 +339,18 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
 
       if (user == null) {
         state = const AuthNotifierState(error: 'User not found.');
+        return false;
+      }
+
+      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
+
+      final isValid = await _repository.validateUserSession(user, targetRole);
+      if (!isValid) {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: Invalid account role or suspended.',
+        );
         return false;
       }
 
@@ -434,7 +476,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
           final phoneNum = phone ?? user.phoneNumber ?? '';
           final email = '${phoneNum.replaceAll('+', '')}@localvyapari.com';
 
-          await FirebaseDatabase.instance.ref('users').child(user.uid).set({
+          await FirebaseDatabase.instance.ref('users').child(user.uid).update({
             'email': email,
             'phone': phoneNum,
             'createdAt': ServerValue.timestamp,
@@ -661,7 +703,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         'verified': true,
         'createdAt': ServerValue.timestamp,
       };
-      await FirebaseDatabase.instance.ref('users').child(uid).set(updates);
+      await FirebaseDatabase.instance.ref('users').child(uid).update(updates);
       await FirebaseDatabase.instance.ref('phones').child(phone.trim()).set(uid);
       
       if (role == 'merchant') {

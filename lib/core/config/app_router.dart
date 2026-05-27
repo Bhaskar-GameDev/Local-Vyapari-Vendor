@@ -126,8 +126,16 @@ final appRouter = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Check if user is a merchant (role validation)
+      // Check account status (gating for banned/suspended accounts)
       if (userProfileState.hasValue && userProfile != null) {
+        final status = userProfile['status']?.toString();
+        if (status == 'suspended' || status == 'banned') {
+          // Immediately log out suspended user
+          ref.read(authRepositoryProvider).logout();
+          return '/login';
+        }
+
+        // Check if user is a merchant (role validation)
         final roles = userProfile['roles'] as Map?;
         final isMerchant = roles?['merchant'] == true;
         if (!isMerchant) {
