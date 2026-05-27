@@ -1,16 +1,33 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/offer_model.dart';
 import '../../data/repositories/offer_repository.dart';
+import 'auth_provider.dart';
 
 final offerRepositoryProvider = Provider<OfferRepository>((ref) => OfferRepository());
 
 class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
+  final Ref _ref;
   final OfferRepository _repository;
   StreamSubscription? _subscription;
 
-  OffersNotifier(this._repository) : super(const AsyncValue.loading()) {
-    _subscription = _repository.watchOffers().listen((offers) {
+  OffersNotifier(this._ref, this._repository) : super(const AsyncValue.loading()) {
+    _bindToUser(_ref.read(authStateProvider).value);
+    _ref.listen<AsyncValue<User?>>(authStateProvider, (_, next) {
+      _bindToUser(next.value);
+    });
+  }
+
+  void _bindToUser(User? user) {
+    _subscription?.cancel();
+    if (user == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+
+    state = const AsyncValue.loading();
+    _subscription = _repository.watchOffersForShop(user.uid).listen((offers) {
       state = AsyncValue.data(offers);
       
       // Automatically deactivate any expired offers in the database
@@ -55,5 +72,5 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
 }
 
 final offersProvider = StateNotifierProvider<OffersNotifier, AsyncValue<List<OfferModel>>>((ref) {
-  return OffersNotifier(ref.watch(offerRepositoryProvider));
+  return OffersNotifier(ref, ref.watch(offerRepositoryProvider));
 });

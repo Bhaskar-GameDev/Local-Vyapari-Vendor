@@ -332,6 +332,35 @@ export const verifyOtp = functions.https.onCall(async (data, context) => {
   return { success: true, customToken };
 });
 
+export const resolvePhoneLoginEmail = functions.https.onCall(async (data, context) => {
+  const phone = data.phone;
+  if (!phone) {
+    throw new functions.https.HttpsError("invalid-argument", "Phone number is required");
+  }
+
+  const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
+  const uid = phoneSnap.exists() ? phoneSnap.val() : null;
+  if (!uid) {
+    throw new functions.https.HttpsError("not-found", "This phone number is not registered");
+  }
+
+  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+  if (!userSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "No user record found for this phone number");
+  }
+
+  const userData = userSnap.val() as { email?: unknown; role?: unknown };
+  if (userData.role !== "merchant" && userData.role !== "customer") {
+    throw new functions.https.HttpsError("permission-denied", "Access denied for this account.");
+  }
+
+  if (typeof userData.email !== "string" || userData.email.length === 0) {
+    throw new functions.https.HttpsError("not-found", "No email found linked to this phone number");
+  }
+
+  return { email: userData.email };
+});
+
 // BUG-3: Reset Password over HTTPS
 // Security Rationale: Update password directly over secure HTTPS, never store plaintext in RTDB
 export const resetPasswordWithOtp = functions.https.onCall(async (data, context) => {

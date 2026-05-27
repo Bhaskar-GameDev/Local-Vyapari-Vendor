@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.onUserCreate = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.onUserCreate = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -293,6 +293,29 @@ exports.verifyOtp = functions.https.onCall(async (data, context) => {
     const customToken = await admin.auth().createCustomToken(uid);
     // Return success to the client
     return { success: true, customToken };
+});
+exports.resolvePhoneLoginEmail = functions.https.onCall(async (data, context) => {
+    const phone = data.phone;
+    if (!phone) {
+        throw new functions.https.HttpsError("invalid-argument", "Phone number is required");
+    }
+    const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
+    const uid = phoneSnap.exists() ? phoneSnap.val() : null;
+    if (!uid) {
+        throw new functions.https.HttpsError("not-found", "This phone number is not registered");
+    }
+    const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+    if (!userSnap.exists()) {
+        throw new functions.https.HttpsError("not-found", "No user record found for this phone number");
+    }
+    const userData = userSnap.val();
+    if (userData.role !== "merchant" && userData.role !== "customer") {
+        throw new functions.https.HttpsError("permission-denied", "Access denied for this account.");
+    }
+    if (typeof userData.email !== "string" || userData.email.length === 0) {
+        throw new functions.https.HttpsError("not-found", "No email found linked to this phone number");
+    }
+    return { email: userData.email };
 });
 // BUG-3: Reset Password over HTTPS
 // Security Rationale: Update password directly over secure HTTPS, never store plaintext in RTDB

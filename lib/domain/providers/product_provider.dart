@@ -1,16 +1,33 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
+import 'auth_provider.dart';
 
 final productRepositoryProvider = Provider<ProductRepository>((ref) => ProductRepository());
 
 class ProductsNotifier extends StateNotifier<AsyncValue<List<ProductModel>>> {
+  final Ref _ref;
   final ProductRepository _repository;
   StreamSubscription? _subscription;
 
-  ProductsNotifier(this._repository) : super(const AsyncValue.loading()) {
-    _subscription = _repository.watchProducts().listen((products) {
+  ProductsNotifier(this._ref, this._repository) : super(const AsyncValue.loading()) {
+    _bindToUser(_ref.read(authStateProvider).value);
+    _ref.listen<AsyncValue<User?>>(authStateProvider, (_, next) {
+      _bindToUser(next.value);
+    });
+  }
+
+  void _bindToUser(User? user) {
+    _subscription?.cancel();
+    if (user == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+
+    state = const AsyncValue.loading();
+    _subscription = _repository.watchProductsForShop(user.uid).listen((products) {
       state = AsyncValue.data(products);
     }, onError: (Object e, StackTrace st) {
       state = AsyncValue.error(e, st);
@@ -42,5 +59,5 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<ProductModel>>> {
 }
 
 final productsProvider = StateNotifierProvider<ProductsNotifier, AsyncValue<List<ProductModel>>>((ref) {
-  return ProductsNotifier(ref.watch(productRepositoryProvider));
+  return ProductsNotifier(ref, ref.watch(productRepositoryProvider));
 });

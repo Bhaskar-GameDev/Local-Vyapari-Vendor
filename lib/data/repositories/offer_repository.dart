@@ -8,10 +8,7 @@ class OfferRepository {
 
   String? get _currentShopId => _auth.currentUser?.uid;
 
-  Stream<List<OfferModel>> watchOffers() {
-    final shopId = _currentShopId;
-    if (shopId == null) return Stream.value([]);
-
+  Stream<List<OfferModel>> watchOffersForShop(String shopId) {
     _ref.child(shopId).keepSynced(true);
 
     return _ref.child(shopId).onValue.map((event) {

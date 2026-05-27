@@ -9,10 +9,7 @@ class ProductRepository {
   String? get _currentShopId => _auth.currentUser?.uid;
 
   /// Realtime stream — pushes updates the instant Firebase changes for this shop ID
-  Stream<List<ProductModel>> watchProducts() {
-    final shopId = _currentShopId;
-    if (shopId == null) return Stream.value([]);
-    
+  Stream<List<ProductModel>> watchProductsForShop(String shopId) {
     _dbRef.child(shopId).keepSynced(true);
     
     return _dbRef.child(shopId).onValue.map((event) {

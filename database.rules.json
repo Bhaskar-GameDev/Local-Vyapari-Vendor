@@ -5,7 +5,7 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
         "role": {
-          ".validate": "newData.val() === 'merchant' || newData.val() === 'customer'"
+          ".validate": "(!data.exists() && (newData.val() === 'merchant' || newData.val() === 'customer')) || (data.exists() && (newData.val() === data.val() || (data.val() === 'customer' && newData.val() === 'merchant')))"
         }
       }
     },
@@ -17,25 +17,31 @@
     },
     "otps": {
       "$phone": {
-        ".read": "true",
-        ".write": "!data.exists() && newData.hasChildren(['otp', 'expiresAt']) && newData.child('otp').val().matches(/^\\d{6}$/) && newData.child('expiresAt').val() > now"
+        ".read": "false",
+        ".write": "false"
+      }
+    },
+    "otp_rate_limit": {
+      "$phone": {
+        ".read": "false",
+        ".write": "false"
       }
     },
     "products": {
+      ".read": "true",
       "$uid": {
-        ".read": "true",
         ".write": "auth != null && auth.uid === $uid"
       }
     },
     "offers": {
+      ".read": "true",
       "$uid": {
-        ".read": "true",
         ".write": "auth != null && auth.uid === $uid"
       }
     },
     "shop": {
+      ".read": "true",
       "$uid": {
-        ".read": "true",
         ".write": "auth != null && auth.uid === $uid",
         "latitude": {
           ".validate": "!newData.exists() || newData.isNumber()"
@@ -71,6 +77,12 @@
             ".write": "auth != null && (auth.uid === $firstId || auth.uid === $secondId)"
           }
         }
+      }
+    },
+    "users_devices": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     }
   }

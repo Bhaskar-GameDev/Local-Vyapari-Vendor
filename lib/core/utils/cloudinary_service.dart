@@ -1,5 +1,5 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:dio/dio.dart';
-import 'package:local_vyapari_vendor/core/network/api_client.dart'; // Add actual import to ApiClient
 
 class CloudinaryService {
   static const String _cloudName = 'drn2kxnrz';
@@ -9,12 +9,11 @@ class CloudinaryService {
 
   static Future<String?> uploadImage(String filePath, {Function(int, int)? onSendProgress}) async {
     try {
-      // 1. Fetch signature from secure HTTPS Cloud Function using our ApiClient
-      final response = await ApiClient.instance.post('getCloudinarySignature');
-      final result = response.data['result'];
-      
+      final callable = FirebaseFunctions.instance.httpsCallable('getCloudinarySignature');
+      final response = await callable.call();
+      final result = Map<String, dynamic>.from(response.data as Map);
       final signature = result['signature'] as String;
-      final timestamp = result['timestamp'] as int;
+      final timestamp = (result['timestamp'] as num).toInt();
 
       print('[CloudinaryService] Signature: $signature, Timestamp: $timestamp');
 

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../../core/utils/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -48,7 +50,11 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     _nameController = TextEditingController(text: widget.existingShop?.name ?? '');
     _descController = TextEditingController(text: widget.existingShop?.description ?? '');
     _addressController = TextEditingController(text: widget.existingShop?.address ?? '');
-    _phoneController = TextEditingController(text: widget.existingShop?.phone ?? '');
+    
+    final user = FirebaseAuth.instance.currentUser;
+    final initialPhone = widget.existingShop?.phone ?? user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '') ?? '';
+    _phoneController = TextEditingController(text: initialPhone);
+    
     _latController = TextEditingController(
       text: widget.existingShop?.latitude != null ? widget.existingShop!.latitude.toString() : '',
     );
@@ -61,6 +67,47 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     if (widget.existingShop?.closingTime != null) {
       _parseTime(widget.existingShop!.closingTime!, isOpening: false);
     }
+
+    if (widget.existingShop == null && user != null) {
+      _prefillFromDatabase(user.uid);
+    }
+  }
+
+  Future<void> _prefillFromDatabase(String uid) async {
+    try {
+      final snapshot = await FirebaseDatabase.instance.ref('shop').child(uid).get();
+      if (snapshot.exists && snapshot.value != null) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        if (mounted) {
+          setState(() {
+            if (_nameController.text.isEmpty && data['name'] != null) {
+              _nameController.text = data['name'].toString();
+            }
+            if (_descController.text.isEmpty && data['description'] != null) {
+              _descController.text = data['description'].toString();
+            }
+            if (_phoneController.text.isEmpty && data['phone'] != null) {
+              _phoneController.text = data['phone'].toString().replaceAll('+91', '').replaceAll(' ', '');
+            }
+            if (_addressController.text.isEmpty && data['address'] != null) {
+              _addressController.text = data['address'].toString();
+            }
+            if (_latController.text.isEmpty && data['latitude'] != null) {
+              _latController.text = data['latitude'].toString();
+            }
+            if (_lngController.text.isEmpty && data['longitude'] != null) {
+              _lngController.text = data['longitude'].toString();
+            }
+            if (data['openingTime'] != null) {
+              _parseTime(data['openingTime'].toString(), isOpening: true);
+            }
+            if (data['closingTime'] != null) {
+              _parseTime(data['closingTime'].toString(), isOpening: false);
+            }
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _parseTime(String timeString, {required bool isOpening}) {
@@ -281,7 +328,33 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     final isEditing = widget.existingShop != null && 
                       widget.existingShop!.address.isNotEmpty;
 
-    if (!isEditing) {
+    bool needVerification = !isEditing;
+    if (needVerification) {
+      final user = FirebaseAuth.instance.currentUser;
+      final userPhone = user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '').trim();
+      final inputPhone = _phoneController.text.trim().replaceAll('+91', '').replaceAll(' ', '').trim();
+      
+      if (userPhone != null && userPhone.isNotEmpty && userPhone == inputPhone) {
+        needVerification = false;
+      } else {
+        final uid = user?.uid;
+        if (uid != null) {
+          try {
+            final snapshot = await FirebaseDatabase.instance.ref('users').child(uid).get();
+            if (snapshot.exists && snapshot.value != null) {
+              final userData = Map<String, dynamic>.from(snapshot.value as Map);
+              final dbPhone = userData['phone']?.toString().replaceAll('+91', '').replaceAll(' ', '').trim();
+              final isVerified = userData['verified'] == true;
+              if (isVerified && dbPhone != null && dbPhone.isNotEmpty && dbPhone == inputPhone) {
+                needVerification = false;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (needVerification) {
       final verified = await _verifyShopPhone(_phoneController.text.trim());
       if (!verified) return;
     }
