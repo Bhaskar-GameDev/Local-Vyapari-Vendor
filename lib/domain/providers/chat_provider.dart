@@ -57,7 +57,7 @@ class ChatSummary {
   });
 }
 
-final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((ref, userId) {
+final chatMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, userId) {
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
@@ -79,7 +79,7 @@ final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((r
   });
 });
 
-final vendorChatsProvider = StreamProvider<List<ChatSummary>>((ref) {
+final vendorChatsProvider = StreamProvider.autoDispose<List<ChatSummary>>((ref) {
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
@@ -167,6 +167,16 @@ class ChatService {
     if (vendorId == null) return;
     try {
       await _rtdb.ref('chats/$vendorId/$userId/lastMessage/unread').set(false);
+    } catch (e) {
+      // Ignore/log
+    }
+  }
+
+  Future<void> deleteChat(String userId) async {
+    final vendorId = FirebaseAuth.instance.currentUser?.uid;
+    if (vendorId == null) return;
+    try {
+      await _rtdb.ref('chats/$vendorId/$userId').remove();
     } catch (e) {
       // Ignore/log
     }

@@ -89,7 +89,52 @@ class ChatsListScreen extends ConsumerWidget {
                   duration: const Duration(milliseconds: 400),
                   delay: Duration(milliseconds: 50 * index),
                   slideOffset: 12,
-                  child: _ChatSummaryTile(chat: chat),
+                  child: Dismissible(
+                    key: Key(chat.userId),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: AppColors.error,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    confirmDismiss: (direction) async {
+                      return await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Chat'),
+                          content: Text('Are you sure you want to delete this conversation with ${chat.userName}? This will remove it from your chats list.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    onDismissed: (direction) async {
+                      await ref.read(chatServiceProvider).deleteChat(chat.userId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Conversation with ${chat.userName} deleted'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                      }
+                    },
+                    child: _ChatSummaryTile(chat: chat),
+                  ),
                 );
               },
             );

@@ -76,6 +76,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  void _confirmDeleteChat(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Chat'),
+        content: const Text('Are you sure you want to delete this entire conversation? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ref.read(chatServiceProvider).deleteChat(widget.userId);
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Go back to chats list
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -100,6 +128,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         title: Text(widget.userName.isNotEmpty ? widget.userName : 'Customer'),
         elevation: 0.5,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Delete Chat',
+            onPressed: () => _confirmDeleteChat(context),
+          ),
+        ],
       ),
       body: Column(
         children: [
