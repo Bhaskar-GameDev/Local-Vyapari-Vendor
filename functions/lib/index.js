@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.validateSession = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -395,6 +395,60 @@ exports.assignMerchantRole = functions.https.onCall(async (data, context) => {
     // Set new claims
     await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, existingClaims), { roles: Object.assign(Object.assign({}, existingRoles), { merchant: true }), activeRole: "merchant" }));
     console.log(`Assigned merchant role to user ${uid}`);
+    return { success: true };
+});
+exports.validateSession = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    }
+    const uid = context.auth.uid;
+    const targetRole = data.targetRole;
+    if (targetRole !== "customer" && targetRole !== "merchant") {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid target role.");
+    }
+    // Fetch roles from RTDB
+    const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+    if (!userSnap.exists()) {
+        throw new functions.https.HttpsError("not-found", "User profile not found.");
+    }
+    const userData = userSnap.val();
+    const roles = userData.roles || {};
+    const isMerchant = roles.merchant === true || userData.role === "merchant";
+    const isCustomer = roles.customer === true || userData.role === "customer";
+    // Gating for banned/suspended accounts
+    if (userData.status === "suspended" || userData.status === "banned") {
+        throw new functions.https.HttpsError("permission-denied", "This account has been suspended or banned.");
+    }
+    const hasTargetRole = targetRole === "customer" ? isCustomer : isMerchant;
+    if (!hasTargetRole) {
+        // If they want to access customer app and they are already a merchant, we grant them customer role dynamically
+        if (targetRole === "customer" && isMerchant) {
+            roles.customer = true;
+            roles.merchant = true;
+            await admin.database().ref(`/users/${uid}/roles`).update({
+                customer: true,
+                merchant: true
+            });
+            // Update custom claims to include customer role
+            const userRecord = await admin.auth().getUser(uid);
+            const existingClaims = userRecord.customClaims || {};
+            const existingRoles = existingClaims.roles || {};
+            await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, existingClaims), { roles: Object.assign(Object.assign({}, existingRoles), { customer: true, merchant: true }) }));
+        }
+        else {
+            throw new functions.https.HttpsError("permission-denied", `User does not possess the ${targetRole} role.`);
+        }
+    }
+    // If the activeRole in the database is different from the targetRole, update it
+    if (userData.activeRole !== targetRole) {
+        await admin.database().ref(`/users/${uid}`).update({
+            activeRole: targetRole
+        });
+    }
+    // Refresh Custom Claims to match the targetRole
+    const userRecord = await admin.auth().getUser(uid);
+    const existingClaims = userRecord.customClaims || {};
+    await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, existingClaims), { activeRole: targetRole }));
     return { success: true };
 });
 exports.migrateUserRoles = functions.https.onCall(async (data, context) => {
