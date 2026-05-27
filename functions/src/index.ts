@@ -473,80 +473,7 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
   return { success: true };
 });
 
-export const validateSession = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
-  }
-
-  const uid = context.auth.uid;
-  const targetRole = data.targetRole;
-
-  if (targetRole !== "customer" && targetRole !== "merchant") {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid target role.");
-  }
-
-  // Fetch roles from RTDB
-  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
-  if (!userSnap.exists()) {
-    throw new functions.https.HttpsError("not-found", "User profile not found.");
-  }
-
-  const userData = userSnap.val();
-  const roles = userData.roles || {};
-  const isMerchant = roles.merchant === true || userData.role === "merchant";
-  const isCustomer = roles.customer === true || userData.role === "customer";
-
-  // Gating for banned/suspended accounts
-  if (userData.status === "suspended" || userData.status === "banned") {
-    throw new functions.https.HttpsError("permission-denied", "This account has been suspended or banned.");
-  }
-
-  const hasTargetRole = targetRole === "customer" ? isCustomer : isMerchant;
-
-  if (!hasTargetRole) {
-    // If they want to access customer app and they are already a merchant, we grant them customer role dynamically
-    if (targetRole === "customer" && isMerchant) {
-      roles.customer = true;
-      roles.merchant = true;
-      await admin.database().ref(`/users/${uid}/roles`).update({
-        customer: true,
-        merchant: true
-      });
-      // Update custom claims to include customer role
-      const userRecord = await admin.auth().getUser(uid);
-      const existingClaims = userRecord.customClaims || {};
-      const existingRoles = existingClaims.roles || {};
-      await admin.auth().setCustomUserClaims(uid, {
-        ...existingClaims,
-        roles: {
-          ...existingRoles,
-          customer: true,
-          merchant: true
-        }
-      });
-    } else {
-      throw new functions.https.HttpsError("permission-denied", `User does not possess the ${targetRole} role.`);
-    }
-  }
-
-  // If the activeRole in the database is different from the targetRole, update it
-  if (userData.activeRole !== targetRole) {
-    await admin.database().ref(`/users/${uid}`).update({
-      activeRole: targetRole
-    });
-  }
-
-  // Refresh Custom Claims to match the targetRole
-  const userRecord = await admin.auth().getUser(uid);
-  const existingClaims = userRecord.customClaims || {};
-  
-  await admin.auth().setCustomUserClaims(uid, {
-    ...existingClaims,
-    activeRole: targetRole
-  });
-
-  return { success: true };
-});
+// Duplicate validateSession removed (new implementation exists at the end of the file)
 
 export const migrateUserRoles = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -845,11 +772,27 @@ export const validateSession = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("permission-denied", "This account has been suspended.");
   }
 
-  // 3. Validate Role Access
+  // 3. Validate and Update Role Access
   const roles = userData.roles || {};
-  const hasRole = roles[targetRole] === true || (targetRole === "customer" && userData.role === "customer") || (targetRole === "merchant" && userData.role === "merchant");
+  const isMerchant = roles.merchant === true || userData.role === "merchant";
+  let isCustomer = roles.customer === true || userData.role === "customer";
+
+  let hasRole = targetRole === "customer" ? isCustomer : isMerchant;
+
   if (!hasRole) {
-    throw new functions.https.HttpsError("permission-denied", `User does not possess the '${targetRole}' role.`);
+    // If they want to access customer app and they are already a merchant, we grant them customer role dynamically
+    if (targetRole === "customer" && isMerchant) {
+      isCustomer = true;
+      roles.customer = true;
+      roles.merchant = true;
+      await admin.database().ref(`/users/${uid}/roles`).update({
+        customer: true,
+        merchant: true
+      });
+      hasRole = true;
+    } else {
+      throw new functions.https.HttpsError("permission-denied", `User does not possess the '${targetRole}' role.`);
+    }
   }
 
   // 4. Create Active Session Record in Firestore
@@ -866,8 +809,8 @@ export const validateSession = functions.https.onCall(async (data, context) => {
   const userRecord = await admin.auth().getUser(uid);
   const existingClaims = userRecord.customClaims || {};
   const currentRoles = {
-    customer: roles.customer || userData.role === "customer" || false,
-    merchant: roles.merchant || userData.role === "merchant" || false
+    customer: isCustomer,
+    merchant: isMerchant
   };
 
   await admin.auth().setCustomUserClaims(uid, {
@@ -880,3 +823,4 @@ export const validateSession = functions.https.onCall(async (data, context) => {
 
   return { success: true, sessionId: sessionRef.id };
 });
+
