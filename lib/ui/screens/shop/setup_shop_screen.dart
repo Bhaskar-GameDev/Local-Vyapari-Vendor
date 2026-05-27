@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../../core/utils/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -389,10 +390,16 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
       await ref.read(shopRepositoryProvider).updateShopProfile(shop);
 
-      if (mounted) {
-        final isEditing = widget.existingShop != null && 
-                          widget.existingShop!.address.isNotEmpty;
+      // Securely upgrade user to merchant via Cloud Functions on initial setup
+      final isEditing = widget.existingShop != null && 
+                        widget.existingShop!.address.isNotEmpty;
+      if (!isEditing) {
+        final callable = FirebaseFunctions.instance.httpsCallable('assignMerchantRole');
+        await callable.call();
+        await FirebaseAuth.instance.currentUser?.getIdToken(true);
+      }
 
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isEditing
@@ -452,6 +459,52 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (!isEditing) Consumer(
+                      builder: (context, ref, child) {
+                        final profileState = ref.watch(userProfileProvider);
+                        final profile = profileState.value;
+                        final roles = profile?['roles'] as Map?;
+                        final isMerchant = roles?['merchant'] == true;
+
+                        if (profileState.hasValue && !isMerchant) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                            child: Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withOpacity(0.08),
+                                borderRadius: AppRadius.borderLg,
+                                border: Border.all(
+                                  color: AppColors.warning.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: AppColors.warning,
+                                    size: 24,
+                                  ),
+                                  AppSpacing.horizontalSm,
+                                  Expanded(
+                                    child: Text(
+                                      'Merchant Profile Pending: Complete your shop setup to activate your vendor account.',
+                                      style: TextStyle(
+                                        color: AppColors.warning.withOpacity(0.9),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                     if (!isEditing) ...[
                       AppSpacing.verticalXs,
                       FadeInSlide(

@@ -8,6 +8,7 @@ import 'ui/screens/splash/splash_screen.dart';
 
 import 'core/network/api_client.dart';
 import 'core/config/app_router.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,9 @@ class LocalVyapariVendorApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize notification service
+    ref.watch(notificationServiceProvider);
+
     final router = ref.watch(appRouter);
 
     return MaterialApp.router(

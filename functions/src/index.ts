@@ -25,12 +25,12 @@ export const onInventoryUpdate = functions.database.ref("/inventory/{productId}"
       const vendorId = shopDoc.data()?.vendorId;
 
       // Send FCM to vendor
-      const userDoc = await db.collection("users").doc(vendorId).get();
-      const tokens = userDoc.data()?.fcmTokens || [];
+      const tokenSnapshot = await admin.database().ref(`/users_devices/${vendorId}/merchant/fcmToken`).once("value");
+      const token = tokenSnapshot.val();
 
-      if (tokens.length > 0) {
-        await admin.messaging().sendMulticast({
-          tokens,
+      if (token) {
+        await admin.messaging().send({
+          token: token,
           notification: {
             title: "Low Stock Alert \u26A0\uFE0F",
             body: `Your product is running out of stock! Only ${stock} left.`,
@@ -349,8 +349,11 @@ export const resolvePhoneLoginEmail = functions.https.onCall(async (data, contex
     throw new functions.https.HttpsError("not-found", "No user record found for this phone number");
   }
 
-  const userData = userSnap.val() as { email?: unknown; role?: unknown };
-  if (userData.role !== "merchant" && userData.role !== "customer") {
+  const userData = userSnap.val() as { email?: string; roles?: Record<string, boolean>; role?: string };
+  const hasValidRole = (userData.roles && (userData.roles.customer || userData.roles.merchant)) ||
+                       (userData.role === "merchant" || userData.role === "customer");
+
+  if (!hasValidRole) {
     throw new functions.https.HttpsError("permission-denied", "Access denied for this account.");
   }
 
@@ -402,10 +405,111 @@ export const getCloudinarySignature = functions.https.onCall(async (data, contex
 
 // IMP-1: Firebase Custom Auth Claims for role enforcement
 // Security Rationale: Roles must be strictly verified and assigned server-side.
-export const onUserCreate = functions.auth.user().onCreate(async (user) => {
-  // By default, assuming vendor registration app
-  await admin.auth().setCustomUserClaims(user.uid, { role: "merchant" });
-  console.log(`Assigned merchant role to ${user.uid}`);
+export const onUserCreated = functions.auth.user().onCreate(async (user) => {
+  const uid = user.uid;
+  const email = user.email || "";
+
+  // Initialize roles in RTDB
+  await admin.database().ref(`/users/${uid}`).update({
+    email: email,
+    roles: {
+      customer: true
+    },
+    activeRole: "customer",
+    createdAt: admin.database.ServerValue.TIMESTAMP
+  });
+
+  // Set Custom User Claims
+  await admin.auth().setCustomUserClaims(uid, {
+    roles: {
+      customer: true
+    },
+    activeRole: "customer"
+  });
+
+  console.log(`Initialized user ${uid} with customer role and claims.`);
+});
+
+export const onUserCreate = onUserCreated;
+
+export const assignMerchantRole = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+  }
+
+  const uid = context.auth.uid;
+
+  // Check if shop profile exists for this user
+  const shopSnap = await admin.database().ref(`/shop/${uid}`).once("value");
+  if (!shopSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "No shop profile found. Please set up your shop first.");
+  }
+
+  // Update roles and activeRole in RTDB
+  await admin.database().ref(`/users/${uid}`).update({
+    "roles/merchant": true,
+    "activeRole": "merchant"
+  });
+
+  // Fetch current user claims to preserve them or just set them directly
+  const userRecord = await admin.auth().getUser(uid);
+  const existingClaims = userRecord.customClaims || {};
+  const existingRoles = existingClaims.roles || {};
+
+  // Set new claims
+  await admin.auth().setCustomUserClaims(uid, {
+    ...existingClaims,
+    roles: {
+      ...existingRoles,
+      merchant: true
+    },
+    activeRole: "merchant"
+  });
+
+  console.log(`Assigned merchant role to user ${uid}`);
+  return { success: true };
+});
+
+export const migrateUserRoles = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated to run migration.");
+  }
+
+  const usersSnap = await admin.database().ref("/users").once("value");
+  if (!usersSnap.exists()) {
+    return { migrated: 0 };
+  }
+
+  const users = usersSnap.val();
+  let count = 0;
+
+  for (const uid of Object.keys(users)) {
+    const userData = users[uid];
+    const legacyRole = userData.role;
+
+    if (legacyRole && !userData.roles) {
+      const roles: Record<string, boolean> = {
+        customer: true
+      };
+      if (legacyRole === "merchant") {
+        roles.merchant = true;
+      }
+
+      await admin.database().ref(`/users/${uid}`).update({
+        roles: roles,
+        activeRole: legacyRole
+      });
+
+      await admin.auth().setCustomUserClaims(uid, {
+        roles: roles,
+        activeRole: legacyRole
+      });
+
+      count++;
+    }
+  }
+
+  return { migrated: count };
 });
 
 // --- Helper function to encode coordinates to Geohash ---
@@ -542,7 +646,7 @@ async function updateShopRating(shopId: string) {
 }
 
 // Recalculates average rating and review counts for a product
-async function updateProductRating(productId: string) {
+async function updateProductRating(productId: string, shopId?: string) {
   const reviewsSnap = await db.collection("product_reviews")
     .where("productId", "==", productId)
     .get();
@@ -564,17 +668,50 @@ async function updateProductRating(productId: string) {
     totalRatings: totalRatings
   }, { merge: true });
 
-  // Update RTDB product node
-  const productDoc = await db.collection("products").doc(productId).get();
-  if (productDoc.exists) {
-    const shopId = productDoc.data()?.shopId;
-    if (shopId) {
-      await admin.database().ref(`products/${shopId}/${productId}`).update({
-        avgRating: avgRating,
-        totalRatings: totalRatings,
-        rating: avgRating
-      });
+  // Resolve shopId
+  let resolvedShopId = shopId;
+  if (!resolvedShopId) {
+    // Fallback 1: check review documents
+    for (const doc of reviewsSnap.docs) {
+      if (doc.data().shopId) {
+        resolvedShopId = doc.data().shopId;
+        break;
+      }
     }
+  }
+
+  if (!resolvedShopId) {
+    // Fallback 2: check Firestore products collection
+    const productDoc = await db.collection("products").doc(productId).get();
+    if (productDoc.exists) {
+      resolvedShopId = productDoc.data()?.shopId;
+    }
+  }
+
+  if (!resolvedShopId) {
+    // Fallback 3: scan RTDB products node
+    const productsSnap = await admin.database().ref("products").once("value");
+    if (productsSnap.exists()) {
+      const productsData = productsSnap.val();
+      for (const sId of Object.keys(productsData)) {
+        if (productsData[sId][productId]) {
+          resolvedShopId = sId;
+          break;
+        }
+      }
+    }
+  }
+
+  if (resolvedShopId) {
+    // Update RTDB product node
+    await admin.database().ref(`products/${resolvedShopId}/${productId}`).update({
+      avgRating: avgRating,
+      totalRatings: totalRatings,
+      rating: avgRating
+    });
+    console.log(`Updated RTDB product: ${resolvedShopId}/${productId} with rating ${avgRating}`);
+  } else {
+    console.log(`Could not find shopId for product ${productId}, RTDB update skipped.`);
   }
 
   console.log(`Updated ratings for Product ${productId}: avgRating = ${avgRating}, totalRatings = ${totalRatings}`);
@@ -596,8 +733,9 @@ export const onProductReviewWrite = functions.firestore.document("/product_revie
     const data = change.after.exists ? change.after.data() : change.before.data();
     if (!data) return null;
     const productId = data.productId;
+    const shopId = data.shopId;
     if (productId) {
-      await updateProductRating(productId);
+      await updateProductRating(productId, shopId);
     }
     return null;
   });

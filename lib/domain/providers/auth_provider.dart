@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../../core/services/role_service.dart';
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 class AuthRepository {
@@ -30,7 +31,6 @@ class AuthRepository {
     if (uid != null) {
       final updates = {
         'email': email.trim(),
-        'role': role,
         'createdAt': ServerValue.timestamp,
       };
       if (phone != null && phone.isNotEmpty) {
@@ -58,61 +58,9 @@ class AuthRepository {
     return credential;
   }
 
-  Future<String?> getUserRole(String uid) async {
-    final snapshot = await FirebaseDatabase.instance.ref('users').child(uid).child('role').get();
-    return snapshot.value?.toString();
-  }
-
-  Future<String?> waitForUserRole(
-    String uid, {
-    int attempts = 5,
-    Duration delay = const Duration(milliseconds: 500),
-  }) async {
-    for (int i = 0; i < attempts; i++) {
-      final role = await getUserRole(uid);
-      if (role != null && role.isNotEmpty) {
-        return role;
-      }
-      if (i < attempts - 1) {
-        await Future.delayed(delay);
-      }
-    }
-    return null;
-  }
-
-  Future<bool> isMerchantUser(User user) async {
-    final role = await waitForUserRole(user.uid);
-    if (role == 'merchant') return true;
-
-    if (role == 'customer') {
-      // Upgrade customer to merchant
-      await FirebaseDatabase.instance.ref('users').child(user.uid).update({
-        'role': 'merchant',
-      });
-
-      // Initialize shop node if it does not exist
-      final shopRef = FirebaseDatabase.instance.ref('shop').child(user.uid);
-      final shopSnapshot = await shopRef.get();
-      if (!shopSnapshot.exists) {
-        final userSnapshot = await FirebaseDatabase.instance.ref('users').child(user.uid).get();
-        String phone = '';
-        if (userSnapshot.exists && userSnapshot.value != null) {
-          final userData = Map<String, dynamic>.from(userSnapshot.value as Map);
-          phone = userData['phone']?.toString() ?? '';
-        }
-
-        await shopRef.set({
-          'name': 'My Shop',
-          'description': 'Welcome to our shop!',
-          'address': '',
-          'phone': phone,
-          'isOpen': true,
-          'isVerified': false,
-        });
-      }
-      return true;
-    }
-    return false;
+  Future<bool> isMerchantUser(User user) async {
+    final roles = await RoleService.instance.getRoles(forceRefresh: true);
+    return roles['merchant'] == true;
   }
 
   // --- Native Firebase Phone Auth Support ---
@@ -259,22 +207,9 @@ class AuthRepository {
 final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
 
 /// Stream provider that reacts to Firebase auth state in real-time
-final authStateProvider = StreamProvider<User?>((ref) {
-  final authRepo = ref.watch(authRepositoryProvider);
-  return authRepo.authStateChanges.asyncMap((user) async {
-    if (user == null) return null;
-    try {
-      final isMerchant = await authRepo.isMerchantUser(user);
-      if (isMerchant) {
-        return user;
-      }
-      await authRepo.logout();
-      return null;
-    } catch (e) {
-      await authRepo.logout();
-      return null;
-    }
-  });
+final authStateProvider = StreamProvider<User?>((ref) {
+  final authRepo = ref.watch(authRepositoryProvider);
+  return authRepo.authStateChanges;
 });
 
 // ─── Auth State ───────────────────────────────────────────────────────────────
@@ -304,12 +239,21 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       final credential = await _repository.login(email, password);
 
       final user = credential.user;
-      if (user == null || !await _repository.isMerchantUser(user)) {
-        await _repository.logout();
-        state = const AuthNotifierState(
-          error: 'Access Denied: This account is registered as a customer.',
-        );
-        return false;
+      if (user == null) {
+        state = const AuthNotifierState(error: 'User not found.');
+        return false;
+      }
+
+      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      final isCustomer = roles['customer'] == true;
+      final isMerchant = roles['merchant'] == true;
+
+      if (!isCustomer && !isMerchant) {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: Invalid account role.',
+        );
+        return false;
       }
 
       return true;
@@ -363,12 +307,21 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       final credential = await _repository.login(realEmail, password);
       final user = credential.user;
 
-      if (user == null || !await _repository.isMerchantUser(user)) {
-        await _repository.logout();
-        state = const AuthNotifierState(
-          error: 'Access Denied: This account is registered as a customer.',
-        );
-        return false;
+      if (user == null) {
+        state = const AuthNotifierState(error: 'User not found.');
+        return false;
+      }
+
+      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      final isCustomer = roles['customer'] == true;
+      final isMerchant = roles['merchant'] == true;
+
+      if (!isCustomer && !isMerchant) {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: Invalid account role.',
+        );
+        return false;
       }
 
       return true;
@@ -484,7 +437,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
           await FirebaseDatabase.instance.ref('users').child(user.uid).set({
             'email': email,
             'phone': phoneNum,
-            'role': 'merchant',
             'createdAt': ServerValue.timestamp,
             'verified': true,
           });
@@ -705,7 +657,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       final uid = user.uid;
       final updates = {
         'email': email.trim(),
-        'role': role,
         'phone': phone.trim(),
         'verified': true,
         'createdAt': ServerValue.timestamp,

@@ -24,6 +24,11 @@ class RouterNotifier extends ChangeNotifier {
       (_, __) => notifyListeners(),
       onError: (err, stack) => notifyListeners(),
     );
+    _ref.listen(
+      userProfileProvider,
+      (_, __) => notifyListeners(),
+      onError: (err, stack) => notifyListeners(),
+    );
   }
 }
 
@@ -89,6 +94,7 @@ final appRouter = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authStateProvider);
       final shopState = ref.read(shopProvider);
+      final userProfileState = ref.read(userProfileProvider);
 
       if (authState.isLoading || shopState.isLoading) {
         return null;
@@ -96,6 +102,7 @@ final appRouter = Provider<GoRouter>((ref) {
 
       final user = authState.value;
       final shop = shopState.value;
+      final userProfile = userProfileState.value;
 
       final isLoggedIn = user != null;
       final isShopSetup = shop != null &&
@@ -119,7 +126,20 @@ final appRouter = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // User is logged in
+      // Check if user is a merchant (role validation)
+      if (userProfileState.hasValue && userProfile != null) {
+        final roles = userProfile['roles'] as Map?;
+        final isMerchant = roles?['merchant'] == true;
+        if (!isMerchant) {
+          // Merchant role missing, redirect to onboarding/registration
+          if (location != '/setup-shop') {
+            return '/setup-shop';
+          }
+          return null;
+        }
+      }
+
+      // User is logged in and is a merchant, check if shop is setup
       if (!isShopSetup) {
         if (location != '/setup-shop') {
           return '/setup-shop';
@@ -127,7 +147,7 @@ final appRouter = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // User is logged in and shop is setup, prevent accessing onboarding/guest routes
+      // User is logged in, is merchant, and shop is setup, prevent accessing onboarding/guest routes
       if (location == '/login' || location == '/register' || location == '/setup-shop') {
         return '/';
       }
