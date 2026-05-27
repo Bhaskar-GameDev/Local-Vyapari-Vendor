@@ -40,7 +40,8 @@ final analyticsProvider = StreamProvider<AnalyticsModel>((ref) {
         totalClicks: (totals['clicks'] as num?)?.toInt() ?? 0,
         daily: dailyMap,
       );
-    } catch (e) {
+    } catch (e, stack) {
+      print('Error parsing analytics: $e\n$stack');
       return const AnalyticsModel();
     }
   });
