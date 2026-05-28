@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
-import 'ui/screens/splash/splash_screen.dart';
 
 import 'core/network/api_client.dart';
 import 'core/config/app_router.dart';
@@ -15,10 +14,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Initialize API client
   ApiClient.initialize();
-  
+
   // Enable local caching / offline persistence
   FirebaseDatabase.instance.setPersistenceEnabled(true);
 
@@ -45,24 +44,12 @@ class LocalVyapariVendorApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       routerConfig: router,
       builder: (context, child) {
-        final mediaQueryData = MediaQuery.of(context);
-        // Protect layouts from clipping by clamping text scaler within safe boundaries
-        try {
-          final textScaler = mediaQueryData.textScaler.clamp(
-            minScaleFactor: 0.85,
-            maxScaleFactor: 1.15,
-          );
-          return MediaQuery(
-            data: mediaQueryData.copyWith(textScaler: textScaler),
-            child: child!,
-          );
-        } catch (_) {
-          final double clampedScale = mediaQueryData.textScaleFactor.clamp(0.85, 1.15);
-          return MediaQuery(
-            data: mediaQueryData.copyWith(textScaleFactor: clampedScale),
-            child: child!,
-          );
-        }
+        // Protect layouts from clipping by clamping text scaling within safe boundaries.
+        return MediaQuery.withClampedTextScaling(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.15,
+          child: child!,
+        );
       },
     );
   }

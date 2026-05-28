@@ -10,7 +10,7 @@ class AppTextStyles {
     double minScale = 0.85,
     double maxScale = 1.15,
   }) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     // Standard phone baseline is 375.0
     final scaleFactor = (width / 375.0).clamp(minScale, maxScale);
     return baseSize * scaleFactor;
