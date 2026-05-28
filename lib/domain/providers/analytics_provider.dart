@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import '../../data/models/analytics_model.dart';
 import 'auth_provider.dart';
 
@@ -32,13 +33,13 @@ final analyticsProvider = StreamProvider<AnalyticsModel>((ref) {
       final totalsVal = totalsEvent.snapshot.value;
       final dailyVal = dailySnapshot.value;
 
-      final totals = totalsVal != null 
-          ? Map<String, dynamic>.from(totalsVal as Map) 
+      final totals = totalsVal != null
+          ? Map<String, dynamic>.from(totalsVal as Map)
           : <String, dynamic>{};
-      final daily = dailyVal != null 
-          ? Map<String, dynamic>.from(dailyVal as Map) 
+      final daily = dailyVal != null
+          ? Map<String, dynamic>.from(dailyVal as Map)
           : <String, dynamic>{};
-      
+
       final dailyMap = Map<String, DailyStat>.from(
         daily.map((key, val) {
           final valMap = Map<String, dynamic>.from(val as Map);
@@ -48,14 +49,16 @@ final analyticsProvider = StreamProvider<AnalyticsModel>((ref) {
           );
         }),
       );
-      
+
       return AnalyticsModel(
         totalViews: (totals['views'] as num?)?.toInt() ?? 0,
         totalClicks: (totals['clicks'] as num?)?.toInt() ?? 0,
         daily: dailyMap,
       );
     } catch (e, stack) {
-      print('Error parsing analytics: $e\n$stack');
+      if (kDebugMode) {
+        debugPrint('Error parsing analytics: $e\n$stack');
+      }
       return const AnalyticsModel();
     }
   });
