@@ -102,24 +102,18 @@ final chatMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
-  final dbRef = FirebaseDatabase.instance.ref('chats/$vendorId/$userId');
+  // Only load the latest 50 messages
+  final dbRef = FirebaseDatabase.instance
+      .ref('chats/$vendorId/$userId/messages')
+      .orderByChild('timestamp')
+      .limitToLast(50);
+
   return dbRef.onValue.map((event) {
     final snapshot = event.snapshot;
     if (!snapshot.exists || snapshot.value == null) return [];
     if (snapshot.value is! Map) return [];
 
-    final conversation = snapshot.value as Map<dynamic, dynamic>;
-    if (!_belongsToVendorConversation(
-      conversation,
-      vendorId: vendorId,
-      customerId: userId,
-    )) {
-      return [];
-    }
-
-    final messagesMap = conversation['messages'];
-    if (messagesMap is! Map) return [];
-
+    final messagesMap = snapshot.value as Map<dynamic, dynamic>;
     final List<ChatMessage> messages = [];
     messagesMap.forEach((key, value) {
       if (value is Map) {
@@ -136,7 +130,12 @@ final vendorChatsProvider = StreamProvider.autoDispose<List<ChatSummary>>((ref) 
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
-  final dbRef = FirebaseDatabase.instance.ref('chats/$vendorId');
+  // Only fetch last 20 conversations, ordered by most recent message
+  final dbRef = FirebaseDatabase.instance
+      .ref('chats/$vendorId')
+      .orderByChild('lastMessage/timestamp')
+      .limitToLast(20);
+
   return dbRef.onValue.map((event) {
     final snapshot = event.snapshot;
     if (!snapshot.exists || snapshot.value == null) return [];
