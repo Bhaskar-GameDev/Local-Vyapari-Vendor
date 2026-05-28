@@ -10,23 +10,21 @@ import '../../ui/screens/shop/setup_shop_screen.dart';
 import '../../ui/screens/splash/splash_screen.dart';
 import '../../ui/screens/chat/chat_screen.dart';
 
+final authRouteStateProvider = Provider((ref) {
+  return (
+    auth: ref.watch(authStateProvider),
+    shop: ref.watch(shopProvider),
+    profile: ref.watch(userProfileProvider),
+  );
+});
+
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
 
   RouterNotifier(this._ref) {
     _ref.listen(
-      authStateProvider,
-      (_, __) => notifyListeners(),
-      onError: (err, stack) => notifyListeners(),
-    );
-    _ref.listen(
-      shopProvider,
-      (_, __) => notifyListeners(),
-      onError: (err, stack) => notifyListeners(),
-    );
-    _ref.listen(
-      userProfileProvider,
-      (_, __) => notifyListeners(),
+      authRouteStateProvider,
+      (previous, next) => notifyListeners(),
       onError: (err, stack) => notifyListeners(),
     );
   }

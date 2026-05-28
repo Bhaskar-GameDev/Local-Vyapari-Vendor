@@ -8,21 +8,35 @@ final analyticsProvider = StreamProvider<AnalyticsModel>((ref) {
   final user = authState.value;
   if (user == null) return Stream.value(const AnalyticsModel());
 
-  final databaseRef = FirebaseDatabase.instance.ref('analytics').child(user.uid);
-  databaseRef.keepSynced(true);
+  final uid = user.uid;
 
-  return databaseRef.onValue.map((event) {
-    if (event.snapshot.value == null) {
-      return const AnalyticsModel();
-    }
-    
+  // Keep totals synced (small node — always useful offline)
+  FirebaseDatabase.instance.ref('analytics/$uid/totals').keepSynced(true);
+
+  // For daily stats: only query the last 30 days, don't keepSynced the full history
+  final thirtyDaysAgo = DateTime.now()
+      .subtract(const Duration(days: 30))
+      .toIso8601String()
+      .split('T')[0];
+
+  final dailyRef = FirebaseDatabase.instance
+      .ref('analytics/$uid/daily')
+      .orderByKey()
+      .startAt(thirtyDaysAgo);
+
+  final totalsRef = FirebaseDatabase.instance.ref('analytics/$uid/totals');
+
+  return totalsRef.onValue.asyncMap((totalsEvent) async {
     try {
-      final rawData = Map<String, dynamic>.from(event.snapshot.value as Map);
-      final totals = rawData['totals'] != null 
-          ? Map<String, dynamic>.from(rawData['totals'] as Map) 
+      final dailySnapshot = await dailyRef.get();
+      final totalsVal = totalsEvent.snapshot.value;
+      final dailyVal = dailySnapshot.value;
+
+      final totals = totalsVal != null 
+          ? Map<String, dynamic>.from(totalsVal as Map) 
           : <String, dynamic>{};
-      final daily = rawData['daily'] != null 
-          ? Map<String, dynamic>.from(rawData['daily'] as Map) 
+      final daily = dailyVal != null 
+          ? Map<String, dynamic>.from(dailyVal as Map) 
           : <String, dynamic>{};
       
       final dailyMap = Map<String, DailyStat>.from(
