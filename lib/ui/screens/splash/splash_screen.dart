@@ -52,7 +52,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               duration: const Duration(milliseconds: 800),
               slideOffset: 40.0,
               child: Image.asset(
-                'assets/images/logo.png',
+                'assets/images/logo.webp',
                 height: 180,
                 fit: BoxFit.contain,
               ),

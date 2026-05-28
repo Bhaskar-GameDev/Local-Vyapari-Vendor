@@ -29,7 +29,7 @@ class DashboardScreen extends StatelessWidget {
         title: Row(
           children: [
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/logo.webp',
               height: 32,
               fit: BoxFit.contain,
             ),
