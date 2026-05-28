@@ -72,6 +72,7 @@
       "$ownerId": {
         ".read": "auth != null && auth.uid === $ownerId",
         ".write": false,
+        ".indexOn": ["lastMessage/timestamp"],
         "$peerId": {
           ".read": "auth != null && (auth.uid === $ownerId || auth.uid === $peerId)",
           ".write": "auth != null && ((!newData.exists() && auth.uid === $ownerId) || ((auth.uid === $ownerId || auth.uid === $peerId) && ((newData.child('vendorId').val() === $ownerId && newData.child('customerId').val() === $peerId) || (newData.child('vendorId').val() === $peerId && newData.child('customerId').val() === $ownerId)) && newData.child('shopId').val() === newData.child('vendorId').val() && root.child('shop').child(newData.child('vendorId').val()).exists()))",
@@ -85,6 +86,7 @@
             ".validate": "newData.isString() && (newData.val() === $ownerId || newData.val() === $peerId) && root.child('shop').child(newData.val()).exists()"
           },
           "messages": {
+            ".indexOn": ["timestamp"],
             "$messageId": {
               ".validate": "(data.exists() && newData.val() === data.val()) || (newData.hasChildren(['senderId', 'receiverId', 'vendorId', 'customerId', 'shopId', 'text', 'timestamp']) && (newData.child('senderId').val() === $ownerId || newData.child('senderId').val() === $peerId) && (newData.child('receiverId').val() === $ownerId || newData.child('receiverId').val() === $peerId) && newData.child('senderId').val() !== newData.child('receiverId').val() && ((newData.child('vendorId').val() === $ownerId && newData.child('customerId').val() === $peerId) || (newData.child('vendorId').val() === $peerId && newData.child('customerId').val() === $ownerId)) && newData.child('shopId').val() === newData.child('vendorId').val() && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('timestamp').isNumber())"
             }
