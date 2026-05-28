@@ -15,12 +15,14 @@ import '../reviews/product_reviews_screen.dart';
 class ProductsListScreen extends ConsumerWidget {
   const ProductsListScreen({super.key});
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String productId, String productName) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
+      String productId, String productName) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "$productName"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to delete "$productName"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -65,9 +67,10 @@ class ProductsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsState = ref.watch(productsProvider);
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     final isTablet = width >= 600;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,7 +80,8 @@ class ProductsListScreen extends ConsumerWidget {
       body: SafeArea(
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
             child: productsState.when(
               data: (products) {
                 if (products.isEmpty) {
@@ -86,7 +90,10 @@ class ProductsListScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
                         'No products found. Add one!',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ),
                   );
@@ -95,8 +102,10 @@ class ProductsListScreen extends ConsumerWidget {
                   onRefresh: () async => ref.invalidate(productsProvider),
                   child: isTablet
                       ? GridView.builder(
-                          padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          padding: const EdgeInsets.all(
+                              AppDimensions.horizontalPadding),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: isLandscape ? 3 : 2,
                             mainAxisSpacing: AppSpacing.md,
                             crossAxisSpacing: AppSpacing.md,
@@ -105,15 +114,18 @@ class ProductsListScreen extends ConsumerWidget {
                           itemCount: products.length,
                           itemBuilder: (context, index) {
                             final product = products[index];
-                            return _buildProductGridCard(context, ref, product, index);
+                            return _buildProductGridCard(
+                                context, ref, product, index);
                           },
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+                          padding: const EdgeInsets.all(
+                              AppDimensions.horizontalPadding),
                           itemCount: products.length,
                           itemBuilder: (context, index) {
                             final product = products[index];
-                            return _buildProductListCard(context, ref, product, index);
+                            return _buildProductListCard(
+                                context, ref, product, index);
                           },
                         ),
                 );
@@ -122,7 +134,8 @@ class ProductsListScreen extends ConsumerWidget {
               error: (error, stack) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+                  child: Text('Error: $error',
+                      style: const TextStyle(color: AppColors.error)),
                 ),
               ),
             ),
@@ -134,7 +147,7 @@ class ProductsListScreen extends ConsumerWidget {
         onPressed: () {
           Navigator.push(
             context,
-            AppPageRoute.slideUp(const AddProductScreen()),
+            AppPageRoute.slideUp<void>(const AddProductScreen()),
           );
         },
         icon: const Icon(Icons.add),
@@ -143,12 +156,13 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductListCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
+  Widget _buildProductListCard(
+      BuildContext context, WidgetRef ref, ProductModel product, int index) {
     final hasImage = product.images.isNotEmpty;
     final ratingDist = ref.watch(productRatingProvider(product.id));
     final rating = ratingDist.averageRating;
     final totalRatings = ratingDist.totalCount;
-    
+
     return FadeInSlide(
       duration: const Duration(milliseconds: 400),
       delay: Duration(milliseconds: index * 50),
@@ -157,7 +171,9 @@ class ProductsListScreen extends ConsumerWidget {
         onTap: () {
           Navigator.push(
             context,
-            AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
+            AppPageRoute.slideUp<void>(
+              AddProductScreen(existingProduct: product),
+            ),
           );
         },
         child: Card(
@@ -177,9 +193,12 @@ class ProductsListScreen extends ConsumerWidget {
                         ? Image.network(
                             product.images.first,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.inventory_2_outlined,
+                                color: AppColors.primary),
                           )
-                        : const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 28),
+                        : const Icon(Icons.inventory_2_outlined,
+                            color: AppColors.primary, size: 28),
                   ),
                 ),
                 AppSpacing.horizontalMd,
@@ -190,7 +209,10 @@ class ProductsListScreen extends ConsumerWidget {
                     children: [
                       Text(
                         product.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: AppColors.textPrimary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -199,7 +221,8 @@ class ProductsListScreen extends ConsumerWidget {
                         children: [
                           Text(
                             product.category,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
                           AppSpacing.horizontalSm,
                           Container(
@@ -216,7 +239,8 @@ class ProductsListScreen extends ConsumerWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute<void>(
-                                  builder: (context) => ProductReviewsScreen(product: product),
+                                  builder: (context) =>
+                                      ProductReviewsScreen(product: product),
                                 ),
                               );
                             },
@@ -226,7 +250,9 @@ class ProductsListScreen extends ConsumerWidget {
                               children: [
                                 Icon(
                                   Icons.star_rounded,
-                                  color: totalRatings > 0 ? Colors.amber : AppColors.textHint,
+                                  color: totalRatings > 0
+                                      ? Colors.amber
+                                      : AppColors.textHint,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 2),
@@ -237,8 +263,12 @@ class ProductsListScreen extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: totalRatings > 0 ? AppColors.primary : AppColors.textSecondary,
-                                    decoration: totalRatings > 0 ? TextDecoration.underline : TextDecoration.none,
+                                    color: totalRatings > 0
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                    decoration: totalRatings > 0
+                                        ? TextDecoration.underline
+                                        : TextDecoration.none,
                                   ),
                                 ),
                                 if (totalRatings > 0) ...[
@@ -259,7 +289,10 @@ class ProductsListScreen extends ConsumerWidget {
                         children: [
                           Text(
                             '₹${product.offerPrice ?? product.actualPrice}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                                fontSize: 14),
                           ),
                           if (product.offerPrice != null) ...[
                             AppSpacing.horizontalXs,
@@ -284,13 +317,17 @@ class ProductsListScreen extends ConsumerWidget {
                     Switch(
                       value: product.isActive,
                       onChanged: (val) {
-                        ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                        ref
+                            .read(productsProvider.notifier)
+                            .toggleProductAvailability(product.id, val);
                       },
-                      activeColor: AppColors.success,
+                      activeThumbColor: AppColors.success,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
-                      onPressed: () => _confirmDelete(context, ref, product.id, product.name),
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: AppColors.error, size: 20),
+                      onPressed: () => _confirmDelete(
+                          context, ref, product.id, product.name),
                     ),
                   ],
                 ),
@@ -302,7 +339,8 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductGridCard(BuildContext context, WidgetRef ref, ProductModel product, int index) {
+  Widget _buildProductGridCard(
+      BuildContext context, WidgetRef ref, ProductModel product, int index) {
     final hasImage = product.images.isNotEmpty;
     final ratingDist = ref.watch(productRatingProvider(product.id));
     final rating = ratingDist.averageRating;
@@ -316,7 +354,9 @@ class ProductsListScreen extends ConsumerWidget {
         onTap: () {
           Navigator.push(
             context,
-            AppPageRoute.slideUp(AddProductScreen(existingProduct: product)),
+            AppPageRoute.slideUp<void>(
+              AddProductScreen(existingProduct: product),
+            ),
           );
         },
         child: Card(
@@ -333,21 +373,30 @@ class ProductsListScreen extends ConsumerWidget {
                         ? Image.network(
                             product.images.first,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 40),
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.inventory_2_outlined,
+                                color: AppColors.primary,
+                                size: 40),
                           )
-                        : const Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 40),
+                        : const Icon(Icons.inventory_2_outlined,
+                            color: AppColors.primary, size: 40),
                     Positioned(
                       top: 6,
                       right: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated.withOpacity(0.9),
+                          color:
+                              AppColors.surfaceElevated.withValues(alpha: 0.9),
                           borderRadius: AppRadius.borderXs,
                         ),
                         child: Text(
                           product.category,
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -359,15 +408,17 @@ class ProductsListScreen extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute<void>(
-                              builder: (context) => ProductReviewsScreen(product: product),
+                              builder: (context) =>
+                                  ProductReviewsScreen(product: product),
                             ),
                           );
                         },
                         behavior: HitTestBehavior.opaque,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.65),
+                            color: Colors.black.withValues(alpha: 0.65),
                             borderRadius: AppRadius.borderXs,
                           ),
                           child: Row(
@@ -375,7 +426,9 @@ class ProductsListScreen extends ConsumerWidget {
                             children: [
                               Icon(
                                 Icons.star_rounded,
-                                color: totalRatings > 0 ? Colors.amber : Colors.white70,
+                                color: totalRatings > 0
+                                    ? Colors.amber
+                                    : Colors.white70,
                                 size: 12,
                               ),
                               const SizedBox(width: 2),
@@ -404,7 +457,10 @@ class ProductsListScreen extends ConsumerWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -416,7 +472,10 @@ class ProductsListScreen extends ConsumerWidget {
                           children: [
                             Text(
                               '₹${product.offerPrice ?? product.actualPrice}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                  fontSize: 13),
                             ),
                             if (product.offerPrice != null) ...[
                               AppSpacing.horizontalXs,
@@ -435,8 +494,12 @@ class ProductsListScreen extends ConsumerWidget {
                           'Stock: ${product.stockQuantity}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: product.stockQuantity < 5 ? AppColors.error : AppColors.textSecondary,
-                            fontWeight: product.stockQuantity < 5 ? FontWeight.bold : FontWeight.normal,
+                            color: product.stockQuantity < 5
+                                ? AppColors.error
+                                : AppColors.textSecondary,
+                            fontWeight: product.stockQuantity < 5
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ],
@@ -448,15 +511,21 @@ class ProductsListScreen extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            const Text('Active', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const Text('Active',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary)),
                             Transform.scale(
                               scale: 0.75,
                               child: Switch(
                                 value: product.isActive,
                                 onChanged: (val) {
-                                  ref.read(productsProvider.notifier).toggleProductAvailability(product.id, val);
+                                  ref
+                                      .read(productsProvider.notifier)
+                                      .toggleProductAvailability(
+                                          product.id, val);
                                 },
-                                activeColor: AppColors.success,
+                                activeThumbColor: AppColors.success,
                               ),
                             ),
                           ],
@@ -464,8 +533,10 @@ class ProductsListScreen extends ConsumerWidget {
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-                          onPressed: () => _confirmDelete(context, ref, product.id, product.name),
+                          icon: const Icon(Icons.delete_outline_rounded,
+                              color: AppColors.error, size: 18),
+                          onPressed: () => _confirmDelete(
+                              context, ref, product.id, product.name),
                         ),
                       ],
                     ),

@@ -84,7 +84,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Chat'),
-        content: const Text('Are you sure you want to delete this entire conversation? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this entire conversation? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -117,7 +118,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<ChatMessage>>>(chatMessagesProvider(widget.userId), (previous, next) {
+    ref.listen<AsyncValue<List<ChatMessage>>>(
+        chatMessagesProvider(widget.userId), (previous, next) {
       if (next.hasValue && next.value!.isNotEmpty) {
         ref.read(chatServiceProvider).markAsRead(widget.userId);
         _scrollToBottom(animated: true);
@@ -154,7 +156,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.05),
+                              color: AppColors.primary.withValues(alpha: 0.05),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -166,7 +168,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           AppSpacing.verticalMd,
                           Text(
                             'Start a conversation',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
@@ -174,7 +179,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           AppSpacing.verticalXs,
                           Text(
                             'Send a friendly message to begin the chat.',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
                           ),
@@ -191,37 +199,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+                  padding:
+                      const EdgeInsets.all(AppDimensions.horizontalPadding),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == currentUserId;
 
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.75,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isMe ? AppColors.primary : AppColors.surfaceElevated,
+                          color: isMe
+                              ? AppColors.primary
+                              : AppColors.surfaceElevated,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
-                            bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                            bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                            bottomLeft:
+                                isMe ? const Radius.circular(16) : Radius.zero,
+                            bottomRight:
+                                isMe ? Radius.zero : const Radius.circular(16),
                           ),
                         ),
                         child: Column(
-                          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               message.text,
                               style: TextStyle(
-                                color: isMe ? Colors.white : AppColors.textPrimary,
+                                color:
+                                    isMe ? Colors.white : AppColors.textPrimary,
                                 fontSize: 14.5,
                               ),
                             ),
@@ -229,7 +247,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             Text(
                               DateFormat('hh:mm a').format(message.timestamp),
                               style: TextStyle(
-                                color: isMe ? Colors.white60 : AppColors.textSecondary,
+                                color: isMe
+                                    ? Colors.white60
+                                    : AppColors.textSecondary,
                                 fontSize: 9.5,
                               ),
                             ),
@@ -249,20 +269,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-          
+
           // Message input bar
           Container(
             padding: EdgeInsets.only(
               left: 12.0,
               right: 12.0,
               top: 8.0,
-              bottom: MediaQuery.of(context).padding.bottom + 8.0,
+              bottom: MediaQuery.paddingOf(context).bottom + 8.0,
             ),
             decoration: BoxDecoration(
               color: AppColors.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 4,
                   offset: const Offset(0, -2),
                 ),
