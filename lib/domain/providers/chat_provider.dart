@@ -57,18 +57,71 @@ class ChatSummary {
   });
 }
 
+String? _stringValue(dynamic value) {
+  final text = value?.toString().trim();
+  return text == null || text.isEmpty ? null : text;
+}
+
+String? _conversationVendorId(Map<dynamic, dynamic> conversation) {
+  final lastMessage = conversation['lastMessage'];
+  final lastMessageMap = lastMessage is Map ? lastMessage : const {};
+
+  return _stringValue(conversation['vendorId']) ??
+      _stringValue(conversation['shopId']) ??
+      _stringValue(conversation['merchantId']) ??
+      _stringValue(lastMessageMap['vendorId']) ??
+      _stringValue(lastMessageMap['shopId']) ??
+      _stringValue(lastMessageMap['merchantId']);
+}
+
+String? _conversationCustomerId(Map<dynamic, dynamic> conversation) {
+  final lastMessage = conversation['lastMessage'];
+  final lastMessageMap = lastMessage is Map ? lastMessage : const {};
+
+  return _stringValue(conversation['customerId']) ??
+      _stringValue(conversation['userId']) ??
+      _stringValue(lastMessageMap['customerId']) ??
+      _stringValue(lastMessageMap['userId']);
+}
+
+bool _belongsToVendorConversation(
+  Map<dynamic, dynamic> conversation, {
+  required String vendorId,
+  required String customerId,
+}) {
+  final scopedVendorId = _conversationVendorId(conversation);
+  final scopedCustomerId = _conversationCustomerId(conversation);
+
+  if (scopedVendorId != null && scopedVendorId != vendorId) return false;
+  if (scopedCustomerId != null && scopedCustomerId != customerId) return false;
+
+  return true;
+}
+
 final chatMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, userId) {
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
-  final dbRef = FirebaseDatabase.instance.ref('chats/$vendorId/$userId/messages');
+  final dbRef = FirebaseDatabase.instance.ref('chats/$vendorId/$userId');
   return dbRef.onValue.map((event) {
     final snapshot = event.snapshot;
     if (!snapshot.exists || snapshot.value == null) return [];
+    if (snapshot.value is! Map) return [];
+
+    final conversation = snapshot.value as Map<dynamic, dynamic>;
+    if (!_belongsToVendorConversation(
+      conversation,
+      vendorId: vendorId,
+      customerId: userId,
+    )) {
+      return [];
+    }
+
+    final messagesMap = conversation['messages'];
+    if (messagesMap is! Map) return [];
 
     final List<ChatMessage> messages = [];
-    final map = snapshot.value as Map<dynamic, dynamic>;
-    map.forEach((key, value) {
+    messagesMap.forEach((key, value) {
       if (value is Map) {
         messages.add(ChatMessage.fromRTDB(key.toString(), value));
       }
@@ -87,14 +140,27 @@ final vendorChatsProvider = StreamProvider.autoDispose<List<ChatSummary>>((ref) 
   return dbRef.onValue.map((event) {
     final snapshot = event.snapshot;
     if (!snapshot.exists || snapshot.value == null) return [];
+    if (snapshot.value is! Map) return [];
 
     final List<ChatSummary> summaries = [];
     final map = snapshot.value as Map<dynamic, dynamic>;
     map.forEach((userId, value) {
       if (value is Map && value.containsKey('lastMessage')) {
-        final lastMsg = value['lastMessage'] as Map;
+        final customerId = userId.toString();
+        if (!_belongsToVendorConversation(
+          value,
+          vendorId: vendorId,
+          customerId: customerId,
+        )) {
+          return;
+        }
+
+        final lastMsgValue = value['lastMessage'];
+        if (lastMsgValue is! Map) return;
+
+        final lastMsg = lastMsgValue;
         summaries.add(ChatSummary(
-          userId: userId.toString(),
+          userId: customerId,
           userName: value['userName']?.toString() ?? 'Customer',
           lastMessageText: lastMsg['text']?.toString() ?? '',
           timestamp: DateTime.fromMillisecondsSinceEpoch(
@@ -119,6 +185,7 @@ class ChatService {
   Future<void> sendVendorMessage({
     required String userId,
     required String text,
+    required String shopId,
     String? shopName,
     String? shopLogo,
   }) async {
@@ -128,6 +195,10 @@ class ChatService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final messageData = {
       'senderId': vendorId,
+      'receiverId': userId,
+      'vendorId': vendorId,
+      'customerId': userId,
+      'shopId': shopId,
       'text': text.trim(),
       'timestamp': timestamp,
     };
@@ -136,29 +207,49 @@ class ChatService {
     final messageId = messageRef.key;
 
     if (messageId != null) {
-      final Map<String, dynamic> updates = {
-        'chats/$vendorId/$userId/messages/$messageId': messageData,
-        'chats/$userId/$vendorId/messages/$messageId': messageData,
-        'chats/$vendorId/$userId/lastMessage': {
+      final vendorConversationUpdate = {
+        'vendorId': vendorId,
+        'customerId': userId,
+        'shopId': shopId,
+        'messages/$messageId': messageData,
+        'lastMessage': {
           'text': text.trim(),
           'timestamp': timestamp,
+          'senderId': vendorId,
+          'vendorId': vendorId,
+          'customerId': userId,
+          'shopId': shopId,
           'unread': false,
         },
-        'chats/$userId/$vendorId/lastMessage': {
+      };
+
+      final customerConversationUpdate = {
+        'vendorId': vendorId,
+        'customerId': userId,
+        'shopId': shopId,
+        'messages/$messageId': messageData,
+        'lastMessage': {
           'text': text.trim(),
           'timestamp': timestamp,
+          'senderId': vendorId,
+          'vendorId': vendorId,
+          'customerId': userId,
+          'shopId': shopId,
           'unread': true, // User has not read it yet
-        }
+        },
       };
 
       if (shopName != null && shopName.isNotEmpty) {
-        updates['chats/$userId/$vendorId/shopName'] = shopName;
+        customerConversationUpdate['shopName'] = shopName;
       }
       if (shopLogo != null && shopLogo.isNotEmpty) {
-        updates['chats/$userId/$vendorId/shopLogo'] = shopLogo;
+        customerConversationUpdate['shopLogo'] = shopLogo;
       }
 
-      await _rtdb.ref().update(updates);
+      await Future.wait([
+        _rtdb.ref('chats/$vendorId/$userId').update(vendorConversationUpdate),
+        _rtdb.ref('chats/$userId/$vendorId').update(customerConversationUpdate),
+      ]);
     }
   }
 

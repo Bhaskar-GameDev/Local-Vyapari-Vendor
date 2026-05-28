@@ -44,10 +44,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final shop = shopState.value;
     final shopName = shop?.name ?? 'Vendor';
     final shopLogo = shop?.logoUrl ?? '';
+    final shopId = shop?.id ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (shopId.isEmpty) return;
 
     ref.read(chatServiceProvider).sendVendorMessage(
           userId: widget.userId,
           text: text,
+          shopId: shopId,
           shopName: shopName,
           shopLogo: shopLogo,
         );
