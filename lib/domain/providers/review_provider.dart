@@ -71,6 +71,7 @@ final productReviewsProvider = StreamProvider.family<List<ProductReview>, String
   return FirebaseFirestore.instance
       .collection('product_reviews')
       .where('productId', isEqualTo: productId)
+      .orderBy('createdAt', descending: true)
       .snapshots()
       .map((snapshot) => snapshot.docs
           .map((doc) => ProductReview.fromFirestore(doc))
