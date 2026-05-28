@@ -343,11 +343,16 @@ exports.resetPasswordWithOtp = functions.https.onCall(async (data, context) => {
 // BUG-6: getCloudinarySignature
 // Security Rationale: Compute signature server-side using secure secret from environment
 exports.getCloudinarySignature = functions.https.onCall(async (data, context) => {
-    const apiSecret = process.env.CLOUDINARY_API_SECRET || "cV_hIAno_zl_MGSeG5e7rPhutBs";
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!apiSecret || !apiKey || !cloudName) {
+        throw new functions.https.HttpsError("failed-precondition", "Cloudinary configuration is missing on the server.");
+    }
     const timestamp = Math.round(new Date().getTime() / 1000);
     const strToSign = `timestamp=${timestamp}${apiSecret}`;
     const signature = crypto.createHash("sha1").update(strToSign).digest("hex");
-    return { signature, timestamp };
+    return { signature, timestamp, apiKey, cloudName };
 });
 // IMP-1: Firebase Custom Auth Claims for role enforcement
 // Security Rationale: Roles must be strictly verified and assigned server-side.

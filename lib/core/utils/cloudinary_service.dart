@@ -17,6 +17,10 @@ class CloudinaryService {
       final result = Map<String, dynamic>.from(response.data);
       final signature = result['signature'] as String;
       final timestamp = (result['timestamp'] as num).toInt();
+      final apiKey = result['apiKey'] as String? ?? '927593687989798';
+      final cloudName = result['cloudName'] as String? ?? _cloudName;
+
+      final uploadUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
 
       if (kDebugMode) {
         debugPrint(
@@ -28,10 +32,11 @@ class CloudinaryService {
         'file': await MultipartFile.fromFile(filePath),
         'timestamp': timestamp,
         'signature': signature,
+        'api_key': apiKey,
       });
 
       final uploadResponse = await _dio.post<dynamic>(
-        _uploadUrl,
+        uploadUrl,
         data: formData,
         onSendProgress: onSendProgress,
       );
