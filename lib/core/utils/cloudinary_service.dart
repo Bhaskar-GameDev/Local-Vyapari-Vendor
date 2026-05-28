@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 
 class CloudinaryService {
   static const String _cloudName = 'drn2kxnrz';
-  static const String _apiKey = '927593687989798';
   static const String _uploadUrl = 'https://api.cloudinary.com/v1_1/$_cloudName/image/upload';
   static final Dio _dio = Dio();
 
@@ -20,7 +19,6 @@ class CloudinaryService {
       // 2. Upload file
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(filePath),
-        'api_key': _apiKey,
         'timestamp': timestamp,
         'signature': signature,
       });
