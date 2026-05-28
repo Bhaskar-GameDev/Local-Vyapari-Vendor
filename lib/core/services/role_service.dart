@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RoleService {
@@ -23,14 +24,17 @@ class RoleService {
 
       if (rolesClaim is Map) {
         final rolesMap = Map<String, bool>.from(
-          rolesClaim.map((key, value) => MapEntry(key.toString(), value == true)),
+          rolesClaim
+              .map((key, value) => MapEntry(key.toString(), value == true)),
         );
         if (rolesMap.isNotEmpty) {
           return rolesMap;
         }
       }
     } catch (e) {
-      print("Error fetching roles from JWT claims: $e");
+      if (kDebugMode) {
+        debugPrint('Error fetching roles from JWT claims: $e');
+      }
     }
 
     // Fallback to RTDB
@@ -43,11 +47,14 @@ class RoleService {
       final snapshot = await _rtdb.ref('users').child(uid).child('roles').get();
       if (snapshot.exists && snapshot.value is Map) {
         return Map<String, bool>.from(
-          (snapshot.value as Map).map((key, value) => MapEntry(key.toString(), value == true)),
+          (snapshot.value as Map)
+              .map((key, value) => MapEntry(key.toString(), value == true)),
         );
       }
     } catch (e) {
-      print("Error fetching roles from database: $e");
+      if (kDebugMode) {
+        debugPrint('Error fetching roles from database: $e');
+      }
     }
     return {};
   }
@@ -58,10 +65,13 @@ class RoleService {
     if (user == null) return null;
 
     try {
-      final snapshot = await _rtdb.ref('users').child(user.uid).child('activeRole').get();
+      final snapshot =
+          await _rtdb.ref('users').child(user.uid).child('activeRole').get();
       return snapshot.value?.toString();
     } catch (e) {
-      print("Error fetching activeRole: $e");
+      if (kDebugMode) {
+        debugPrint('Error fetching activeRole: $e');
+      }
       return null;
     }
   }
@@ -69,17 +79,18 @@ class RoleService {
   /// Switches activeRole in RTDB
   Future<void> switchActiveRole(String role) async {
     final user = _auth.currentUser;
-    if (user == null) throw Exception("User is not authenticated");
+    if (user == null) throw Exception('User is not authenticated');
 
     final roles = await getRoles();
     if (roles[role] != true) {
-      throw Exception("User does not possess the '$role' role. Unauthorized switch.");
+      throw Exception(
+          "User does not possess the '$role' role. Unauthorized switch.");
     }
 
     try {
       await _rtdb.ref('users').child(user.uid).child('activeRole').set(role);
     } catch (e) {
-      throw Exception("Failed to update active role: $e");
+      throw Exception('Failed to update active role: $e');
     }
   }
 
@@ -106,9 +117,8 @@ class RoleService {
         ? 'https://vendor.localvyapari.com/switch-role'
         : 'https://app.localvyapari.com/switch-role';
 
-    final String detectScheme = targetRole == 'merchant' 
-        ? 'localvyaparivendor://' 
-        : 'localvyapari://';
+    final String detectScheme =
+        targetRole == 'merchant' ? 'localvyaparivendor://' : 'localvyapari://';
 
     final String storeUrl = targetRole == 'merchant'
         ? 'https://play.google.com/store/apps/details?id=com.localvyapari.vendor'
@@ -116,12 +126,14 @@ class RoleService {
 
     try {
       if (await canLaunchUrl(Uri.parse(detectScheme))) {
-        await launchUrl(Uri.parse(targetUrl), mode: LaunchMode.externalApplication);
+        await launchUrl(Uri.parse(targetUrl),
+            mode: LaunchMode.externalApplication);
       } else {
-        await launchUrl(Uri.parse(storeUrl), mode: LaunchMode.externalApplication);
+        await launchUrl(Uri.parse(storeUrl),
+            mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      throw Exception("Error switching app: $e");
+      throw Exception('Error switching app: $e');
     }
   }
 }
