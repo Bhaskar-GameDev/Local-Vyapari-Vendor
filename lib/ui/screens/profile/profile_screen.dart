@@ -15,6 +15,7 @@ import '../../common/custom_text_field.dart';
 import '../shop/setup_shop_screen.dart';
 import '../reviews/vendor_reviews_screen.dart';
 import '../../../data/repositories/shop_repository.dart';
+import '../../../core/providers/theme_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -24,11 +25,35 @@ class ProfileScreen extends ConsumerWidget {
     final shopState = ref.watch(shopProvider);
     final profileState = ref.watch(userProfileProvider);
     final ratingDist = ref.watch(vendorRatingDistributionProvider);
+    final themeMode = ref.watch(themeProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Shop Profile'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: Icon(
+              themeMode == ThemeMode.system
+                  ? Icons.brightness_auto_outlined
+                  : themeMode == ThemeMode.dark
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+            ),
+            tooltip: 'Toggle Theme',
+            onPressed: () {
+              ref.read(themeProvider.notifier).toggleTheme();
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Theme mode: ${ref.read(themeProvider) == ThemeMode.system ? "System Default" : ref.read(themeProvider) == ThemeMode.dark ? "Dark Theme" : "Light Theme"}'),
+                  duration: const Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -118,12 +143,53 @@ class ProfileScreen extends ConsumerWidget {
                     AppSpacing.verticalLg,
                     const Divider(),
                     AppSpacing.verticalMd,
+
+                    Text(
+                      'App Preferences',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    AppSpacing.verticalSm,
+                    Card(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            themeMode == ThemeMode.system
+                                ? Icons.brightness_auto_outlined
+                                : themeMode == ThemeMode.dark
+                                    ? Icons.dark_mode_outlined
+                                    : Icons.light_mode_outlined,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: const Text('App Theme'),
+                        subtitle: Text(
+                          themeMode == ThemeMode.system
+                              ? 'System Default (follows device)'
+                              : themeMode == ThemeMode.dark
+                                  ? 'Dark Theme'
+                                  : 'Light Theme',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _showThemeSelectionSheet(context, ref, themeMode),
+                      ),
+                    ),
+
+                    AppSpacing.verticalLg,
+                    const Divider(),
+                    AppSpacing.verticalMd,
                     
                     Text(
                       'Security & Linked Accounts',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
                           ),
                     ),
                     AppSpacing.verticalSm,
@@ -388,6 +454,77 @@ class ProfileScreen extends ConsumerWidget {
         title: Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
       ),
+    );
+  }
+
+  void _showThemeSelectionSheet(BuildContext context, WidgetRef ref, ThemeMode currentMode) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.horizontalPadding,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Text(
+                    'Select App Theme',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.brightness_auto_outlined),
+                  title: const Text('System Default'),
+                  subtitle: const Text('Follows device settings'),
+                  trailing: currentMode == ThemeMode.system
+                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.system);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.light_mode_outlined),
+                  title: const Text('Light Theme'),
+                  subtitle: const Text('Light background with dark text'),
+                  trailing: currentMode == ThemeMode.light
+                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.light);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.dark_mode_outlined),
+                  title: const Text('Dark Theme'),
+                  subtitle: const Text('Dark background with light text'),
+                  trailing: currentMode == ThemeMode.dark
+                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.dark);
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

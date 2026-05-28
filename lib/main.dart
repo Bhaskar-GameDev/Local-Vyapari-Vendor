@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'core/network/api_client.dart';
 import 'core/config/app_router.dart';
 import 'core/services/notification_service.dart';
+import 'core/providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,11 +38,14 @@ class LocalVyapariVendorApp extends ConsumerWidget {
     ref.watch(notificationServiceProvider);
 
     final router = ref.watch(appRouter);
+    final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
       title: 'Local Vyapari Vendor',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {
         // Protect layouts from clipping by clamping text scaling within safe boundaries.
