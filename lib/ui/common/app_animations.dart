@@ -23,9 +23,10 @@ class FadeInSlide extends StatefulWidget {
 }
 
 class _FadeInSlideState extends State<FadeInSlide> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _slideAnimation;
+  static final Set<Key> _animatedKeys = {};
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
@@ -35,22 +36,30 @@ class _FadeInSlideState extends State<FadeInSlide> with SingleTickerProviderStat
       duration: widget.duration,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: widget.direction == Axis.vertical
+          ? Offset(0.0, widget.slideOffset / 100.0)
+          : Offset(widget.slideOffset / 100.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
 
-    _slideAnimation = Tween<double>(begin: widget.slideOffset, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
-    );
-
-    if (widget.delay == Duration.zero) {
-      _controller.forward();
+    final key = widget.key;
+    if (key != null && _animatedKeys.contains(key)) {
+      _controller.value = 1.0;
     } else {
-      Future.delayed(widget.delay, () {
-        if (mounted) {
-          _controller.forward();
-        }
-      });
+      if (key != null) {
+        _animatedKeys.add(key);
+      }
+      if (widget.delay == Duration.zero) {
+        _controller.forward();
+      } else {
+        Future.delayed(widget.delay, () {
+          if (mounted) {
+            _controller.forward();
+          }
+        });
+      }
     }
   }
 
@@ -62,19 +71,12 @@ class _FadeInSlideState extends State<FadeInSlide> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _fadeAnimation.value,
-          child: Transform.translate(
-            offset: widget.direction == Axis.vertical
-                ? Offset(0.0, _slideAnimation.value)
-                : Offset(_slideAnimation.value, 0.0),
-            child: widget.child,
-          ),
-        );
-      },
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
+      ),
     );
   }
 }
