@@ -34,10 +34,13 @@ final routerNotifierProvider = Provider<RouterNotifier>((ref) {
   return RouterNotifier(ref);
 });
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouter = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
   
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: notifier,
     routes: [

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,7 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import '../../firebase_options.dart';
+import '../config/app_router.dart';
+import '../providers/navigation_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -58,6 +62,28 @@ class NotificationService {
     try {
       await _localNotifications.initialize(
         settings: initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          try {
+            final context = rootNavigatorKey.currentContext;
+            if (context != null) {
+              final payload = response.payload;
+              if (payload != null && payload.isNotEmpty) {
+                try {
+                  final data = json.decode(payload) as Map<String, dynamic>;
+                  if (data['type'] == 'chat') {
+                    _ref.read(navigationIndexProvider.notifier).setIndex(3); // Chats tab
+                    GoRouter.of(context).go('/');
+                    return;
+                  }
+                } catch (e) {
+                  debugPrint('Error parsing notification payload: $e');
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Error handling local notification click: $e');
+          }
+        },
       );
 
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
@@ -72,7 +98,7 @@ class NotificationService {
     }
   }
 
-  Future<void> _showNativeNotification(String title, String body) async {
+  Future<void> _showNativeNotification(String title, String body, {String? payload}) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'vendor_channel_id',
@@ -96,6 +122,7 @@ class NotificationService {
         title: title,
         body: body,
         notificationDetails: platformChannelSpecifics,
+        payload: payload,
       );
     } catch (e) {
       debugPrint('Error displaying native notification: $e');
@@ -122,13 +149,44 @@ class NotificationService {
       if (notification != null) {
         final title = notification.title ?? 'New Alert';
         final body = notification.body ?? 'Check the app for details';
-        _showNativeNotification(title, body);
+        final payload = json.encode(message.data);
+        _showNativeNotification(title, body, payload: payload);
+      }
+    });
+
+    // Handle message opened when app is in background (but not terminated)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('FCM message opened from background: ${message.messageId}');
+      _handleNotificationClick(message);
+    });
+
+    // Check if the app was opened from a terminated state via a notification
+    messaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        debugPrint('FCM message opened from terminated state: ${message.messageId}');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _handleNotificationClick(message);
+        });
       }
     });
 
     messaging.onTokenRefresh.listen((token) {
       _syncDeviceRegistration();
     });
+  }
+
+  void _handleNotificationClick(RemoteMessage message) {
+    try {
+      final context = rootNavigatorKey.currentContext;
+      if (context != null) {
+        if (message.data['type'] == 'chat') {
+          _ref.read(navigationIndexProvider.notifier).setIndex(3); // Chats tab
+          GoRouter.of(context).go('/');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error handling FCM notification click: $e');
+    }
   }
 
   Future<void> _syncDeviceRegistration() async {

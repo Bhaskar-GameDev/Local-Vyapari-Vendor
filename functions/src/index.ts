@@ -834,3 +834,104 @@ export const validateSession = functions.https.onCall(async (data, context) => {
   return { success: true, sessionId: sessionRef.id };
 });
 
+// 17. Send Push Notification on New Chat Message (RTDB trigger)
+export const onChatMessageCreated = functions.database.ref("/chats/{uid1}/{uid2}/messages/{messageId}")
+  .onCreate(async (snapshot, context) => {
+    const messageVal = snapshot.val();
+    if (!messageVal) return null;
+
+    const uid1 = context.params.uid1;
+    const uid2 = context.params.uid2;
+
+    const senderId = messageVal.senderId;
+    const receiverId = messageVal.receiverId;
+    const text = messageVal.text || "";
+
+    // To prevent duplicate triggers (since the message is written under both chats/sender/receiver/messages and chats/receiver/sender/messages),
+    // we only process the event where the first parameter `uid1` equals the `senderId`.
+    if (uid1 !== senderId) {
+      console.log("Duplicate trigger ignored: uid1 is not senderId");
+      return null;
+    }
+
+    console.log(`New message from ${senderId} to ${receiverId}: ${text}`);
+
+    // Determine receiver's expected role. 
+    // If senderId == vendorId/shopId, sender is merchant, receiver is customer.
+    // If senderId != vendorId/shopId (sender is customer), receiver is merchant.
+    const vendorId = messageVal.vendorId || messageVal.shopId || uid2;
+    const isSenderVendor = (senderId === vendorId);
+    const role = isSenderVendor ? "customer" : "merchant";
+
+    // Fetch token for the receiver
+    let tokenSnapshot = await admin.database().ref(`/users_devices/${receiverId}/${role}/fcmToken`).once("value");
+    let token = tokenSnapshot.val();
+
+    if (!token) {
+      // Fallback: check the other role just in case
+      const otherRole = role === "customer" ? "merchant" : "customer";
+      tokenSnapshot = await admin.database().ref(`/users_devices/${receiverId}/${otherRole}/fcmToken`).once("value");
+      token = tokenSnapshot.val();
+    }
+
+    if (!token) {
+      console.log(`No FCM token found for receiver ${receiverId}`);
+      return null;
+    }
+
+    // Fetch sender's name to display in notification
+    let senderName = "New Message";
+    if (isSenderVendor) {
+      // Sender is vendor/merchant. Get shop name.
+      const shopSnapshot = await admin.database().ref(`/shop/${senderId}`).once("value");
+      if (shopSnapshot.exists()) {
+        const shopData = shopSnapshot.val();
+        senderName = shopData.name || shopData.shopName || "Merchant";
+      }
+    } else {
+      // Sender is customer. Get user email/name from users.
+      const senderSnap = await admin.database().ref(`/users/${senderId}`).once("value");
+      if (senderSnap.exists()) {
+        const senderData = senderSnap.val();
+        senderName = senderData.name || senderData.email || "Customer";
+      }
+    }
+
+    const messagePayload = {
+      token: token,
+      notification: {
+        title: senderName,
+        body: text,
+      },
+      android: {
+        notification: {
+          sound: "default",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
+      data: {
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        type: "chat",
+        senderId: senderId,
+        receiverId: receiverId,
+        shopId: isSenderVendor ? senderId : receiverId,
+      },
+    };
+
+    try {
+      const response = await admin.messaging().send(messagePayload);
+      console.log(`Successfully sent chat notification to ${receiverId}:`, response);
+    } catch (error) {
+      console.error("Error sending chat notification:", error);
+    }
+    return null;
+  });
+
+
