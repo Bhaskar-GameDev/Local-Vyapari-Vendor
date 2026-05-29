@@ -235,12 +235,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             : null,
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.horizontalPadding,
-              vertical: AppSpacing.md,
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.horizontalPadding,
+            vertical: AppSpacing.md,
+          ),
+          child: Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(

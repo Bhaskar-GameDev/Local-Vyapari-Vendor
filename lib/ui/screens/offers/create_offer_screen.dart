@@ -127,12 +127,12 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
         title: Text(widget.existingOffer != null ? 'Edit Flash Sale' : 'Create Flash Sale'),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.horizontalPadding,
-              vertical: AppSpacing.md,
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.horizontalPadding,
+            vertical: AppSpacing.md,
+          ),
+          child: Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(
