@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 
 class CloudinaryService {
   static const String _cloudName = 'drn2kxnrz';
-  static const String _uploadUrl =
-      'https://api.cloudinary.com/v1_1/$_cloudName/image/upload';
   static final Dio _dio = Dio();
 
   static Future<String?> uploadImage(String filePath,
@@ -15,10 +13,17 @@ class CloudinaryService {
           FirebaseFunctions.instance.httpsCallable('getCloudinarySignature');
       final response = await callable.call<Map<dynamic, dynamic>>();
       final result = Map<String, dynamic>.from(response.data);
-      final signature = result['signature'] as String;
-      final timestamp = (result['timestamp'] as num).toInt();
-      final apiKey = result['apiKey'] as String? ?? '927593687989798';
+      final signature = result['signature'] as String?;
+      final timestamp = (result['timestamp'] as num?)?.toInt();
+      final apiKey = result['apiKey'] as String?;
       final cloudName = result['cloudName'] as String? ?? _cloudName;
+
+      // Fail closed: never fall back to a baked-in key. A signed upload requires
+      // a server-issued signature/timestamp/apiKey triple that all match.
+      if (signature == null || timestamp == null || apiKey == null) {
+        throw Exception(
+            'Invalid Cloudinary signature response from getCloudinarySignature');
+      }
 
       final uploadUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
 

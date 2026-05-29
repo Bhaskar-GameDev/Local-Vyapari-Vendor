@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import '../models/offer_model.dart';
 
 class OfferRepository {
@@ -13,14 +14,21 @@ class OfferRepository {
 
     return _ref.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
-      if (data == null) return [];
+      if (data is! Map) return <OfferModel>[];
 
-      final map = Map<String, dynamic>.from(data as Map);
-      return map.entries.map((e) {
-        final offerData = Map<String, dynamic>.from(e.value as Map);
-        offerData['id'] = e.key;
-        return OfferModel.fromJson(offerData);
-      }).toList();
+      // Parse per-item so one malformed record can't blank the whole list.
+      final offers = <OfferModel>[];
+      data.forEach((key, value) {
+        if (value is! Map) return;
+        try {
+          final offerData = Map<String, dynamic>.from(value);
+          offerData['id'] = key;
+          offers.add(OfferModel.fromJson(offerData));
+        } catch (e) {
+          if (kDebugMode) debugPrint('Error parsing offer $key: $e');
+        }
+      });
+      return offers;
     });
   }
 

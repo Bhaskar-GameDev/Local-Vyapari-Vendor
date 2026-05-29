@@ -31,8 +31,10 @@ service cloud.firestore {
     }
 
     match /offers/{offerId} {
-      allow read: if resource.data.status == 'active';
-      allow write: if isVendor(request.resource.data.shopId);
+      allow read: if resource.data.status == 'active' || isVendor(resource.data.shopId);
+      allow create: if isVendor(request.resource.data.shopId);
+      allow update: if isVendor(resource.data.shopId);
+      allow delete: if isVendor(resource.data.shopId);
     }
 
     match /analytics_summaries/{summaryId} {

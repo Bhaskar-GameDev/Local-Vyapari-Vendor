@@ -24,6 +24,10 @@ functions/.env
 # is commented out by default.
 #.vscode/
 
+# Firebase config — obtain from Firebase Console (do not commit)
+lib/firebase_options.dart
+android/app/google-services.json
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id

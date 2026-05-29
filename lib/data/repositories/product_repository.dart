@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import '../models/product_model.dart';
 
 class ProductRepository {
@@ -14,14 +15,21 @@ class ProductRepository {
     
     return _dbRef.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
-      if (data == null) return [];
+      if (data is! Map) return <ProductModel>[];
 
-      final map = Map<String, dynamic>.from(data as Map);
-      return map.entries.map((e) {
-        final productData = Map<String, dynamic>.from(e.value as Map);
-        productData['id'] = e.key;
-        return ProductModel.fromJson(productData);
-      }).toList();
+      // Parse per-item so one malformed record can't blank the whole list.
+      final products = <ProductModel>[];
+      data.forEach((key, value) {
+        if (value is! Map) return;
+        try {
+          final productData = Map<String, dynamic>.from(value);
+          productData['id'] = key;
+          products.add(ProductModel.fromJson(productData));
+        } catch (e) {
+          if (kDebugMode) debugPrint('Error parsing product $key: $e');
+        }
+      });
+      return products;
     });
   }
 

@@ -135,7 +135,13 @@ class AuthRepository {
           } else {
             await _auth.signInWithCredential(credential);
           }
-        } catch (_) {}
+        } catch (e) {
+          // Auto-verification is best-effort, but a failure here can leave the
+          // 'phones' index / 'verified' flag out of sync — surface it for debugging.
+          if (kDebugMode) {
+            debugPrint('Phone auto-verification post-link write failed: $e');
+          }
+        }
       },
       verificationFailed: onFailed,
       codeSent: onCodeSent,
@@ -399,45 +405,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       return false;
     } on FirebaseFunctionsException catch (e) {
       state = AuthNotifierState(error: _repository.mapFunctionsError(e));
-      return false;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString());
-      return false;
-    } finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
-    }
-  }
-
-  Future<bool> registerWithPhoneAndPassword({
-    required String phone,
-    required String password,
-    required String shopName,
-  }) async {
-    state = const AuthNotifierState(isLoading: true, error: null);
-    try {
-      final formattedPhone = phone.trim();
-      final cleanedPhone = formattedPhone.replaceAll(RegExp(r'\D'), '');
-      final email = '$cleanedPhone@localvyapari.com';
-
-      await _repository.register(email, password, 'merchant',
-          shopName: shopName);
-
-      final uid = _repository.currentUser?.uid;
-      if (uid != null) {
-        await FirebaseDatabase.instance.ref('users').child(uid).update({
-          'phone': formattedPhone,
-          'verified': true,
-        });
-        await FirebaseDatabase.instance
-            .ref('phones')
-            .child(formattedPhone)
-            .set(uid);
-      }
-
-      state = const AuthNotifierState();
-      return true;
-    } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());

@@ -1,62 +1,33 @@
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/offer_model.dart';
 import '../../data/repositories/offer_repository.dart';
-import 'auth_provider.dart';
+import 'fb_list_notifier.dart';
 
 final offerRepositoryProvider = Provider<OfferRepository>((ref) => OfferRepository());
 
-class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
-  final Ref _ref;
+class OffersNotifier extends FBListNotifier<OfferModel> {
   final OfferRepository _repository;
-  StreamSubscription? _subscription;
 
-  OffersNotifier(this._ref, this._repository) : super(const AsyncValue.loading()) {
-    _bindToUser(_ref.read(authStateProvider).value);
-    _ref.listen<AsyncValue<User?>>(authStateProvider, (_, next) {
-      _bindToUser(next.value);
-    });
-  }
-
-  void _bindToUser(User? user) {
-    _subscription?.cancel();
-    if (user == null) {
-      state = const AsyncValue.data([]);
-      return;
-    }
-
-    state = const AsyncValue.loading();
-    _subscription = _repository.watchOffersForShop(user.uid).listen((offers) {
-      state = AsyncValue.data(offers);
-    }, onError: (Object e, StackTrace st) {
-      state = AsyncValue.error(e, st);
-    });
-  }
-
-  Future<void> addOffer(OfferModel offer) async {
-    await _repository.addOffer(offer);
-  }
-
-  Future<void> updateOffer(OfferModel offer) async {
-    await _repository.updateOffer(offer);
-  }
-
-  Future<void> deleteOffer(String offerId) async {
-    await _repository.deleteOffer(offerId);
-  }
-
-  Future<void> toggleOfferAvailability(String offerId, bool isActive) async {
-    await _repository.updateOfferStatus(offerId, isActive);
-  }
+  OffersNotifier(super.ref, this._repository);
 
   @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
+  Stream<List<OfferModel>> watchForUser(String uid) =>
+      _repository.watchOffersForShop(uid);
+
+  Future<void> addOffer(OfferModel offer) =>
+      _repository.addOffer(offer);
+
+  Future<void> updateOffer(OfferModel offer) =>
+      _repository.updateOffer(offer);
+
+  Future<void> deleteOffer(String offerId) =>
+      _repository.deleteOffer(offerId);
+
+  Future<void> toggleOfferAvailability(String offerId, bool isActive) =>
+      _repository.updateOfferStatus(offerId, isActive);
 }
 
-final offersProvider = StateNotifierProvider<OffersNotifier, AsyncValue<List<OfferModel>>>((ref) {
+final offersProvider =
+    StateNotifierProvider<OffersNotifier, AsyncValue<List<OfferModel>>>((ref) {
   return OffersNotifier(ref, ref.watch(offerRepositoryProvider));
 });

@@ -10,10 +10,21 @@ class ShopRepository {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
     final snapshot = await _dbRef.child(uid).get();
-    if (!snapshot.exists || snapshot.value == null) return null;
+    if (snapshot.value is! Map) return null;
     final data = Map<String, dynamic>.from(snapshot.value as Map);
     data['id'] = uid;
     return ShopModel.fromJson(data);
+  }
+
+  Stream<ShopModel?> watchShopProfile(String uid) {
+    final ref = _dbRef.child(uid);
+    ref.keepSynced(true);
+    return ref.onValue.map((event) {
+      if (event.snapshot.value is! Map) return null;
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      data['id'] = uid;
+      return ShopModel.fromJson(data);
+    });
   }
 
   Future<void> updateShopProfile(ShopModel shop) async {

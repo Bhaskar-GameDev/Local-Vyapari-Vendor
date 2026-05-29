@@ -58,14 +58,14 @@
     },
     "password_resets": {
       "$phone": {
-        ".read": "true",
-        ".write": "!data.exists() && newData.child('status').val() === 'pending'"
+        ".read": "false",
+        ".write": "false"
       }
     },
     "analytics": {
       "$vendorUid": {
         ".read": "auth != null && auth.uid === $vendorUid",
-        ".write": "auth != null"
+        ".write": "auth != null && auth.uid === $vendorUid"
       }
     },
     "chats": {
