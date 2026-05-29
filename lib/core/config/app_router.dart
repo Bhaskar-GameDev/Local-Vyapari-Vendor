@@ -81,13 +81,13 @@ final appRouter = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/chat',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra as Map<dynamic, dynamic>?;
           final userId = extra?['userId']?.toString() ?? '';
           final userName = extra?['userName']?.toString() ?? '';
-          return ChatScreen(
-            userId: userId,
-            userName: userName,
+          return buildSlideRightPage(
+            key: state.pageKey,
+            child: ChatScreen(userId: userId, userName: userName),
           );
         },
       ),
@@ -176,17 +176,23 @@ CustomTransitionPage<T> buildFadeThroughPage<T>({
     transitionDuration: const Duration(milliseconds: 350),
     reverseTransitionDuration: const Duration(milliseconds: 250),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final scaleCurve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-      final scaleAnimation = Tween<double>(begin: 0.94, end: 1.0).animate(scaleCurve);
-      
-      final fadeCurve = CurvedAnimation(parent: animation, curve: Curves.easeIn);
-      final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(fadeCurve);
+      final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      final enterScale = Tween<double>(begin: 0.94, end: 1.0)
+          .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+
+      final exitFade = Tween<double>(begin: 1.0, end: 0.85)
+          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final exitScale = Tween<double>(begin: 1.0, end: 0.96)
+          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
       return FadeTransition(
-        opacity: fadeAnimation,
+        opacity: exitFade,
         child: ScaleTransition(
-          scale: scaleAnimation,
-          child: child,
+          scale: exitScale,
+          child: FadeTransition(
+            opacity: enterFade,
+            child: ScaleTransition(scale: enterScale, child: child),
+          ),
         ),
       );
     },
@@ -200,22 +206,81 @@ CustomTransitionPage<T> buildSlideRightPage<T>({
   return CustomTransitionPage<T>(
     key: key,
     child: child,
-    transitionDuration: const Duration(milliseconds: 400),
-    reverseTransitionDuration: const Duration(milliseconds: 300),
+    transitionDuration: const Duration(milliseconds: 380),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final slideCurve = CurvedAnimation(
+      final enterSlide = Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ));
+
+      final exitSlide = Tween<Offset>(
+        begin: Offset.zero,
+        end: const Offset(-0.3, 0.0),
+      ).animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOut));
+      final exitDim = Tween<double>(begin: 1.0, end: 0.85)
+          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+
+      return SlideTransition(
+        position: exitSlide,
+        child: FadeTransition(
+          opacity: exitDim,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(-6, 0),
+                ),
+              ],
+            ),
+            child: SlideTransition(position: enterSlide, child: child),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+CustomTransitionPage<T> buildSlideUpPage<T>({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: key,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 420),
+    reverseTransitionDuration: const Duration(milliseconds: 320),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final enterSlide = Tween<Offset>(
+        begin: const Offset(0.0, 0.12),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
         parent: animation,
         curve: Curves.easeOutQuart,
         reverseCurve: Curves.easeInQuint,
-      );
-      final slideAnimation = Tween<Offset>(
-        begin: const Offset(1.0, 0.0),
-        end: Offset.zero,
-      ).animate(slideCurve);
+      ));
+      final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
 
-      return SlideTransition(
-        position: slideAnimation,
-        child: child,
+      final secScale = Tween<double>(begin: 1.0, end: 0.94)
+          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final secDim = Tween<double>(begin: 1.0, end: 0.78)
+          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+
+      return ScaleTransition(
+        scale: secScale,
+        child: FadeTransition(
+          opacity: secDim,
+          child: FadeTransition(
+            opacity: enterFade,
+            child: SlideTransition(position: enterSlide, child: child),
+          ),
+        ),
       );
     },
   );

@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
 import 'create_offer_screen.dart';
 
@@ -39,92 +40,119 @@ class OffersListScreen extends ConsumerWidget {
                     ),
                   );
                 }
-                return ListView.builder(
-                  padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
-                  itemCount: offers.length,
-                  itemBuilder: (context, index) {
-                    final offer = offers[index];
-                    final endDate = DateTime.parse(offer.endDate);
-                    final isExpired = endDate.isBefore(DateTime.now());
-                    final effectiveActive = offer.isActive && !isExpired;
 
-                    return FadeInSlide(
-                      duration: const Duration(milliseconds: 400),
-                      delay: Duration(milliseconds: index * 60),
-                      slideOffset: 16,
-                      child: ScaleOnTap(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            AppPageRoute.slideUp(CreateOfferScreen(existingOffer: offer)),
-                          );
-                        },
-                        child: Card(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: AppSpacing.sm,
+                final hPad = Responsive.horizontalPadding(context);
+                final cols = Responsive.offerGridColumns(context);
+                final padding = EdgeInsets.fromLTRB(hPad, hPad, hPad, hPad);
+
+                Widget buildOfferTile(int index) {
+                  final offer = offers[index];
+                  final endDate = DateTime.parse(offer.endDate);
+                  final isExpired = endDate.isBefore(DateTime.now());
+                  final effectiveActive = offer.isActive && !isExpired;
+
+                  return FadeInSlide(
+                    duration: const Duration(milliseconds: 400),
+                    delay: Duration(milliseconds: index * 60),
+                    slideOffset: 16,
+                    child: ScaleOnTap(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          AppPageRoute.slideUp(CreateOfferScreen(existingOffer: offer)),
+                        );
+                      },
+                      child: Card(
+                        margin: cols == 1 ? const EdgeInsets.only(bottom: AppSpacing.sm) : EdgeInsets.zero,
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
+                          ),
+                          leading: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: (effectiveActive ? AppColors.warning : Colors.grey).withValues(alpha: 0.15),
+                              borderRadius: AppRadius.borderSm,
                             ),
-                            leading: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: (effectiveActive ? AppColors.warning : Colors.grey).withOpacity(0.15),
-                                borderRadius: AppRadius.borderSm,
-                              ),
-                              child: Icon(
-                                Icons.local_offer_rounded,
-                                color: effectiveActive ? AppColors.warning : Colors.grey,
-                                size: 22,
-                              ),
+                            child: Icon(
+                              Icons.local_offer_rounded,
+                              color: effectiveActive ? AppColors.warning : Colors.grey,
+                              size: 22,
                             ),
-                            title: Text(
-                              offer.title,
+                          ),
+                          title: Text(
+                            offer.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: effectiveActive ? AppColors.textPrimary : AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.xs),
+                            child: Text(
+                              isExpired
+                                  ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}'
+                                  : '${offer.discountPercentage.toInt()}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: effectiveActive ? AppColors.textPrimary : AppColors.textSecondary,
+                                fontSize: 12,
+                                color: isExpired ? AppColors.error : AppColors.textSecondary,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: AppSpacing.xs),
-                              child: Text(
-                                isExpired 
-                                    ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}' 
-                                    : '${offer.discountPercentage.toInt()}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isExpired ? AppColors.error : AppColors.textSecondary,
-                                ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Switch(
+                                value: effectiveActive,
+                                onChanged: isExpired
+                                    ? null
+                                    : (val) {
+                                        ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
+                                      },
+                                activeThumbColor: AppColors.success,
                               ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Switch(
-                                  value: effectiveActive,
-                                  onChanged: isExpired ? null : (val) {
-                                    ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
-                                  },
-                                  activeColor: AppColors.success,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                                  onPressed: () {
-                                    ref.read(offersProvider.notifier).deleteOffer(offer.id);
-                                  },
-                                ),
-                              ],
-                            ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                                onPressed: () {
+                                  ref.read(offersProvider.notifier).deleteOffer(offer.id);
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  );
+                }
+
+                if (cols == 2) {
+                  return GridView.builder(
+                    padding: padding,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.55,
+                    ),
+                    itemCount: offers.length,
+                    itemBuilder: (_, i) => buildOfferTile(i),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: padding,
+                  itemCount: offers.length,
+                  itemBuilder: (_, i) => buildOfferTile(i),
                 );
               },
-              loading: () => _buildShimmerLoading(),
+              loading: () => _buildShimmerLoading(context),
               error: (error, stack) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -149,24 +177,36 @@ class OffersListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildShimmerLoading() {
+  Widget _buildShimmerLoading(BuildContext context) {
+    final hPad = Responsive.horizontalPadding(context);
+    final cols = Responsive.offerGridColumns(context);
+    final shimmerCard = Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Card(
+        child: Container(height: 84, color: Colors.white),
+      ),
+    );
+    if (cols == 2) {
+      return GridView.builder(
+        padding: EdgeInsets.all(hPad),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.55,
+        ),
+        itemCount: 4,
+        itemBuilder: (_, __) => shimmerCard,
+      );
+    }
     return ListView.builder(
-      padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+      padding: EdgeInsets.all(hPad),
       itemCount: 4,
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Card(
-            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Container(
-              height: 84,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              color: Colors.white,
-            ),
-          ),
-        );
-      },
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: shimmerCard,
+      ),
     );
   }
 }

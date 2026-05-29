@@ -29,20 +29,6 @@ class OffersNotifier extends StateNotifier<AsyncValue<List<OfferModel>>> {
     state = const AsyncValue.loading();
     _subscription = _repository.watchOffersForShop(user.uid).listen((offers) {
       state = AsyncValue.data(offers);
-      
-      // Automatically deactivate any expired offers in the database
-      final now = DateTime.now();
-      for (final offer in offers) {
-        if (offer.isActive) {
-          try {
-            final endDate = DateTime.parse(offer.endDate);
-            if (endDate.isBefore(now)) {
-              _repository.updateOfferStatus(offer.id, false);
-            }
-          } catch (_) {}
-        }
-      }
-
     }, onError: (Object e, StackTrace st) {
       state = AsyncValue.error(e, st);
     });

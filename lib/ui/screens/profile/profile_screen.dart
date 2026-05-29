@@ -5,16 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../core/services/role_service.dart';
-import '../../../domain/providers/review_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
+import '../../../data/models/shop_model.dart';
 import '../shop/setup_shop_screen.dart';
-import '../reviews/vendor_reviews_screen.dart';
-import '../../../data/repositories/shop_repository.dart';
 import '../../../core/providers/theme_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -24,7 +22,6 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shopState = ref.watch(shopProvider);
     final profileState = ref.watch(userProfileProvider);
-    final ratingDist = ref.watch(vendorRatingDistributionProvider);
     final themeMode = ref.watch(themeProvider);
 
     return Scaffold(
@@ -73,30 +70,11 @@ class ProfileScreen extends ConsumerWidget {
                     vertical: AppSpacing.md,
                   ),
                   children: [
-                    Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 48,
-                            backgroundColor: AppColors.surfaceElevated,
-                            backgroundImage: shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
-                            child: shop?.logoUrl == null
-                                ? const Icon(Icons.storefront, size: 44, color: AppColors.primary)
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(AppSpacing.xs),
-                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                              child: const Icon(Icons.edit, color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    AppSpacing.verticalLg,
+                    // ── Premium Hero Header ──────────────────────────────
+                    _ProfileHeroHeader(shop: shop),
+                    AppSpacing.verticalMd,
+
+                    // ── Open/Closed toggle ───────────────────────────────
                     Card(
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: SwitchListTile(
@@ -123,13 +101,18 @@ class ProfileScreen extends ConsumerWidget {
                         },
                         title: Text('Shop is Open', style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(shop?.isOpen == true ? 'Customers can see you as open' : 'Customers will see your shop as closed'),
-                        activeColor: AppColors.success,
+                        activeThumbColor: AppColors.success,
                         secondary: Icon(
                           shop?.isOpen == true ? Icons.storefront : Icons.storefront_outlined,
                           color: shop?.isOpen == true ? AppColors.success : AppColors.textSecondary,
                         ),
                       ),
                     ),
+
+                    // ── Shop Details section ─────────────────────────────
+                    AppSpacing.verticalMd,
+                    _SectionLabel(label: 'Shop Details'),
+                    AppSpacing.verticalSm,
                     _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
                     _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
                     _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
@@ -139,17 +122,10 @@ class ProfileScreen extends ConsumerWidget {
                       Icons.map_outlined,
                     ),
                     _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
-                    
-                    AppSpacing.verticalLg,
-                    const Divider(),
-                    AppSpacing.verticalMd,
 
-                    Text(
-                      'App Preferences',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
+                    // ── App Preferences section ──────────────────────────
+                    AppSpacing.verticalLg,
+                    _SectionLabel(label: 'App Preferences'),
                     AppSpacing.verticalSm,
                     Card(
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -157,7 +133,7 @@ class ProfileScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(AppSpacing.sm),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                            color: AppColors.primary.withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -166,7 +142,7 @@ class ProfileScreen extends ConsumerWidget {
                                 : themeMode == ThemeMode.dark
                                     ? Icons.dark_mode_outlined
                                     : Icons.light_mode_outlined,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: AppColors.primary,
                           ),
                         ),
                         title: const Text('App Theme'),
@@ -182,16 +158,9 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
 
+                    // ── Security & Linked Accounts section ───────────────
                     AppSpacing.verticalLg,
-                    const Divider(),
-                    AppSpacing.verticalMd,
-                    
-                    Text(
-                      'Security & Linked Accounts',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
+                    _SectionLabel(label: 'Security & Linked Accounts'),
                     AppSpacing.verticalSm,
 
                     profileState.when(
@@ -266,7 +235,7 @@ class ProfileScreen extends ConsumerWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.borderLg,
                         side: BorderSide(
-                          color: AppColors.primary.withOpacity(0.15),
+                          color: AppColors.primary.withValues(alpha: 0.15),
                           width: 1,
                         ),
                       ),
@@ -280,7 +249,7 @@ class ProfileScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(AppSpacing.sm),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.08),
+                                  color: AppColors.primary.withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -327,7 +296,7 @@ class ProfileScreen extends ConsumerWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.borderLg,
                         side: BorderSide(
-                          color: AppColors.primary.withOpacity(0.15),
+                          color: AppColors.primary.withValues(alpha: 0.15),
                           width: 1,
                         ),
                       ),
@@ -367,7 +336,7 @@ class ProfileScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(AppSpacing.sm),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.08),
+                                  color: AppColors.primary.withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -595,6 +564,151 @@ class ProfileScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ─── Profile Hero Header ──────────────────────────────────────────────────────
+
+class _ProfileHeroHeader extends StatelessWidget {
+  final ShopModel? shop;
+  const _ProfileHeroHeader({required this.shop});
+
+  @override
+  Widget build(BuildContext context) {
+    final isOpen = shop?.isOpen ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Shop logo
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: Colors.white.withValues(alpha: 0.18),
+            backgroundImage: shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
+            child: shop?.logoUrl == null
+                ? const Icon(Icons.storefront, size: 34, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 16),
+          // Shop info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shop?.name ?? 'Your Store',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (shop?.address.isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_rounded, color: Colors.white.withValues(alpha: 0.55), size: 11),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          shop!.address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Open/closed pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: BoxDecoration(
+                              color: isOpen ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isOpen ? 'Open' : 'Closed',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (shop?.rating != null && (shop?.rating ?? 0) > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 12),
+                            const SizedBox(width: 3),
+                            Text(
+                              shop!.rating!.toStringAsFixed(1),
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Section Label ────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }

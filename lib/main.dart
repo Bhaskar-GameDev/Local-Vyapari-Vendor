@@ -9,6 +9,7 @@ import 'core/network/api_client.dart';
 import 'core/config/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/providers/theme_provider.dart';
+import 'ui/common/connectivity_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,11 +49,10 @@ class LocalVyapariVendorApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {
-        // Protect layouts from clipping by clamping text scaling within safe boundaries.
         return MediaQuery.withClampedTextScaling(
           minScaleFactor: 0.85,
           maxScaleFactor: 1.15,
-          child: child!,
+          child: ConnectivityBanner(child: child!),
         );
       },
     );

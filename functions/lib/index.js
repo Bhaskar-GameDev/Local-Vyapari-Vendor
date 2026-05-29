@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateSession = exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
+exports.onChatMessageCreated = exports.validateSession = exports.onProductReviewWrite = exports.onShopReviewWrite = exports.onShopProfileUpdate = exports.migrateUserRoles = exports.assignMerchantRole = exports.onUserCreate = exports.onUserCreated = exports.getCloudinarySignature = exports.resetPasswordWithOtp = exports.resolvePhoneLoginEmail = exports.verifyOtp = exports.generateAndSendOtp = exports.onNewOfferAdded = exports.aggregateProductViews = exports.checkExpiredOffers = exports.onInventoryUpdate = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -708,5 +708,101 @@ exports.validateSession = functions.https.onCall(async (data, context) => {
     };
     await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, existingClaims), { roles: currentRoles, activeRole: targetRole, customer: currentRoles.customer, merchant: currentRoles.merchant }));
     return { success: true, sessionId: sessionRef.id };
+});
+// 17. Send Push Notification on New Chat Message (RTDB trigger)
+exports.onChatMessageCreated = functions.database.ref("/chats/{uid1}/{uid2}/messages/{messageId}")
+    .onCreate(async (snapshot, context) => {
+    const messageVal = snapshot.val();
+    if (!messageVal)
+        return null;
+    const uid1 = context.params.uid1;
+    const uid2 = context.params.uid2;
+    const senderId = messageVal.senderId || uid1;
+    // Fallback to uid2 when receiverId is not written into the message (e.g. customer app omits it)
+    const receiverId = messageVal.receiverId || uid2;
+    const text = messageVal.text || "";
+    // Only process the copy written under the sender's uid to avoid duplicate triggers.
+    if (uid1 !== senderId) {
+        console.log("Duplicate trigger ignored: uid1 is not senderId");
+        return null;
+    }
+    console.log(`New message from ${senderId} to ${receiverId}: ${text}`);
+    // Determine roles: if the sender is the vendor, the receiver is the customer, and vice versa.
+    const vendorId = messageVal.vendorId || messageVal.shopId || uid2;
+    const isSenderVendor = (senderId === vendorId);
+    const receiverRole = isSenderVendor ? "customer" : "merchant";
+    // Fetch FCM token for the receiver (try their primary role first, then the other).
+    let tokenSnap = await admin.database()
+        .ref(`/users_devices/${receiverId}/${receiverRole}/fcmToken`).once("value");
+    let token = tokenSnap.val();
+    if (!token) {
+        const fallbackRole = receiverRole === "merchant" ? "customer" : "merchant";
+        tokenSnap = await admin.database()
+            .ref(`/users_devices/${receiverId}/${fallbackRole}/fcmToken`).once("value");
+        token = tokenSnap.val();
+    }
+    if (!token) {
+        console.log(`No FCM token found for receiver ${receiverId}`);
+        return null;
+    }
+    // Resolve the sender's display name.
+    // 1. Check the conversation node stored under the receiver's view (most reliable for name).
+    // 2. Fall back to the users/ node or shop/ node.
+    let senderName = "Customer";
+    const convSnap = await admin.database()
+        .ref(`/chats/${receiverId}/${senderId}/userName`).once("value");
+    if (convSnap.exists() && convSnap.val()) {
+        senderName = convSnap.val();
+    }
+    else if (isSenderVendor) {
+        const shopSnap = await admin.database().ref(`/shop/${senderId}`).once("value");
+        if (shopSnap.exists()) {
+            const s = shopSnap.val();
+            senderName = s.name || s.shopName || "Merchant";
+        }
+    }
+    else {
+        const userSnap = await admin.database().ref(`/users/${senderId}`).once("value");
+        if (userSnap.exists()) {
+            const u = userSnap.val();
+            senderName = u.name || u.displayName || u.email || "Customer";
+        }
+    }
+    const payload = {
+        token,
+        notification: {
+            title: senderName,
+            body: text,
+        },
+        android: {
+            notification: {
+                sound: "default",
+                channelId: "chat_messages",
+                clickAction: "FLUTTER_NOTIFICATION_CLICK",
+            },
+        },
+        apns: {
+            payload: {
+                aps: { sound: "default" },
+            },
+        },
+        // Data payload lets the app navigate directly to the right chat when tapped.
+        data: {
+            type: "chat",
+            senderId: senderId,
+            receiverId: receiverId,
+            userId: senderId, // convenience alias used by the Flutter client
+            userName: senderName,
+            shopId: isSenderVendor ? senderId : receiverId,
+        },
+    };
+    try {
+        const response = await admin.messaging().send(payload);
+        console.log(`Chat notification sent to ${receiverId} (${receiverRole}):`, response);
+    }
+    catch (error) {
+        console.error("Error sending chat notification:", error);
+    }
+    return null;
 });
 //# sourceMappingURL=index.js.map

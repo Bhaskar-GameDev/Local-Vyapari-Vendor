@@ -14,13 +14,13 @@ import '../providers/navigation_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint("Handling a background message: ${message.messageId}");
+  debugPrint('Handling a background message: ${message.messageId}');
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    debugPrint("Firebase already initialized or failed in background: $e");
+    debugPrint('Firebase already initialized or failed in background: $e');
   }
 }
 
@@ -64,20 +64,14 @@ class NotificationService {
         settings: initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           try {
-            final context = rootNavigatorKey.currentContext;
-            if (context != null) {
-              final payload = response.payload;
-              if (payload != null && payload.isNotEmpty) {
-                try {
-                  final data = json.decode(payload) as Map<String, dynamic>;
-                  if (data['type'] == 'chat') {
-                    _ref.read(navigationIndexProvider.notifier).setIndex(3); // Chats tab
-                    GoRouter.of(context).go('/');
-                    return;
-                  }
-                } catch (e) {
-                  debugPrint('Error parsing notification payload: $e');
-                }
+            final payload = response.payload;
+            if (payload != null && payload.isNotEmpty) {
+              final data = json.decode(payload) as Map<String, dynamic>;
+              if (data['type'] == 'chat') {
+                _navigateToChat(
+                  userId: data['userId']?.toString() ?? data['senderId']?.toString() ?? '',
+                  userName: data['userName']?.toString() ?? 'Customer',
+                );
               }
             }
           } catch (e) {
@@ -98,22 +92,35 @@ class NotificationService {
     }
   }
 
-  Future<void> _showNativeNotification(String title, String body, {String? payload}) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'vendor_channel_id',
-      'Vendor Alerts',
-      channelDescription: 'Notifications for new orders and store activity',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      playSound: true,
-    );
+  Future<void> _showNativeNotification(
+    String title,
+    String body, {
+    String? payload,
+    bool isChatMessage = false,
+  }) async {
+    final AndroidNotificationDetails androidDetails = isChatMessage
+        ? const AndroidNotificationDetails(
+            'chat_messages',
+            'Customer Messages',
+            channelDescription: 'Notifications for new customer chat messages',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: true,
+            playSound: true,
+            enableVibration: true,
+            category: AndroidNotificationCategory.message,
+          )
+        : const AndroidNotificationDetails(
+            'vendor_channel_id',
+            'Vendor Alerts',
+            channelDescription: 'Notifications for orders and store activity',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: true,
+            playSound: true,
+          );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-
+    final platformDetails = NotificationDetails(android: androidDetails);
     final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     try {
@@ -121,7 +128,7 @@ class NotificationService {
         id: id,
         title: title,
         body: body,
-        notificationDetails: platformChannelSpecifics,
+        notificationDetails: platformDetails,
         payload: payload,
       );
     } catch (e) {
@@ -149,8 +156,9 @@ class NotificationService {
       if (notification != null) {
         final title = notification.title ?? 'New Alert';
         final body = notification.body ?? 'Check the app for details';
+        final isChatMessage = message.data['type'] == 'chat';
         final payload = json.encode(message.data);
-        _showNativeNotification(title, body, payload: payload);
+        _showNativeNotification(title, body, payload: payload, isChatMessage: isChatMessage);
       }
     });
 
@@ -177,15 +185,34 @@ class NotificationService {
 
   void _handleNotificationClick(RemoteMessage message) {
     try {
-      final context = rootNavigatorKey.currentContext;
-      if (context != null) {
-        if (message.data['type'] == 'chat') {
-          _ref.read(navigationIndexProvider.notifier).setIndex(3); // Chats tab
-          GoRouter.of(context).go('/');
-        }
+      if (message.data['type'] == 'chat') {
+        _navigateToChat(
+          userId: message.data['userId']?.toString() ?? message.data['senderId']?.toString() ?? '',
+          userName: message.data['userName']?.toString() ?? message.notification?.title ?? 'Customer',
+        );
       }
     } catch (e) {
       debugPrint('Error handling FCM notification click: $e');
+    }
+  }
+
+  void _navigateToChat({required String userId, required String userName}) {
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) return;
+
+    // First land on main nav with the Chats tab selected.
+    _ref.read(navigationIndexProvider.notifier).setIndex(3);
+    GoRouter.of(context).go('/');
+
+    // Then push the specific chat after the navigation settles.
+    if (userId.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        final ctx = rootNavigatorKey.currentContext;
+        if (ctx != null) {
+          // ignore: use_build_context_synchronously
+          GoRouter.of(ctx).push('/chat', extra: {'userId': userId, 'userName': userName});
+        }
+      });
     }
   }
 

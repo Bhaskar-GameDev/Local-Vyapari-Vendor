@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
@@ -8,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
 import 'add_product_screen.dart';
 import '../reviews/product_reviews_screen.dart';
@@ -67,10 +69,11 @@ class ProductsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsState = ref.watch(productsProvider);
-    final width = MediaQuery.sizeOf(context).width;
-    final isTablet = width >= 600;
-    final isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    // Single batch query replaces N per-product Firestore streams.
+    final ratingsMap = ref.watch(vendorProductRatingsProvider).value ?? {};
+    final isTablet = Responsive.isTablet(context);
+    final cols = Responsive.productGridColumns(context);
+    final hPad = Responsive.horizontalPadding(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -102,11 +105,9 @@ class ProductsListScreen extends ConsumerWidget {
                   onRefresh: () async => ref.invalidate(productsProvider),
                   child: isTablet
                       ? GridView.builder(
-                          padding: const EdgeInsets.all(
-                              AppDimensions.horizontalPadding),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: isLandscape ? 3 : 2,
+                          padding: EdgeInsets.all(hPad),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
                             mainAxisSpacing: AppSpacing.md,
                             crossAxisSpacing: AppSpacing.md,
                             childAspectRatio: 0.85,
@@ -115,22 +116,21 @@ class ProductsListScreen extends ConsumerWidget {
                           itemBuilder: (context, index) {
                             final product = products[index];
                             return _buildProductGridCard(
-                                context, ref, product, index);
+                                context, ref, product, index, ratingsMap);
                           },
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(
-                              AppDimensions.horizontalPadding),
+                          padding: EdgeInsets.all(hPad),
                           itemCount: products.length,
                           itemBuilder: (context, index) {
                             final product = products[index];
                             return _buildProductListCard(
-                                context, ref, product, index);
+                                context, ref, product, index, ratingsMap);
                           },
                         ),
                 );
               },
-              loading: () => _buildShimmerLoading(isTablet, isLandscape),
+              loading: () => _buildShimmerLoading(isTablet, cols),
               error: (error, stack) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -156,12 +156,12 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductListCard(
-      BuildContext context, WidgetRef ref, ProductModel product, int index) {
+  Widget _buildProductListCard(BuildContext context, WidgetRef ref,
+      ProductModel product, int index, Map<String, RatingDistribution> ratingsMap) {
     final hasImage = product.images.isNotEmpty;
-    final ratingDist = ref.watch(productRatingProvider(product.id));
-    final rating = ratingDist.averageRating;
-    final totalRatings = ratingDist.totalCount;
+    final ratingDist = ratingsMap[product.id];
+    final rating = ratingDist?.averageRating ?? 0.0;
+    final totalRatings = ratingDist?.totalCount ?? 0;
 
     return FadeInSlide(
       duration: const Duration(milliseconds: 400),
@@ -190,10 +190,12 @@ class ProductsListScreen extends ConsumerWidget {
                     height: 70,
                     color: AppColors.surfaceElevated,
                     child: hasImage
-                        ? Image.network(
-                            product.images.first,
+                        ? CachedNetworkImage(
+                            imageUrl: product.images.first,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            placeholder: (_, __) => const ColoredBox(
+                                color: AppColors.surfaceElevated),
+                            errorWidget: (_, __, ___) => const Icon(
                                 Icons.inventory_2_outlined,
                                 color: AppColors.primary),
                           )
@@ -238,9 +240,8 @@ class ProductsListScreen extends ConsumerWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute<void>(
-                                  builder: (context) =>
-                                      ProductReviewsScreen(product: product),
+                                AppPageRoute.slideRight<void>(
+                                  ProductReviewsScreen(product: product),
                                 ),
                               );
                             },
@@ -339,12 +340,12 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductGridCard(
-      BuildContext context, WidgetRef ref, ProductModel product, int index) {
+  Widget _buildProductGridCard(BuildContext context, WidgetRef ref,
+      ProductModel product, int index, Map<String, RatingDistribution> ratingsMap) {
     final hasImage = product.images.isNotEmpty;
-    final ratingDist = ref.watch(productRatingProvider(product.id));
-    final rating = ratingDist.averageRating;
-    final totalRatings = ratingDist.totalCount;
+    final ratingDist = ratingsMap[product.id];
+    final rating = ratingDist?.averageRating ?? 0.0;
+    final totalRatings = ratingDist?.totalCount ?? 0;
 
     return FadeInSlide(
       duration: const Duration(milliseconds: 400),
@@ -370,10 +371,12 @@ class ProductsListScreen extends ConsumerWidget {
                   fit: StackFit.expand,
                   children: [
                     hasImage
-                        ? Image.network(
-                            product.images.first,
+                        ? CachedNetworkImage(
+                            imageUrl: product.images.first,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            placeholder: (_, __) => const ColoredBox(
+                                color: AppColors.surfaceElevated),
+                            errorWidget: (_, __, ___) => const Icon(
                                 Icons.inventory_2_outlined,
                                 color: AppColors.primary,
                                 size: 40),
@@ -550,47 +553,44 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildShimmerLoading(bool isTablet, bool isLandscape) {
+  Widget _buildShimmerLoading(bool isTablet, int cols) {
     if (isTablet) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: isLandscape ? 3 : 2,
-          mainAxisSpacing: AppSpacing.md,
-          crossAxisSpacing: AppSpacing.md,
-          childAspectRatio: 0.85,
+      return Builder(
+        builder: (context) => GridView.builder(
+          padding: EdgeInsets.all(Responsive.horizontalPadding(context)),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: cols * 2,
+          itemBuilder: (context, index) {
+            return Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Card(child: Container(color: Colors.white)),
+            );
+          },
         ),
-        itemCount: 4,
+      );
+    }
+
+    return Builder(
+      builder: (context) => ListView.builder(
+        padding: EdgeInsets.all(Responsive.horizontalPadding(context)),
+        itemCount: 6,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
             baseColor: Colors.grey[300]!,
             highlightColor: Colors.grey[100]!,
             child: Card(
-              child: Container(
-                color: Colors.white,
-              ),
+              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Container(height: 86, color: Colors.white),
             ),
           );
         },
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
-      itemCount: 6,
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Card(
-            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Container(
-              height: 86,
-              color: Colors.white,
-            ),
-          ),
-        );
-      },
+      ),
     );
   }
 }
