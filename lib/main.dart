@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
@@ -36,7 +37,14 @@ void main() async {
   // Initialize API client
   ApiClient.initialize();
 
-  // Enable local caching / offline persistence
+  // Firestore: cap offline cache at 50 MB (default is 100 MB, grows unbounded)
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: 50 * 1024 * 1024,
+  );
+
+  // RTDB: enable persistence with a 5 MB cap (stores structure, not images)
+  FirebaseDatabase.instance.setPersistenceCacheSizeBytes(5 * 1024 * 1024);
   FirebaseDatabase.instance.setPersistenceEnabled(true);
 
   runApp(

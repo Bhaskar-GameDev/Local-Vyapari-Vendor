@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../../core/utils/app_image_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../core/exceptions/error_handler.dart';
@@ -191,6 +192,7 @@ class ProductsListScreen extends ConsumerWidget {
                     child: hasImage
                         ? CachedNetworkImage(
                             imageUrl: product.images.first,
+                            cacheManager: AppImageCacheManager.instance,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => const ColoredBox(
                                 color: AppColors.surfaceElevated),
