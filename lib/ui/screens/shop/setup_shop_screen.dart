@@ -637,18 +637,6 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 350),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Shop Address',
-                        controller: _addressController,
-                        prefixIcon: Icons.location_on_outlined,
-                        validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
-                      ),
-                    ),
-                    AppSpacing.verticalMd,
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 500),
-                      delay: const Duration(milliseconds: 400),
-                      slideOffset: 16,
-                      child: CustomTextField(
                         label: 'Contact Phone Number',
                         controller: _phoneController,
                         prefixIcon: Icons.phone_outlined,
@@ -660,6 +648,18 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                           }
                           return null;
                         },
+                      ),
+                    ),
+                    AppSpacing.verticalMd,
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 400),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Shop Address',
+                        controller: _addressController,
+                        prefixIcon: Icons.location_on_outlined,
+                        validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
                       ),
                     ),
                     AppSpacing.verticalLg,
@@ -786,6 +786,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     label: 'Latitude',
                                     controller: _latController,
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    readOnly: true,
                                     validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                                   ),
                                 ),
@@ -795,6 +796,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     label: 'Longitude',
                                     controller: _lngController,
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    readOnly: true,
                                     validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                                   ),
                                 ),
