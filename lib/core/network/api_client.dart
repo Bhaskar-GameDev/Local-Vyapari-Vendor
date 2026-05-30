@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../exceptions/error_handler.dart';
+
 class ApiClient {
   static final Dio _dio = Dio(BaseOptions(
-    // Default config. Could be configured via env
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
   ));
@@ -20,6 +21,10 @@ class ApiClient {
           }
         }
         return handler.next(options);
+      },
+      onError: (DioException error, handler) {
+        ErrorHandler.log(error, error.stackTrace);
+        return handler.next(error);
       },
     ));
   }

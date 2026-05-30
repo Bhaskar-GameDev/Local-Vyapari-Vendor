@@ -68,14 +68,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 2.0,
-                  color: AppColors.primary.withOpacity(0.8),
+                  color: AppColors.primary.withValues(alpha: 0.8),
                 ),
               ),
             ),
             AppSpacing.verticalXl,
-            FadeInSlide(
-              duration: const Duration(milliseconds: 800),
-              delay: const Duration(milliseconds: 700),
+            const FadeInSlide(
+              duration: Duration(milliseconds: 800),
+              delay: Duration(milliseconds: 700),
               slideOffset: 10.0,
               child: CircularProgressIndicator(
                 color: AppColors.primary,

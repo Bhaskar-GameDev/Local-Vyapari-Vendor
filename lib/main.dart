@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,19 @@ import 'ui/common/connectivity_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Catch uncaught Flutter framework errors (widget build failures, etc.)
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (kDebugMode) debugPrint('[FlutterError] ${details.exception}\n${details.stack}');
+  };
+
+  // Catch uncaught async errors that escape the Flutter framework zone
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (kDebugMode) debugPrint('[Unhandled] $error\n$stack');
+    return true;
+  };
+
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

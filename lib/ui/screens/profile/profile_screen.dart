@@ -99,7 +99,7 @@ class ProfileScreen extends ConsumerWidget {
                             }
                           }
                         },
-                        title: Text('Shop is Open', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        title: const Text('Shop is Open', style: TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(shop?.isOpen == true ? 'Customers can see you as open' : 'Customers will see your shop as closed'),
                         activeThumbColor: AppColors.success,
                         secondary: Icon(
@@ -111,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // ── Shop Details section ─────────────────────────────
                     AppSpacing.verticalMd,
-                    _SectionLabel(label: 'Shop Details'),
+                    const _SectionLabel(label: 'Shop Details'),
                     AppSpacing.verticalSm,
                     _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
                     _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
@@ -125,7 +125,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // ── App Preferences section ──────────────────────────
                     AppSpacing.verticalLg,
-                    _SectionLabel(label: 'App Preferences'),
+                    const _SectionLabel(label: 'App Preferences'),
                     AppSpacing.verticalSm,
                     Card(
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -160,7 +160,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // ── Security & Linked Accounts section ───────────────
                     AppSpacing.verticalLg,
-                    _SectionLabel(label: 'Security & Linked Accounts'),
+                    const _SectionLabel(label: 'Security & Linked Accounts'),
                     AppSpacing.verticalSm,
 
                     profileState.when(
@@ -304,7 +304,7 @@ class ProfileScreen extends ConsumerWidget {
                         borderRadius: AppRadius.borderLg,
                         onTap: () async {
                           try {
-                            showDialog(
+                            showDialog<void>(
                               context: context,
                               barrierDismissible: false,
                               builder: (context) => const Center(
@@ -383,7 +383,7 @@ class ProfileScreen extends ConsumerWidget {
                       onPressed: () {
                         if (shop != null) {
                           Navigator.of(context).push(
-                            MaterialPageRoute(
+                            MaterialPageRoute<void>(
                               builder: (_) => SetupShopScreen(existingShop: shop),
                             ),
                           );
@@ -427,7 +427,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showThemeSelectionSheet(BuildContext context, WidgetRef ref, ThemeMode currentMode) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
@@ -498,7 +498,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showShareAppSheet(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
@@ -776,7 +776,7 @@ class _BindEmailDialogState extends State<_BindEmailDialog> {
 
             final success = await widget.ref.read(authProvider.notifier).bindEmail(_emailController.text.trim());
 
-            if (mounted) {
+            if (context.mounted) {
               setState(() => _isLoading = false);
               if (success) {
                 Navigator.pop(context, true);

@@ -35,7 +35,7 @@ class ProductRepository {
 
   Future<void> addProduct(ProductModel product) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
     
     final data = product.toJson()..remove('id');
     await _dbRef.child(shopId).push().set(data);
@@ -43,7 +43,7 @@ class ProductRepository {
 
   Future<void> updateProduct(ProductModel product) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
     
     final data = product.toJson()..remove('id');
     await _dbRef.child(shopId).child(product.id).update(data);
@@ -51,14 +51,14 @@ class ProductRepository {
 
   Future<void> deleteProduct(String productId) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
     
     await _dbRef.child(shopId).child(productId).remove();
   }
 
   Future<void> updateProductStatus(String productId, bool isActive) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
     
     await _dbRef.child(shopId).child(productId).update({'isActive': isActive});
   }

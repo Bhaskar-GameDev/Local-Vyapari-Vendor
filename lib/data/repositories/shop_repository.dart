@@ -29,7 +29,7 @@ class ShopRepository {
 
   Future<void> updateShopProfile(ShopModel shop) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not authenticated");
+    if (uid == null) throw Exception('User not authenticated');
     final data = shop.copyWith(id: uid).toJson();
     await _dbRef.child(uid).set(data);
   }

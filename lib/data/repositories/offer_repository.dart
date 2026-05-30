@@ -34,7 +34,7 @@ class OfferRepository {
 
   Future<void> addOffer(OfferModel offer) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
 
     final data = offer.toJson()..remove('id');
     await _ref.child(shopId).push().set(data);
@@ -42,7 +42,7 @@ class OfferRepository {
 
   Future<void> updateOffer(OfferModel offer) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
 
     final data = offer.toJson()..remove('id');
     await _ref.child(shopId).child(offer.id).update(data);
@@ -50,14 +50,14 @@ class OfferRepository {
 
   Future<void> deleteOffer(String offerId) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
 
     await _ref.child(shopId).child(offerId).remove();
   }
 
   Future<void> updateOfferStatus(String offerId, bool isActive) async {
     final shopId = _currentShopId;
-    if (shopId == null) throw Exception("User not authenticated");
+    if (shopId == null) throw Exception('User not authenticated');
 
     await _ref.child(shopId).child(offerId).update({'isActive': isActive});
   }

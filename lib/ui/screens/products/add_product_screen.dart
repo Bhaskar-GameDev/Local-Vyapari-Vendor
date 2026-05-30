@@ -1,3 +1,4 @@
+// ignore_for_file: use_build_context_synchronously
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,12 +94,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking images: $e', style: const TextStyle(color: Colors.white)),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking images: $e', style: const TextStyle(color: Colors.white)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -121,7 +124,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       for (final image in _images) {
         if (image is File) {
           final imageUrl = await CloudinaryService.uploadImage(image.path);
-          if (imageUrl == null) throw Exception("Image upload failed");
+          if (imageUrl == null) throw Exception('Image upload failed');
           imageUrls.add(imageUrl);
         } else if (image is String) {
           imageUrls.add(image);
@@ -146,7 +149,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         await ref.read(productsProvider.notifier).addProduct(newProduct);
       }
       
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.existingProduct != null ? 'Product updated successfully!' : 'Product added successfully!'),
@@ -156,7 +159,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding product: $e'),
@@ -196,7 +199,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       setState(() => _isLoading = true);
       try {
         await ref.read(productsProvider.notifier).deleteProduct(widget.existingProduct!.id);
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Product deleted successfully'),
@@ -206,7 +209,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           Navigator.pop(context);
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error deleting product: $e'),
@@ -257,7 +260,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                     AppSpacing.verticalMd,
                     DropdownButtonFormField<String>(
-                      value: _selectedCategory,
+                      // ignore: deprecated_member_use
+      value: _selectedCategory,
                       decoration: InputDecoration(
                         labelText: 'Category',
                         filled: true,
@@ -404,17 +408,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           color: AppColors.surfaceElevated,
           borderRadius: AppRadius.borderMedium,
           border: Border.all(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             style: BorderStyle.solid,
             width: 1.5,
           ),
         ),
-        child: Column(
+        child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
+            Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
             AppSpacing.verticalXs,
-            const Text(
+            Text(
               'Add Image',
               style: TextStyle(
                 fontSize: 12,

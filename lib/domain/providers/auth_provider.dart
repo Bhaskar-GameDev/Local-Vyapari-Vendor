@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../../core/exceptions/error_handler.dart';
 import '../../core/services/role_service.dart';
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -202,51 +203,6 @@ class AuthRepository {
   }
 
   Future<void> logout() async => await _auth.signOut();
-
-  String mapFirebaseError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-        return 'No account found with this email.';
-      case 'wrong-password':
-        return 'Incorrect password. Please try again.';
-      case 'invalid-credential':
-        return 'Invalid email or password.';
-      case 'user-disabled':
-        return 'This account has been disabled.';
-      case 'email-already-in-use':
-        return 'This email address is already registered. If it is registered as a customer, please sign in with your password to upgrade to a merchant account.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      default:
-        return e.message ?? 'Authentication error. Please try again.';
-    }
-  }
-
-  String mapFunctionsError(FirebaseFunctionsException e) {
-    switch (e.code) {
-      case 'invalid-argument':
-        return e.message ?? 'Invalid request.';
-      case 'resource-exhausted':
-        return e.message ?? 'Too many attempts. Please try again later.';
-      case 'not-found':
-        return e.message ?? 'Requested record was not found.';
-      case 'failed-precondition':
-        return e.message ?? 'This action cannot be completed right now.';
-      case 'unavailable':
-        return e.message ??
-            'OTP delivery is unavailable right now. Please try again later.';
-      case 'internal':
-        return e.message ?? 'OTP delivery failed. Please try again later.';
-      case 'permission-denied':
-        return e.message ?? 'Access denied for this account.';
-      default:
-        return e.message ?? 'Request failed. Please try again.';
-    }
-  }
 }
 
 // ─── Providers ────────────────────────────────────────────────────────────────
@@ -316,10 +272,10 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
 
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } on FirebaseFunctionsException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFunctionsError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
@@ -350,7 +306,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
@@ -401,10 +357,10 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
 
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } on FirebaseFunctionsException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFunctionsError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
@@ -499,7 +455,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
@@ -595,7 +551,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       );
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       onFailed(state.error!);
       return false;
     } catch (e) {
@@ -640,7 +596,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       state = AuthNotifierState(error: e.toString());
@@ -738,7 +694,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       return true;
     } on FirebaseAuthException catch (e) {
       await _repository.logout();
-      state = AuthNotifierState(error: _repository.mapFirebaseError(e));
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
       await _repository.logout();

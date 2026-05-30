@@ -5,7 +5,7 @@ import 'auth_provider.dart';
 
 abstract class FBListNotifier<T> extends StateNotifier<AsyncValue<List<T>>> {
   final Ref _ref;
-  StreamSubscription? _subscription;
+  StreamSubscription<List<T>>? _subscription;
 
   FBListNotifier(this._ref) : super(const AsyncValue.loading()) {
     _bindToUser(_ref.read(authStateProvider).value);

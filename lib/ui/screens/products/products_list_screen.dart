@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../../core/exceptions/error_handler.dart';
 import '../../../domain/providers/product_provider.dart';
 import '../../../domain/providers/review_provider.dart';
 import '../../../data/models/product_model.dart';
@@ -11,6 +12,8 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
+import '../../common/custom_snack_bar.dart';
+import '../../common/error_view.dart';
 import 'add_product_screen.dart';
 import '../reviews/product_reviews_screen.dart';
 
@@ -55,11 +58,9 @@ class ProductsListScreen extends ConsumerWidget {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting product: $e'),
-              backgroundColor: AppColors.error,
-            ),
+          CustomSnackBar.showError(
+            context: context,
+            message: ErrorHandler.getMessage(e),
           );
         }
       }
@@ -131,12 +132,10 @@ class ProductsListScreen extends ConsumerWidget {
                 );
               },
               loading: () => _buildShimmerLoading(isTablet, cols),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Text('Error: $error',
-                      style: const TextStyle(color: AppColors.error)),
-                ),
+              error: (error, stack) => ErrorView(
+                error: error,
+                title: 'Failed to load products',
+                onRetry: () => ref.invalidate(productsProvider),
               ),
             ),
           ),

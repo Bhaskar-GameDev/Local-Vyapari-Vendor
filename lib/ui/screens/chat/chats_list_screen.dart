@@ -10,6 +10,7 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../domain/providers/chat_provider.dart';
 import '../../common/app_animations.dart';
+import '../../common/error_view.dart';
 
 class ChatsListScreen extends ConsumerWidget {
   const ChatsListScreen({super.key});
@@ -38,7 +39,7 @@ class ChatsListScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.05),
+                            color: AppColors.primary.withValues(alpha: 0.05),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -140,34 +141,10 @@ class ChatsListScreen extends ConsumerWidget {
             );
           },
           loading: () => _buildShimmerLoading(context),
-          error: (error, stack) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    color: AppColors.error,
-                    size: 48,
-                  ),
-                  AppSpacing.verticalSm,
-                  Text(
-                    'Failed to load chats',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                  ),
-                  AppSpacing.verticalXs,
-                  Text(
-                    error.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
+          error: (error, stack) => ErrorView(
+            error: error,
+            title: 'Failed to load chats',
+            onRetry: () => ref.invalidate(vendorChatsProvider),
           ),
         ),
       ),
@@ -254,13 +231,13 @@ class _ChatSummaryTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         decoration: BoxDecoration(
           borderRadius: AppRadius.borderSm,
-          color: chat.unread ? AppColors.primary.withOpacity(0.02) : Colors.transparent,
+          color: chat.unread ? AppColors.primary.withValues(alpha: 0.02) : Colors.transparent,
         ),
         child: Row(
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: avatarColor.withOpacity(0.1),
+              backgroundColor: avatarColor.withValues(alpha: 0.1),
               child: Text(
                 initials,
                 style: TextStyle(

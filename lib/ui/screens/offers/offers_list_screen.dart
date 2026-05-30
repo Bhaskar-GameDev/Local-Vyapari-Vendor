@@ -9,6 +9,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
+import '../../common/error_view.dart';
 import 'create_offer_screen.dart';
 
 class OffersListScreen extends ConsumerWidget {
@@ -59,7 +60,7 @@ class OffersListScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          AppPageRoute.slideUp(CreateOfferScreen(existingOffer: offer)),
+                          AppPageRoute.slideUp<void>(CreateOfferScreen(existingOffer: offer)),
                         );
                       },
                       child: Card(
@@ -153,11 +154,10 @@ class OffersListScreen extends ConsumerWidget {
                 );
               },
               loading: () => _buildShimmerLoading(context),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-                ),
+              error: (error, stack) => ErrorView(
+                error: error,
+                title: 'Failed to load offers',
+                onRetry: () => ref.invalidate(offersProvider),
               ),
             ),
           ),
@@ -168,7 +168,7 @@ class OffersListScreen extends ConsumerWidget {
         onPressed: () {
           Navigator.push(
             context,
-            AppPageRoute.slideUp(const CreateOfferScreen()),
+            AppPageRoute.slideUp<void>(const CreateOfferScreen()),
           );
         },
         icon: const Icon(Icons.local_offer),

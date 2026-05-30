@@ -64,7 +64,7 @@ String? _stringValue(dynamic value) {
 
 String? _conversationVendorId(Map<dynamic, dynamic> conversation) {
   final lastMessage = conversation['lastMessage'];
-  final lastMessageMap = lastMessage is Map ? lastMessage : const {};
+  final lastMessageMap = lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
 
   return _stringValue(conversation['vendorId']) ??
       _stringValue(conversation['shopId']) ??
@@ -76,7 +76,7 @@ String? _conversationVendorId(Map<dynamic, dynamic> conversation) {
 
 String? _conversationCustomerId(Map<dynamic, dynamic> conversation) {
   final lastMessage = conversation['lastMessage'];
-  final lastMessageMap = lastMessage is Map ? lastMessage : const {};
+  final lastMessageMap = lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
 
   return _stringValue(conversation['customerId']) ??
       _stringValue(conversation['userId']) ??

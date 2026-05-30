@@ -229,7 +229,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     final completer = Completer<bool>();
 
     // Show request loading dialog
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => const AlertDialog(
@@ -237,7 +237,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 20),
-            Text("Requesting verification..."),
+            Text('Requesting verification...'),
           ],
         ),
       ),
@@ -367,7 +367,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
       if (_logoFile != null) {
         final uploadedUrl = await CloudinaryService.uploadImage(_logoFile!.path);
-        if (uploadedUrl == null) throw Exception("Logo upload failed");
+        if (uploadedUrl == null) throw Exception('Logo upload failed');
         logoUrl = uploadedUrl;
       }
 
@@ -395,7 +395,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         widget.existingShop!.address.isNotEmpty;
       if (!isEditing) {
         final callable = FirebaseFunctions.instance.httpsCallable('assignMerchantRole');
-        await callable.call();
+        await callable.call<dynamic>();
         await FirebaseAuth.instance.currentUser?.getIdToken(true);
       }
 
@@ -472,10 +472,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: AppColors.warning.withOpacity(0.08),
+                                color: AppColors.warning.withValues(alpha: 0.08),
                                 borderRadius: AppRadius.borderLg,
                                 border: Border.all(
-                                  color: AppColors.warning.withOpacity(0.3),
+                                  color: AppColors.warning.withValues(alpha: 0.3),
                                   width: 1.5,
                                 ),
                               ),
@@ -491,7 +491,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     child: Text(
                                       'Merchant Profile Pending: Complete your shop setup to activate your vendor account.',
                                       style: TextStyle(
-                                        color: AppColors.warning.withOpacity(0.9),
+                                        color: AppColors.warning.withValues(alpha: 0.9),
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -548,10 +548,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 4),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 4),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
+                                      color: Colors.black.withValues(alpha: 0.08),
                                       blurRadius: 16,
                                       offset: const Offset(0, 4),
                                     ),

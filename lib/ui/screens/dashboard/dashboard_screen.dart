@@ -329,11 +329,11 @@ class _StatsRow extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FadeInSlide(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 80),
+        const FadeInSlide(
+          duration: Duration(milliseconds: 400),
+          delay: Duration(milliseconds: 80),
           slideOffset: 10,
-          child: const _SectionHeader(title: 'Overview'),
+          child: _SectionHeader(title: 'Overview'),
         ),
         const SizedBox(height: 10),
         if (useGrid)
@@ -509,10 +509,10 @@ class _AnalyticsChartSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               _LegendDot(color: AppColors.primary, label: 'Views'),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               _LegendDot(color: AppColors.warning, label: 'Clicks'),
             ],
           ),
@@ -645,11 +645,11 @@ class _LowStockSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FadeInSlide(
-          duration: const Duration(milliseconds: 500),
-          delay: const Duration(milliseconds: 300),
+        const FadeInSlide(
+          duration: Duration(milliseconds: 500),
+          delay: Duration(milliseconds: 300),
           slideOffset: 10,
-          child: const _SectionHeader(title: 'Low Stock Alerts'),
+          child: _SectionHeader(title: 'Low Stock Alerts'),
         ),
         const SizedBox(height: 12),
         _buildLowStockList(context, productsState),
@@ -708,11 +708,11 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
         ),
-        child: Row(
+        child: const Row(
           children: [
             Icon(Icons.check_circle_outline_rounded, color: AppColors.accent, size: 18),
-            const SizedBox(width: 10),
-            const Text('All products are well-stocked.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+            SizedBox(width: 10),
+            Text('All products are well-stocked.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
