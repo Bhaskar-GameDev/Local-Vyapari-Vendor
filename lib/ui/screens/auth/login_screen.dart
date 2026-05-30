@@ -1,8 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../domain/providers/auth_provider.dart';
+import '../../../core/security/social_auth_service.dart';
+import 'mfa_challenge_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -51,7 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    _isEmailMode
+    final ok = _isEmailMode
         ? await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text.trim(),
@@ -60,6 +64,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             '+91${_phoneController.text.trim()}',
             _passwordController.text.trim(),
           );
+    if (!ok) _routeToMfaIfNeeded();
+  }
+
+  /// If the last sign-in attempt raised an MFA challenge, open the challenge screen.
+  void _routeToMfaIfNeeded() {
+    final resolver = ref.read(authProvider).mfaResolver;
+    if (resolver != null && mounted) {
+      ref.read(authProvider.notifier).clearMfa();
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => MfaChallengeScreen(resolver: resolver)),
+      );
+    }
+  }
+
+  Future<void> _handleSocial(Future<UserCredential?> Function() signIn) async {
+    try {
+      final credential = await signIn();
+      if (credential == null) return; // user cancelled
+      // The blocking beforeSignIn function syncs roles/claims; authStateChanges
+      // + the router redirect take it from here.
+    } on FirebaseAuthMultiFactorException catch (e) {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+              builder: (_) => MfaChallengeScreen(resolver: e.resolver)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-in failed: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -315,6 +353,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ),
+
+                    AppSpacing.verticalLg,
+
+                    // ── Social sign-in ──
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          child: Text('or continue with',
+                              style: Theme.of(context).textTheme.bodySmall),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    AppSpacing.verticalMd,
+                    OutlinedButton.icon(
+                      onPressed: authState.isLoading
+                          ? null
+                          : () => _handleSocial(
+                              ref.read(socialAuthServiceProvider).signInWithGoogle),
+                      icon: const Icon(Icons.g_mobiledata, size: 28),
+                      label: const Text('Continue with Google'),
+                    ),
+                    if (Platform.isIOS || Platform.isMacOS) ...[
+                      AppSpacing.verticalSm,
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading
+                            ? null
+                            : () => _handleSocial(
+                                ref.read(socialAuthServiceProvider).signInWithApple),
+                        icon: const Icon(Icons.apple, size: 24),
+                        label: const Text('Continue with Apple'),
+                      ),
+                    ],
 
                     AppSpacing.verticalMd,
                     

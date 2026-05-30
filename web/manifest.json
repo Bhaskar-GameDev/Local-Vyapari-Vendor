@@ -1,6 +1,6 @@
 {
-    "name": "local_vyapari_vendor",
-    "short_name": "local_vyapari_vendor",
+    "name": "Local Vyapari Vendor",
+    "short_name": "Local Vyapari Vendor",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

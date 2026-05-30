@@ -1,10 +1,23 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
-import * as bcrypt from "bcryptjs";
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// When ENFORCE_APP_CHECK=true, reject callable requests that don't carry a valid
+// Firebase App Check token. This blocks abuse from outside the official apps
+// (e.g. SMS-pumping via the OTP endpoint, Cloudinary signature theft).
+// Kept behind a flag so it can be switched on only after App Check providers
+// (Play Integrity / DeviceCheck) are registered for both apps in the console.
+function assertAppCheck(context: functions.https.CallableContext): void {
+  if (process.env.ENFORCE_APP_CHECK === "true" && context.app === undefined) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "This request did not originate from an authorized app."
+    );
+  }
+}
 
 // 1. Inventory Sync & Low Stock Alerts (RTDB trigger)
 export const onInventoryUpdate = functions.database.ref("/inventory/{productId}")
@@ -149,190 +162,15 @@ export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId
     return null;
   });
 
-async function sendTwilioSms(phone: string, otp: string): Promise<boolean> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_FROM_NUMBER;
-
-  if (!accountSid || !authToken || !fromNumber) {
-    console.error("❌ Twilio credentials are not set in environment variables");
-    return false;
-  }
-
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-
-  const params = new URLSearchParams();
-  params.append("To", phone);
-  params.append("From", fromNumber);
-  params.append("Body", `Your Local Vyapari verification OTP code is: ${otp}. Valid for 5 minutes.`);
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: params.toString()
-    });
-
-    if (response.ok) {
-      console.log(`✅ Twilio SMS sent successfully to ${phone}`);
-      return true;
-    } else {
-      const errText = await response.text();
-      console.error(`❌ Twilio SMS failed: ${errText}`);
-      return false;
-    }
-  } catch (e) {
-    console.error(`❌ Exception during Twilio SMS send: ${e}`);
-    return false;
-  }
-}
-
-async function sendFast2Sms(phone: string, otp: string): Promise<boolean> {
-  const apiKey = process.env.FAST2SMS_API_KEY;
-  if (!apiKey) {
-    console.error("❌ Fast2SMS API Key is not set in environment variables");
-    return false;
-  }
-
-  let cleanedPhone = phone.replace(/\D/g, "");
-  if (cleanedPhone.startsWith("91") && cleanedPhone.length === 12) {
-    cleanedPhone = cleanedPhone.substring(2);
-  }
-
-  const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&route=otp&variables_values=${otp}&numbers=${cleanedPhone}`;
-
-  try {
-    const response = await fetch(url);
-    const resData: any = await response.json();
-    if (resData && resData.return === true) {
-      console.log(`✅ Fast2SMS SMS sent successfully to ${phone}`);
-      return true;
-    } else {
-      console.error(`❌ Fast2SMS failed: ${resData?.message || JSON.stringify(resData)}`);
-      return false;
-    }
-  } catch (e) {
-    console.error(`❌ Exception during Fast2SMS send: ${e}`);
-    return false;
-  }
-}
-
-// BUG-2 & BUG-8: Generate and send OTP via HTTPS Callable
-// Security Rationale: Generate OTP server-side with high entropy and rate-limit to prevent abuse
-export const generateAndSendOtp = functions.https.onCall(async (data, context) => {
-  const phone = data.phone;
-  console.log("Generating OTP for phone:", phone);
-  if (!phone) {
-    throw new functions.https.HttpsError("invalid-argument", "Phone number is required");
-  }
-  
-  const now = Date.now();
-  const rateLimitRef = admin.database().ref(`/otp_rate_limit/${phone}`);
-  const rateLimitSnap = await rateLimitRef.once("value");
-  
-  let count = 0;
-  let lastSentAt = 0;
-  let windowStart = now;
-  
-  if (rateLimitSnap.exists()) {
-    const data = rateLimitSnap.val();
-    count = data.count || 0;
-    lastSentAt = data.lastSentAt || 0;
-    windowStart = data.windowStart || now;
-    
-    // Check 60s cooldown
-    if (now - lastSentAt < 60000) {
-      throw new functions.https.HttpsError("resource-exhausted", "Please wait 60 seconds before requesting a new OTP.");
-    }
-    
-    // Check 10m window for 5 max requests
-    if (now - windowStart < 600000) {
-      if (count >= 5) {
-        throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again in 10 minutes.");
-      }
-    } else {
-      // Reset window
-      count = 0;
-      windowStart = now;
-    }
-  }
-
-  // Generate strong random OTP server-side
-  const otp = crypto.randomInt(100000, 999999).toString();
-  const hashedOtp = bcrypt.hashSync(otp, 10);
-  
-  const expiresAt = now + 5 * 60000; // 5 mins
-  
-  // Store hash, not plaintext
-  await admin.database().ref(`/otps/${phone}`).set({
-    hash: hashedOtp,
-    expiresAt
-  });
-  
-  await rateLimitRef.set({
-    count: count + 1,
-    lastSentAt: now,
-    windowStart
-  });
-
-  // Send SMS (Real or Mock Gateway)
-  const gateway = process.env.SMS_GATEWAY || "mock";
-  if (gateway.toLowerCase() === "twilio") {
-    await sendTwilioSms(phone, otp);
-  } else if (gateway.toLowerCase() === "fast2sms") {
-    await sendFast2Sms(phone, otp);
-  } else {
-    console.log(`[MOCK SMS] Sending OTP ${otp} to ${phone}`);
-  }
-  
-  return { success: true };
-});
-
-// BUG-2: Verify OTP via HTTPS Callable
-// Security Rationale: Compare bcrypt hash instead of plaintext and don't expose OTP to client
-export const verifyOtp = functions.https.onCall(async (data, context) => {
-  const { phone, code } = data;
-  if (!phone || !code) {
-    throw new functions.https.HttpsError("invalid-argument", "Phone and code are required");
-  }
-
-  const otpSnap = await admin.database().ref(`/otps/${phone}`).once("value");
-  if (!otpSnap.exists()) {
-    throw new functions.https.HttpsError("not-found", "OTP not found or expired");
-  }
-
-  const { hash, expiresAt } = otpSnap.val();
-  if (Date.now() > expiresAt) {
-    throw new functions.https.HttpsError("failed-precondition", "OTP expired");
-  }
-
-  const isValid = bcrypt.compareSync(code, hash);
-  if (!isValid) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid OTP");
-  }
-
-  // Clear OTP
-  await admin.database().ref(`/otps/${phone}`).remove();
-
-  // BUG-1: Return a custom token for Firebase Auth
-  const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
-  const uid = phoneSnap.exists() ? phoneSnap.val() : null;
-  
-  if (!uid) {
-    throw new functions.https.HttpsError("not-found", "User not registered");
-  }
-  
-  const customToken = await admin.auth().createCustomToken(uid);
-
-  // Return success to the client
-  return { success: true, customToken };
-});
+// NOTE: The custom Twilio/Fast2SMS OTP system (sendTwilioSms, sendFast2Sms,
+// generateAndSendOtp, verifyOtp, resetPasswordWithOtp) was removed before the
+// production launch. Both apps use native Firebase Phone Auth for phone
+// verification, so this parallel system was dead code that still carried live
+// SMS-cost/abuse exposure and required Twilio/Fast2SMS secrets. Phone login
+// resolution still happens through resolvePhoneLoginEmail below.
 
 export const resolvePhoneLoginEmail = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
   const phone = data.phone;
   if (!phone) {
     throw new functions.https.HttpsError("invalid-argument", "Phone number is required");
@@ -364,37 +202,22 @@ export const resolvePhoneLoginEmail = functions.https.onCall(async (data, contex
   return { email: userData.email };
 });
 
-// BUG-3: Reset Password over HTTPS
-// Security Rationale: Update password directly over secure HTTPS, never store plaintext in RTDB
-export const resetPasswordWithOtp = functions.https.onCall(async (data, context) => {
-  const { phone, code, newPassword } = data;
-  
-  const otpSnap = await admin.database().ref(`/otps/${phone}`).once("value");
-  if (!otpSnap.exists() || Date.now() > otpSnap.val().expiresAt) {
-    throw new functions.https.HttpsError("failed-precondition", "OTP expired or not found");
-  }
-  
-  const isValid = bcrypt.compareSync(code, otpSnap.val().hash);
-  if (!isValid) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid OTP");
-  }
-
-  await admin.database().ref(`/otps/${phone}`).remove();
-
-  const phoneSnap = await admin.database().ref(`/phones/${phone}`).once("value");
-  const uid = phoneSnap.exists() ? phoneSnap.val() : null;
-  if (!uid) {
-    throw new functions.https.HttpsError("not-found", "User not found");
-  }
-
-  await admin.auth().updateUser(uid, { password: newPassword });
-  return { success: true };
-});
+// Password reset is handled client-side via native Firebase Phone Auth
+// (reauthenticate with the phone OTP credential, then updatePassword) — see the
+// resetPasswordWithPhoneOtp flow in the apps. The old OTP-based reset was removed
+// with the rest of the custom SMS system.
 
 // BUG-6: getCloudinarySignature
 // Security Rationale: Compute signature server-side using secure secret from environment
 export const getCloudinarySignature = functions.https.onCall(async (data, context) => {
-  const apiSecret = process.env.CLOUDINARY_API_SECRET; 
+  // Only authenticated users may obtain a signed upload signature. Without this
+  // check, anyone could mint valid Cloudinary upload credentials and abuse the account.
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "You must be signed in to upload images.");
+  }
+  assertAppCheck(context);
+
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   
@@ -444,17 +267,177 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
 
 export const onUserCreate = onUserCreated;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Advanced auth: identity-platform blocking functions
+//
+// Blocking functions run *inside* the create/sign-in transaction, so the checks
+// here cannot be skipped by a tampered client (unlike a callable such as
+// validateSession). They require Identity Platform to be enabled and the
+// functions to be registered as blocking triggers in the console.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Build the canonical custom-claims object from a user's RTDB record + auth state.
+// Claims are what the security rules trust, so this is the single source of truth.
+function buildAuthClaims(
+  existingClaims: Record<string, unknown>,
+  userData: Record<string, any> | null,
+  opts: { emailVerified: boolean; mfaEnrolled: boolean; activeRole?: string }
+): Record<string, unknown> {
+  const roles = (userData && userData.roles) || {};
+  // Legacy single-role field fallback.
+  const isCustomer = roles.customer === true || userData?.role === "customer" || true; // every account is at least a customer
+  const isMerchant = roles.merchant === true || userData?.role === "merchant";
+
+  const activeRole =
+    opts.activeRole ||
+    (typeof existingClaims.activeRole === "string" ? (existingClaims.activeRole as string) : undefined) ||
+    userData?.activeRole ||
+    "customer";
+
+  return {
+    ...existingClaims,
+    roles: { customer: isCustomer, merchant: isMerchant },
+    activeRole,
+    customer: isCustomer,
+    merchant: isMerchant,
+    mfa: opts.mfaEnrolled,
+    emailVerified: opts.emailVerified,
+    // Claims schema version — lets the client detect/force a token refresh after upgrades.
+    cv: 2,
+  };
+}
+
+// Stable fingerprint for a sign-in context (does not store raw IP/UA in claims).
+function deviceFingerprint(ipAddress?: string, userAgent?: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(`${ipAddress || "?"}|${userAgent || "?"}`)
+    .digest("hex")
+    .substring(0, 16);
+}
+
+// Records the signing-in device and sends a one-time alert the first time a
+// device is seen. Best-effort: never blocks sign-in on failure.
+async function recordDeviceAndMaybeAlert(
+  uid: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<void> {
+  try {
+    const fp = deviceFingerprint(ipAddress, userAgent);
+    const ref = admin.database().ref(`/known_devices/${uid}/${fp}`);
+    const snap = await ref.once("value");
+    const now = Date.now();
+
+    if (snap.exists()) {
+      await ref.update({ lastSeen: now });
+      return;
+    }
+
+    // New device.
+    await ref.set({ firstSeen: now, lastSeen: now, userAgent: userAgent || null, ip: ipAddress || null });
+
+    // Alert the user on their existing devices (skip the very first device ever,
+    // which is this account's initial login).
+    const devicesSnap = await admin.database().ref(`/known_devices/${uid}`).once("value");
+    if (devicesSnap.numChildren() <= 1) return;
+
+    const tokensSnap = await admin.database().ref(`/users_devices/${uid}`).once("value");
+    const tokens: string[] = [];
+    tokensSnap.forEach((roleNode) => {
+      const t = roleNode.child("fcmToken").val();
+      if (typeof t === "string" && t.length > 0) tokens.push(t);
+      return false;
+    });
+    if (tokens.length === 0) return;
+
+    await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: "New sign-in detected",
+        body: "Your account was just accessed from a new device. If this wasn't you, secure your account.",
+      },
+      data: { type: "security_new_device" },
+    });
+  } catch (e) {
+    console.error("recordDeviceAndMaybeAlert failed (non-fatal):", e);
+  }
+}
+
+// Runs before a new account is created: stamps default claims so the user's very
+// first ID token already carries the correct roles (no race with onUserCreated).
+export const beforeUserCreated = functions.auth.user().beforeCreate((user) => {
+  return {
+    customClaims: buildAuthClaims({}, null, {
+      emailVerified: user.emailVerified === true,
+      mfaEnrolled: (user.multiFactor?.enrolledFactors?.length || 0) > 0,
+      activeRole: "customer",
+    }),
+  };
+});
+
+// Runs before every sign-in: enforces account status at the token level and
+// refreshes roles/mfa/emailVerified claims so the rules always see current state.
+export const beforeUserSignedIn = functions.auth.user().beforeSignIn(async (user, context) => {
+  const uid = user.uid;
+
+  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+  const userData = userSnap.exists() ? userSnap.val() : null;
+
+  // Hard block suspended/banned accounts — they can't obtain a token at all.
+  if (userData && (userData.status === "suspended" || userData.status === "banned")) {
+    throw new functions.auth.HttpsError("permission-denied", "This account has been suspended.");
+  }
+
+  // Fire-and-forget device tracking / new-device alert.
+  await recordDeviceAndMaybeAlert(uid, context.ipAddress, context.userAgent);
+
+  const mfaEnrolled = (user.multiFactor?.enrolledFactors?.length || 0) > 0;
+
+  return {
+    customClaims: buildAuthClaims((user.customClaims as Record<string, unknown>) || {}, userData, {
+      emailVerified: user.emailVerified === true,
+      mfaEnrolled,
+    }),
+  };
+});
+
 export const assignMerchantRole = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
 
   const uid = context.auth.uid;
 
-  // Check if shop profile exists for this user
+  // Gate 1: a shop profile must exist and be reasonably complete (name + address),
+  // so a tap-through can't mint an empty merchant account.
   const shopSnap = await admin.database().ref(`/shop/${uid}`).once("value");
   if (!shopSnap.exists()) {
     throw new functions.https.HttpsError("not-found", "No shop profile found. Please set up your shop first.");
+  }
+  const shop = shopSnap.val();
+  const shopName = (shop.name || shop.shopName || "").toString().trim();
+  const shopAddress = (shop.address || "").toString().trim();
+  if (shopName.length < 2 || shopAddress.length < 3) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Please complete your shop profile (name and address) before becoming a merchant."
+    );
+  }
+
+  // Gate 2: the account must have a verified contact channel — a verified phone
+  // (set during phone-OTP linking) or a verified email. Prevents drive-by
+  // self-promotion from unverified accounts.
+  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
+  const userData = userSnap.exists() ? userSnap.val() : {};
+  const phoneVerified = userData.verified === true || typeof context.auth.token.phone_number === "string";
+  const emailVerified = context.auth.token.email_verified === true;
+  if (!phoneVerified && !emailVerified) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Please verify your phone number or email before becoming a merchant."
+    );
   }
 
   // Update roles and activeRole in RTDB
@@ -485,49 +468,10 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
 
 // Duplicate validateSession removed (new implementation exists at the end of the file)
 
-export const migrateUserRoles = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated to run migration.");
-  }
-
-  const usersSnap = await admin.database().ref("/users").once("value");
-  if (!usersSnap.exists()) {
-    return { migrated: 0 };
-  }
-
-  const users = usersSnap.val();
-  let count = 0;
-
-  for (const uid of Object.keys(users)) {
-    const userData = users[uid];
-    const legacyRole = userData.role;
-
-    if (legacyRole && !userData.roles) {
-      const roles: Record<string, boolean> = {
-        customer: true
-      };
-      if (legacyRole === "merchant") {
-        roles.merchant = true;
-      }
-
-      await admin.database().ref(`/users/${uid}`).update({
-        roles: roles,
-        activeRole: legacyRole
-      });
-
-      await admin.auth().setCustomUserClaims(uid, {
-        roles: roles,
-        activeRole: legacyRole,
-        customer: roles.customer || false,
-        merchant: roles.merchant || false
-      });
-
-      count++;
-    }
-  }
-
-  return { migrated: count };
-});
+// NOTE: migrateUserRoles (a one-time legacy-role migration) was removed before the
+// production launch. It iterated over every user and rewrote roles/custom claims,
+// and was callable by any authenticated user — an expensive, abusable operation.
+// If a future migration is needed, run it as an admin-only script, not a public callable.
 
 // --- Helper function to encode coordinates to Geohash ---
 const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
@@ -761,6 +705,7 @@ export const onProductReviewWrite = functions.firestore.document("/product_revie
 
 // Validate session and ensure claims are in sync
 export const validateSession = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
   }
@@ -832,6 +777,88 @@ export const validateSession = functions.https.onCall(async (data, context) => {
   });
 
   return { success: true, sessionId: sessionRef.id };
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Advanced auth: device & session management
+// Devices are tracked in RTDB (/known_devices/{uid}) by the beforeSignIn blocking
+// function. These callables let the user review and revoke them.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Lists the devices that have signed in to this account.
+export const listMyDevices = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+  }
+  const snap = await admin.database().ref(`/known_devices/${context.auth.uid}`).once("value");
+  const devices: Array<Record<string, unknown>> = [];
+  snap.forEach((child) => {
+    const v = child.val() || {};
+    devices.push({
+      id: child.key,
+      firstSeen: v.firstSeen || null,
+      lastSeen: v.lastSeen || null,
+      userAgent: v.userAgent || null,
+    });
+    return false;
+  });
+  // Most recently active first.
+  devices.sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
+  return { devices };
+});
+
+// Removes a single device record (and any push token it could be alerted on).
+// Note: Firebase refresh tokens are per-user, not per-device, so this stops
+// future new-device alerts for that fingerprint; use signOutEverywhere to
+// actually invalidate active sessions.
+export const revokeDevice = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+  }
+  const deviceId = typeof data?.deviceId === "string" ? data.deviceId : "";
+  if (!deviceId) {
+    throw new functions.https.HttpsError("invalid-argument", "deviceId is required.");
+  }
+  await admin.database().ref(`/known_devices/${context.auth.uid}/${deviceId}`).remove();
+  return { success: true };
+});
+
+// "Log out everywhere": invalidates all refresh tokens for the account and
+// clears the device registry. Clients must call getIdToken(true) afterwards;
+// other sessions are forced to re-authenticate once their ID token expires
+// (or immediately if the client verifies tokens with checkRevoked).
+export const signOutEverywhere = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+  }
+  const uid = context.auth.uid;
+  await admin.auth().revokeRefreshTokens(uid);
+  await admin.database().ref(`/known_devices/${uid}`).remove();
+  await admin.database().ref(`/users/${uid}/security/lastGlobalSignOut`).set(Date.now());
+  return { success: true };
+});
+
+// Step-up gate for sensitive operations. The client must reauthenticate
+// immediately before calling this so the ID token's auth_time is fresh; we
+// reject if the most recent authentication is older than maxAgeSeconds.
+export const assertRecentAuth = functions.https.onCall(async (data, context) => {
+  assertAppCheck(context);
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+  }
+  const maxAgeSeconds = typeof data?.maxAgeSeconds === "number" ? data.maxAgeSeconds : 300;
+  const authTime = Number(context.auth.token.auth_time || 0); // seconds since epoch
+  const ageSeconds = Math.floor(Date.now() / 1000) - authTime;
+  if (authTime === 0 || ageSeconds > maxAgeSeconds) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Please re-enter your credentials to continue."
+    );
+  }
+  return { ok: true, ageSeconds };
 });
 
 // 17. Send Push Notification on New Chat Message (RTDB trigger)

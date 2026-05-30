@@ -13,6 +13,12 @@
 migrate_working_dir/
 .env
 functions/.env
+
+# Android release signing — NEVER commit these
+**/android/key.properties
+**/*.jks
+**/*.keystore
+
 # IntelliJ related
 *.iml
 *.ipr

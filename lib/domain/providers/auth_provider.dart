@@ -24,6 +24,20 @@ class AuthRepository {
     );
   }
 
+  /// Resolves a sign-in that was interrupted by a TOTP MFA challenge.
+  Future<UserCredential> resolveMfaSignIn(
+      MultiFactorResolver resolver, String code) async {
+    final hint = resolver.hints.firstWhere(
+      (h) => h.factorId == 'totp',
+      orElse: () => resolver.hints.first,
+    );
+    final assertion = await TotpMultiFactorGenerator.getAssertionForSignIn(
+      hint.uid,
+      code.trim(),
+    );
+    return resolver.resolveSignIn(assertion);
+  }
+
   Future<UserCredential> register(String email, String password, String role,
       {String? shopName, String? phone}) async {
     final credential = await _auth.createUserWithEmailAndPassword(
@@ -220,7 +234,11 @@ class AuthNotifierState {
   final bool isLoading;
   final String? error;
 
-  const AuthNotifierState({this.isLoading = false, this.error});
+  /// Set when a sign-in is interrupted by an MFA challenge. The login screen
+  /// watches this and routes to the MFA challenge screen.
+  final MultiFactorResolver? mfaResolver;
+
+  const AuthNotifierState({this.isLoading = false, this.error, this.mfaResolver});
 
   AuthNotifierState copyWith({bool? isLoading, String? error}) =>
       AuthNotifierState(isLoading: isLoading ?? this.isLoading, error: error);
@@ -271,6 +289,11 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
 
       return true;
+    } on FirebaseAuthMultiFactorException catch (e) {
+      // A second factor (TOTP) is required to finish signing in. Hand the
+      // resolver to the UI, which routes to the MFA challenge screen.
+      state = AuthNotifierState(isLoading: false, mfaResolver: e.resolver);
+      return false;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
@@ -281,7 +304,9 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString());
       return false;
     } finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
+      // Preserve any mfaResolver set by the MFA catch above.
+      state = AuthNotifierState(
+          isLoading: false, error: state.error, mfaResolver: state.mfaResolver);
     }
   }
 
@@ -356,6 +381,11 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
 
       return true;
+    } on FirebaseAuthMultiFactorException catch (e) {
+      // A second factor (TOTP) is required to finish signing in. Hand the
+      // resolver to the UI, which routes to the MFA challenge screen.
+      state = AuthNotifierState(isLoading: false, mfaResolver: e.resolver);
+      return false;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
@@ -366,7 +396,9 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString());
       return false;
     } finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
+      // Preserve any mfaResolver set by the MFA catch above.
+      state = AuthNotifierState(
+          isLoading: false, error: state.error, mfaResolver: state.mfaResolver);
     }
   }
 
@@ -703,6 +735,53 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
+  }
+
+  /// Completes a sign-in that required a TOTP second factor.
+  Future<bool> completeMfaChallenge(
+      MultiFactorResolver resolver, String code) async {
+    state = const AuthNotifierState(isLoading: true, error: null);
+    try {
+      final credential = await _repository.resolveMfaSignIn(resolver, code);
+      final user = credential.user;
+      if (user == null) {
+        state = const AuthNotifierState(error: 'User not found.');
+        return false;
+      }
+
+      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
+
+      final isValid = await _repository.validateUserSession(user, targetRole);
+      if (!isValid) {
+        await _repository.logout();
+        state = const AuthNotifierState(
+          error: 'Access Denied: Invalid account role or suspended.',
+        );
+        return false;
+      }
+
+      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      if (roles['customer'] != true && roles['merchant'] != true) {
+        await _repository.logout();
+        state = const AuthNotifierState(error: 'Access Denied: Invalid account role.');
+        return false;
+      }
+      return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
+      return false;
+    } catch (e) {
+      state = AuthNotifierState(error: e.toString());
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
+  }
+
+  /// Clears a pending MFA challenge (e.g. when the user cancels).
+  void clearMfa() {
+    state = AuthNotifierState(isLoading: false, error: state.error);
   }
 
   Future<void> logout() async {

@@ -9,6 +9,21 @@ service cloud.firestore {
     function isVendor(shopId) {
       return isMerchant() && get(/databases/$(database)/documents/shops/$(shopId)).data.vendorId == request.auth.uid;
     }
+    // A rating must be a number between 1 and 5 (half-star ratings allowed).
+    function isValidRating(r) {
+      return r is number && r >= 1 && r <= 5;
+    }
+    // Step-up: true only when the user authenticated within the last 10 minutes.
+    // Used to protect destructive/sensitive operations (forces a fresh re-auth).
+    function hasRecentAuth() {
+      return request.auth.token.auth_time != null &&
+        request.time.toMillis() - request.auth.token.auth_time * 1000 < 600000;
+    }
+    // True when the account has a second factor enrolled (claim set by the
+    // beforeSignIn blocking function). Use to require MFA on high-value writes.
+    function hasMfa() {
+      return request.auth.token.mfa == true;
+    }
 
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
@@ -17,9 +32,10 @@ service cloud.firestore {
     match /shops/{shopId} {
       allow read: if true;
       allow create: if isMerchant();
-      allow update: if isVendor(shopId) && 
+      allow update: if isVendor(shopId) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['avgRating', 'totalRatings']));
-      allow delete: if isVendor(shopId);
+      // Deleting a shop is destructive — require a recent (stepped-up) re-auth.
+      allow delete: if isVendor(shopId) && hasRecentAuth();
     }
 
     match /products/{productId} {
@@ -49,15 +65,21 @@ service cloud.firestore {
 
     match /shop_reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
+        && isValidRating(request.resource.data.rating)
+        && request.resource.data.shopId is string;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid
+        && isValidRating(request.resource.data.rating);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     match /product_reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
+        && isValidRating(request.resource.data.rating)
+        && request.resource.data.productId is string;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid
+        && isValidRating(request.resource.data.rating);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
@@ -65,6 +87,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // Analytics events and server-managed sessions are written only by Cloud
+    // Functions via the Admin SDK (which bypasses these rules). Clients get no access.
+    match /events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /sessions/{sessionId} {
+      allow read, write: if false;
     }
   }
 }

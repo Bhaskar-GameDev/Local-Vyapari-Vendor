@@ -9,6 +9,7 @@ import '../../ui/screens/main_navigation.dart';
 import '../../ui/screens/shop/setup_shop_screen.dart';
 import '../../ui/screens/splash/splash_screen.dart';
 import '../../ui/screens/chat/chat_screen.dart';
+import '../../ui/screens/security/security_settings_screen.dart';
 
 final authRouteStateProvider = Provider((ref) {
   return (
@@ -90,6 +91,13 @@ final appRouter = Provider<GoRouter>((ref) {
             child: ChatScreen(userId: userId, userName: userName),
           );
         },
+      ),
+      GoRoute(
+        path: '/security',
+        pageBuilder: (context, state) => buildSlideRightPage(
+          key: state.pageKey,
+          child: const SecuritySettingsScreen(),
+        ),
       ),
     ],
     redirect: (context, state) {

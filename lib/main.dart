@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,22 +19,43 @@ import 'ui/common/connectivity_banner.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Catch uncaught Flutter framework errors (widget build failures, etc.)
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    if (kDebugMode) debugPrint('[FlutterError] ${details.exception}\n${details.stack}');
-  };
-
-  // Catch uncaught async errors that escape the Flutter framework zone
-  PlatformDispatcher.instance.onError = (error, stack) {
-    if (kDebugMode) debugPrint('[Unhandled] $error\n$stack');
-    return true;
-  };
-
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // App Check: attests that requests come from a genuine, untampered build.
+  // Debug provider in debug builds; Play Integrity / DeviceCheck in release.
+  await FirebaseAppCheck.instance.activate(
+    providerAndroid: kReleaseMode
+        ? AndroidAppCheckProvider.playIntegrity
+        : AndroidAppCheckProvider.debug,
+    providerApple:
+        kReleaseMode ? AppleAppCheckProvider.deviceCheck : AppleAppCheckProvider.debug,
+  );
+
+  // Crashlytics: collect only in release builds (keeps debug noise out of the console).
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+
+  // Route uncaught Flutter framework errors (widget build failures, etc.) to Crashlytics.
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (kDebugMode) {
+      debugPrint('[FlutterError] ${details.exception}\n${details.stack}');
+    } else {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    }
+  };
+
+  // Route uncaught async errors that escape the Flutter framework zone to Crashlytics.
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (kDebugMode) {
+      debugPrint('[Unhandled] $error\n$stack');
+    } else {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+    return true;
+  };
 
   // Initialize API client
   ApiClient.initialize();

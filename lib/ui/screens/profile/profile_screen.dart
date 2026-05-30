@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
@@ -155,6 +156,25 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => _showThemeSelectionSheet(context, ref, themeMode),
+                      ),
+                    ),
+                    Card(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.shield_outlined,
+                              color: AppColors.primary),
+                        ),
+                        title: const Text('Security'),
+                        subtitle: const Text(
+                            'App lock, two-factor auth, signed-in devices'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/security'),
                       ),
                     ),
 
