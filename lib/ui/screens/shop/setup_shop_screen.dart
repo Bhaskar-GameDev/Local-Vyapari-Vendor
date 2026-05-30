@@ -527,7 +527,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         child: Text(
                           'Please fill in your business details to build your digital storefront and start listing products.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                           textAlign: TextAlign.center,
                         ),
@@ -559,7 +559,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                 ),
                                 child: CircleAvatar(
                                   radius: 56,
-                                  backgroundColor: AppColors.surfaceElevated,
+                                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   backgroundImage: _logoFile != null
                                       ? FileImage(_logoFile!)
                                       : (widget.existingShop?.logoUrl != null
@@ -599,7 +599,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       child: Text(
                         'Upload Shop Logo',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w600,
                             ),
                         textAlign: TextAlign.center,
@@ -660,9 +660,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: AppRadius.borderLg,
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -685,7 +685,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             Text(
                               'Let customers know when your shop is open.',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                             ),
                             AppSpacing.verticalMd,
@@ -738,9 +738,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: AppRadius.borderLg,
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -763,7 +763,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             Text(
                               'Accurate GPS coordinates help nearby shoppers find your store on their maps.',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                             ),
                             AppSpacing.verticalMd,

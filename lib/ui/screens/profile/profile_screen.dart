@@ -105,7 +105,7 @@ class ProfileScreen extends ConsumerWidget {
                         activeThumbColor: AppColors.success,
                         secondary: Icon(
                           shop?.isOpen == true ? Icons.storefront : Icons.storefront_outlined,
-                          color: shop?.isOpen == true ? AppColors.success : AppColors.textSecondary,
+                          color: shop?.isOpen == true ? AppColors.success : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -114,15 +114,16 @@ class ProfileScreen extends ConsumerWidget {
                     AppSpacing.verticalMd,
                     const _SectionLabel(label: 'Shop Details'),
                     AppSpacing.verticalSm,
-                    _buildListTile('Shop Name', shop?.name ?? 'Not Set', Icons.business),
-                    _buildListTile('Description', shop?.description ?? 'Not Set', Icons.description),
-                    _buildListTile('Address', shop?.address ?? 'Not Set', Icons.location_on),
+                    _buildListTile(context, 'Shop Name', shop?.name ?? 'Not Set', Icons.business),
+                    _buildListTile(context, 'Description', shop?.description ?? 'Not Set', Icons.description),
+                    _buildListTile(context, 'Address', shop?.address ?? 'Not Set', Icons.location_on),
                     _buildListTile(
+                      context,
                       'Storefront GPS Coordinates',
                       coordinatesText,
                       Icons.map_outlined,
                     ),
-                    _buildListTile('Phone', shop?.phone ?? 'Not Set', Icons.phone),
+                    _buildListTile(context, 'Phone', shop?.phone ?? 'Not Set', Icons.phone),
 
                     // ── App Preferences section ──────────────────────────
                     AppSpacing.verticalLg,
@@ -279,7 +280,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                               ),
                               AppSpacing.horizontalMd,
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -288,22 +289,22 @@ class ProfileScreen extends ConsumerWidget {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
-                                        color: AppColors.textPrimary,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                       ),
                                     ),
                                     Text(
                                       'Invite other vyaparis or customers',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.chevron_right,
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ],
                           ),
@@ -366,7 +367,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                               ),
                               AppSpacing.horizontalMd,
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -375,22 +376,22 @@ class ProfileScreen extends ConsumerWidget {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
-                                        color: AppColors.textPrimary,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                       ),
                                     ),
                                     Text(
                                       'Browse and buy from local vyaparis',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.chevron_right,
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ],
                           ),
@@ -435,13 +436,14 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildListTile(String title, String subtitle, IconData icon) {
+  Widget _buildListTile(BuildContext context, String title, String subtitle, IconData icon) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.textSecondary),
-        title: Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        leading: Icon(icon, color: cs.onSurfaceVariant),
+        title: Text(title, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 15, color: cs.onSurface, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -529,9 +531,9 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Share Local Vyapari',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               ListTile(

@@ -53,7 +53,7 @@ class ChatsListScreen extends ConsumerWidget {
                           'No messages yet',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                         ),
                         AppSpacing.verticalSm,
@@ -63,7 +63,7 @@ class ChatsListScreen extends ConsumerWidget {
                             'When customers query your products or shop, their conversations will appear here.',
                             textAlign: TextAlign.center,
                             style: AppTextStyles.getBodyMedium(context).copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -80,8 +80,8 @@ class ChatsListScreen extends ConsumerWidget {
                 horizontal: AppDimensions.horizontalPadding,
               ),
               itemCount: chats.length,
-              separatorBuilder: (context, index) => const Divider(
-                color: AppColors.border,
+              separatorBuilder: (context, index) => Divider(
+                color: Theme.of(context).colorScheme.outlineVariant,
                 height: 1,
               ),
               itemBuilder: (context, index) {
@@ -158,8 +158,8 @@ class ChatsListScreen extends ConsumerWidget {
         horizontal: AppDimensions.horizontalPadding,
       ),
       itemCount: 5,
-      separatorBuilder: (context, index) => const Divider(
-        color: AppColors.border,
+      separatorBuilder: (context, index) => Divider(
+        color: Theme.of(context).colorScheme.outlineVariant,
         height: 1,
       ),
       itemBuilder: (context, index) {
@@ -261,7 +261,7 @@ class _ChatSummaryTile extends ConsumerWidget {
                           style: TextStyle(
                             fontWeight: chat.unread ? FontWeight.bold : FontWeight.w600,
                             fontSize: 15,
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -271,7 +271,7 @@ class _ChatSummaryTile extends ConsumerWidget {
                         formattedTime,
                         style: TextStyle(
                           fontSize: 11,
-                          color: chat.unread ? AppColors.accent : AppColors.textHint,
+                          color: chat.unread ? AppColors.accent : Theme.of(context).colorScheme.outline,
                           fontWeight: chat.unread ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -284,7 +284,7 @@ class _ChatSummaryTile extends ConsumerWidget {
                         child: Text(
                           chat.lastMessageText.isNotEmpty ? chat.lastMessageText : 'Start chatting',
                           style: TextStyle(
-                            color: chat.unread ? AppColors.textPrimary : AppColors.textSecondary,
+                            color: chat.unread ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 13,
                             fontWeight: chat.unread ? FontWeight.w500 : FontWeight.normal,
                           ),

@@ -39,8 +39,8 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_greeting(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: AppColors.textHint, height: 1)),
-            Text(shopName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.3)),
+            Text(_greeting(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Theme.of(context).colorScheme.outline, height: 1)),
+            Text(shopName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface, height: 1.3)),
           ],
         ),
         actions: [
@@ -430,7 +430,7 @@ class _StatTile extends StatelessWidget {
                     )
                   : Text(data.value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: textColor, height: 1, fontFamily: 'Poppins')),
               const SizedBox(height: 2),
-              Text(data.label, style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(data.label, style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : AppColors.textSecondary, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ),
         ],
@@ -597,7 +597,7 @@ class _LegendDot extends StatelessWidget {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
@@ -623,7 +623,7 @@ class _RatingsSection extends ConsumerWidget {
               const _SectionHeader(title: 'Customer Ratings'),
               const Spacer(),
               if (ratingDist.totalCount > 0)
-                Text('${ratingDist.totalCount} total', style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                Text('${ratingDist.totalCount} total', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
             ],
           ),
           const SizedBox(height: 12),
@@ -690,7 +690,7 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
   }
 
   if (productsState.hasError) {
-    return const Text('Error loading inventory.', style: TextStyle(color: AppColors.textSecondary));
+    return Text('Error loading inventory.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
   }
 
   final allProducts = productsState.asData?.value ?? [];
@@ -708,11 +708,11 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.check_circle_outline_rounded, color: AppColors.accent, size: 18),
-            SizedBox(width: 10),
-            Text('All products are well-stocked.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+            const Icon(Icons.check_circle_outline_rounded, color: AppColors.accent, size: 18),
+            const SizedBox(width: 10),
+            Text('All products are well-stocked.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -752,13 +752,13 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(product.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Theme.of(context).colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 1),
                       Text('Only ${product.stockQuantity} left', style: const TextStyle(color: AppColors.error, fontSize: 12)),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textHint, size: 18),
+                Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.outline, size: 18),
               ],
             ),
           ),

@@ -36,7 +36,7 @@ class OffersListScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
                         'No active offers. Create a flash sale!',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
                   );
@@ -88,7 +88,7 @@ class OffersListScreen extends ConsumerWidget {
                             offer.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: effectiveActive ? AppColors.textPrimary : AppColors.textSecondary,
+                              color: effectiveActive ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -101,7 +101,7 @@ class OffersListScreen extends ConsumerWidget {
                                   : '${offer.discountPercentage.toInt()}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isExpired ? AppColors.error : AppColors.textSecondary,
+                                color: isExpired ? AppColors.error : Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,

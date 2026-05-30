@@ -66,14 +66,14 @@ class MainNavigation extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Scaffold(
+      loading: () => Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading storefront…', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text('Loading storefront…', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -88,7 +88,7 @@ class MainNavigation extends ConsumerWidget {
                 children: [
                   const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
                   const SizedBox(height: 16),
-                  const Text('Failed to load shop details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Text('Failed to load shop details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -97,7 +97,7 @@ class MainNavigation extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
                     ),
-                    child: Text(error.toString(), textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppColors.textSecondary)),
+                    child: Text(error.toString(), textAlign: TextAlign.center, style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ),
                   const SizedBox(height: 24),
                   Row(

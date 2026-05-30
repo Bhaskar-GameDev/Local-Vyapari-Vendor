@@ -188,14 +188,14 @@ class ProductsListScreen extends ConsumerWidget {
                   child: Container(
                     width: 70,
                     height: 70,
-                    color: AppColors.surfaceElevated,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: hasImage
                         ? CachedNetworkImage(
                             imageUrl: product.images.first,
                             cacheManager: AppImageCacheManager.instance,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => const ColoredBox(
-                                color: AppColors.surfaceElevated),
+                            placeholder: (_, __) => ColoredBox(
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest),
                             errorWidget: (_, __, ___) => const Icon(
                                 Icons.inventory_2_outlined,
                                 color: AppColors.primary),
@@ -212,10 +212,10 @@ class ProductsListScreen extends ConsumerWidget {
                     children: [
                       Text(
                         product.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
-                            color: AppColors.textPrimary),
+                            color: Theme.of(context).colorScheme.onSurface),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -224,15 +224,15 @@ class ProductsListScreen extends ConsumerWidget {
                         children: [
                           Text(
                             product.category,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                           AppSpacing.horizontalSm,
                           Container(
                             width: 4,
                             height: 4,
-                            decoration: const BoxDecoration(
-                              color: AppColors.textHint,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.outline,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -254,7 +254,7 @@ class ProductsListScreen extends ConsumerWidget {
                                   Icons.star_rounded,
                                   color: totalRatings > 0
                                       ? Colors.amber
-                                      : AppColors.textHint,
+                                      : Theme.of(context).colorScheme.outline,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 2),
@@ -267,7 +267,7 @@ class ProductsListScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.bold,
                                     color: totalRatings > 0
                                         ? AppColors.primary
-                                        : AppColors.textSecondary,
+                                        : Theme.of(context).colorScheme.onSurfaceVariant,
                                     decoration: totalRatings > 0
                                         ? TextDecoration.underline
                                         : TextDecoration.none,
@@ -300,9 +300,9 @@ class ProductsListScreen extends ConsumerWidget {
                             AppSpacing.horizontalXs,
                             Text(
                               '₹${product.actualPrice}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 decoration: TextDecoration.lineThrough,
-                                color: AppColors.textHint,
+                                color: Theme.of(context).colorScheme.outline,
                                 fontSize: 11,
                               ),
                             ),
@@ -392,15 +392,15 @@ class ProductsListScreen extends ConsumerWidget {
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color:
-                              AppColors.surfaceElevated.withValues(alpha: 0.9),
+                              Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
                           borderRadius: AppRadius.borderXs,
                         ),
                         child: Text(
                           product.category,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ),
                     ),
@@ -461,10 +461,10 @@ class ProductsListScreen extends ConsumerWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: AppColors.textPrimary),
+                          color: Theme.of(context).colorScheme.onSurface),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -485,9 +485,9 @@ class ProductsListScreen extends ConsumerWidget {
                               AppSpacing.horizontalXs,
                               Text(
                                 '₹${product.actualPrice}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   decoration: TextDecoration.lineThrough,
-                                  color: AppColors.textHint,
+                                  color: Theme.of(context).colorScheme.outline,
                                   fontSize: 10,
                                 ),
                               ),
@@ -500,7 +500,7 @@ class ProductsListScreen extends ConsumerWidget {
                             fontSize: 11,
                             color: product.stockQuantity < 5
                                 ? AppColors.error
-                                : AppColors.textSecondary,
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: product.stockQuantity < 5
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -515,10 +515,10 @@ class ProductsListScreen extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            const Text('Active',
+                            Text('Active',
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.textSecondary)),
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
                             Transform.scale(
                               scale: 0.75,
                               child: Switch(

@@ -167,9 +167,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.xs),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
                           borderRadius: AppRadius.borderMedium,
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Row(
                           children: [
@@ -192,7 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     'Email Address',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: _isEmailMode ? Colors.white : AppColors.textSecondary,
+                                      color: _isEmailMode ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -218,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     'Phone Number',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: !_isEmailMode ? Colors.white : AppColors.textSecondary,
+                                      color: !_isEmailMode ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),

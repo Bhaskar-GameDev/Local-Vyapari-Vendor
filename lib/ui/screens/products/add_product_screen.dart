@@ -265,7 +265,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       decoration: InputDecoration(
                         labelText: 'Category',
                         filled: true,
-                        fillColor: AppColors.surface,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
                       ),
                       items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -363,17 +363,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           children: [
             Text(
               'Product Images (${_images.length}/5)',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
-            const Text(
+            Text(
               'Min 1, Max 5',
               style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -405,7 +405,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         width: 110,
         margin: const EdgeInsets.only(right: AppSpacing.sm),
         decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: AppRadius.borderMedium,
           border: Border.all(
             color: AppColors.primary.withValues(alpha: 0.3),

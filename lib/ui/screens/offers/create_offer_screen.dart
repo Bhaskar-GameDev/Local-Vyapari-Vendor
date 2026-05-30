@@ -162,7 +162,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         borderRadius: AppRadius.borderMedium,
                       ),
                       child: Column(
@@ -177,13 +177,13 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Starts At', 
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                      'Starts At',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
                                     Text(
                                       DateFormat('MMM dd, yyyy - hh:mm a').format(_startDate),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                      style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                     ),
                                   ],
                                 ),
@@ -207,13 +207,13 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Ends At', 
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                      'Ends At',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
                                     Text(
                                       DateFormat('MMM dd, yyyy - hh:mm a').format(_endDate),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                      style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                     ),
                                   ],
                                 ),

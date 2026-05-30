@@ -15,14 +15,12 @@ class VendorReviewsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reviewsAsync = ref.watch(vendorShopReviewsProvider);
     final distribution = ref.watch(vendorRatingDistributionProvider);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Store Ratings & Reviews'),
         elevation: 0,
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -53,22 +51,19 @@ class VendorReviewsScreen extends ConsumerWidget {
                               ),
                             ),
                             AppSpacing.verticalLg,
-                            const Text(
+                            Text(
                               'No Reviews Yet',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                                color: cs.onSurface,
                               ),
                             ),
                             AppSpacing.verticalSm,
-                            const Text(
+                            Text(
                               'Customer feedback and ratings will appear here once submitted.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
                             ),
                           ],
                         ),
@@ -97,7 +92,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                           'Customer Comments (${reviews.length})',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: cs.onSurface,
                           ),
                         ),
                       ),
@@ -119,11 +114,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                ),
-              ),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
               error: (err, stack) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.lg),
@@ -135,7 +126,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                       Text(
                         'Error loading reviews: $err',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.textSecondary),
+                        style: TextStyle(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -155,11 +146,12 @@ class RatingBreakdownWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: cs.surface,
         borderRadius: AppRadius.borderMedium,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: cs.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -172,7 +164,6 @@ class RatingBreakdownWidget extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            // Big Average Rating Display
             Expanded(
               flex: 2,
               child: Column(
@@ -180,11 +171,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                 children: [
                   Text(
                     distribution.averageRating.toString(),
-                    style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: cs.onSurface),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -194,7 +181,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                         Icons.star_rounded,
                         color: starRating <= distribution.averageRating.round()
                             ? AppColors.warning
-                            : AppColors.border,
+                            : cs.outlineVariant,
                         size: 20,
                       );
                     }),
@@ -202,15 +189,13 @@ class RatingBreakdownWidget extends StatelessWidget {
                   AppSpacing.verticalXs,
                   Text(
                     '${distribution.totalCount} ratings',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            // Divider
-            Container(height: 90, width: 1, color: AppColors.border),
+            Container(height: 90, width: 1, color: cs.outlineVariant),
             const SizedBox(width: AppSpacing.md),
-            // Progress Bars for each star value
             Expanded(
               flex: 3,
               child: Column(
@@ -224,7 +209,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: Row(
                       children: [
-                        Text('$starVal', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text('$starVal', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
                         AppSpacing.horizontalXs,
                         const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
                         const SizedBox(width: AppSpacing.sm),
@@ -233,7 +218,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: percentage,
-                              backgroundColor: AppColors.divider,
+                              backgroundColor: cs.outlineVariant,
                               color: AppColors.warning,
                               minHeight: 6,
                             ),
@@ -244,7 +229,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                           width: 20,
                           child: Text(
                             '$count',
-                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
                             textAlign: TextAlign.end,
                           ),
                         ),
@@ -267,13 +252,14 @@ class ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final formattedDate = '${review.createdAt.day.toString().padLeft(2, '0')}/${review.createdAt.month.toString().padLeft(2, '0')}/${review.createdAt.year}';
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: cs.surface,
         borderRadius: AppRadius.borderMedium,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: cs.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.01),
@@ -293,11 +279,7 @@ class ReviewCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     review.userDisplayName.isNotEmpty ? review.userDisplayName : 'Anonymous User',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: cs.onSurface),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -312,11 +294,7 @@ class ReviewCard extends StatelessWidget {
                     children: [
                       Text(
                         review.rating.toString(),
-                        style: const TextStyle(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                       AppSpacing.horizontalXs,
                       const Icon(Icons.star_rounded, size: 14, color: AppColors.accent),
@@ -328,21 +306,14 @@ class ReviewCard extends StatelessWidget {
             AppSpacing.verticalSm,
             Text(
               review.comment.isNotEmpty ? review.comment : 'No comment left.',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13, height: 1.4),
             ),
             AppSpacing.verticalSm,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  formattedDate,
-                  style: const TextStyle(color: AppColors.textHint, fontSize: 11),
-                ),
-                const Icon(
-                  Icons.verified_user_outlined,
-                  size: 14,
-                  color: AppColors.textHint,
-                ),
+                Text(formattedDate, style: TextStyle(color: cs.outline, fontSize: 11)),
+                Icon(Icons.verified_user_outlined, size: 14, color: cs.outline),
               ],
             ),
           ],

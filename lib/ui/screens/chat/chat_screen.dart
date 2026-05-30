@@ -173,7 +173,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 .titleMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                           ),
                           AppSpacing.verticalXs,
@@ -183,7 +183,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                         ],
@@ -219,7 +219,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         decoration: BoxDecoration(
                           color: isMe
                               ? AppColors.primary
-                              : AppColors.surfaceElevated,
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -239,7 +239,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               message.text,
                               style: TextStyle(
                                 color:
-                                    isMe ? Colors.white : AppColors.textPrimary,
+                                    isMe ? Colors.white : Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14.5,
                               ),
                             ),
@@ -249,7 +249,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               style: TextStyle(
                                 color: isMe
                                     ? Colors.white60
-                                    : AppColors.textSecondary,
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontSize: 9.5,
                               ),
                             ),
@@ -279,7 +279,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               bottom: MediaQuery.paddingOf(context).bottom + 8.0,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
@@ -293,7 +293,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceElevated,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
