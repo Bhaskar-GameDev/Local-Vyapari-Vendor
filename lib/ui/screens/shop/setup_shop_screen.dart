@@ -650,18 +650,6 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         },
                       ),
                     ),
-                    AppSpacing.verticalMd,
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 500),
-                      delay: const Duration(milliseconds: 400),
-                      slideOffset: 16,
-                      child: CustomTextField(
-                        label: 'Shop Address',
-                        controller: _addressController,
-                        prefixIcon: Icons.location_on_outlined,
-                        validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
-                      ),
-                    ),
                     AppSpacing.verticalLg,
 
                     // --- Shop Timings ---
@@ -822,6 +810,18 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                    AppSpacing.verticalMd,
+                    FadeInSlide(
+                      duration: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 475),
+                      slideOffset: 16,
+                      child: CustomTextField(
+                        label: 'Shop Address',
+                        controller: _addressController,
+                        prefixIcon: Icons.location_on_outlined,
+                        validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
                       ),
                     ),
                     AppSpacing.verticalXl,
