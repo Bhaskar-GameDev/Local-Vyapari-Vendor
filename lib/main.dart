@@ -27,11 +27,11 @@ void main() async {
   // App Check: attests that requests come from a genuine, untampered build.
   // Debug provider in debug builds; Play Integrity / DeviceCheck in release.
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: kReleaseMode
-        ? AndroidAppCheckProvider.playIntegrity
-        : AndroidAppCheckProvider.debug,
-    providerApple:
-        kReleaseMode ? AppleAppCheckProvider.deviceCheck : AppleAppCheckProvider.debug,
+    androidProvider: kReleaseMode
+        ? AndroidProvider.playIntegrity
+        : AndroidProvider.debug,
+    appleProvider:
+        kReleaseMode ? AppleProvider.deviceCheck : AppleProvider.debug,
   );
 
   // Crashlytics: collect only in release builds (keeps debug noise out of the console).
