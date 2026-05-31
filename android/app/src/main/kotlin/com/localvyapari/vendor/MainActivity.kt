@@ -1,4 +1,4 @@
-package com.example.local_vyapari_vendor
+package com.localvyapari.vendor
 
 import io.flutter.embedding.android.FlutterActivity
 
