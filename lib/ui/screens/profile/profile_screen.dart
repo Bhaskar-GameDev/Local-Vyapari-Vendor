@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,6 +87,15 @@ class ProfileScreen extends ConsumerWidget {
                           final updatedShop = shop.copyWith(isOpen: value);
                           try {
                             await ref.read(shopRepositoryProvider).updateShopProfile(updatedShop);
+                            // Track manual close date so the auto-open timer won't
+                            // reopen the shop on the same day the vendor closed it.
+                            final uid = FirebaseAuth.instance.currentUser?.uid;
+                            if (uid != null) {
+                              final today = DateTime.now().toIso8601String().split('T')[0];
+                              await FirebaseDatabase.instance.ref('shop/$uid').update({
+                                'manuallyClosedAt': value ? null : today,
+                              });
+                            }
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

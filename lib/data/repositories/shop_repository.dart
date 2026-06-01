@@ -31,6 +31,7 @@ class ShopRepository {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not authenticated');
     final data = shop.copyWith(id: uid).toJson();
-    await _dbRef.child(uid).set(data);
+    // update() instead of set() so extra fields (e.g. manuallyClosedAt) are preserved.
+    await _dbRef.child(uid).update(data);
   }
 }

@@ -26,6 +26,7 @@ class MainNavigation extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(shopAutoOpenProvider); // keeps auto-open timer alive
     final shopState = ref.watch(shopProvider);
     final currentIndex = ref.watch(navigationIndexProvider);
     final chatsState = ref.watch(vendorChatsProvider);
