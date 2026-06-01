@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
+import { encodeGeohash } from "./geohash";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -472,48 +473,6 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
 // production launch. It iterated over every user and rewrote roles/custom claims,
 // and was callable by any authenticated user — an expensive, abusable operation.
 // If a future migration is needed, run it as an admin-only script, not a public callable.
-
-// --- Helper function to encode coordinates to Geohash ---
-const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
-function encodeGeohash(latitude: number, longitude: number, precision: number = 9): string {
-  let latMin = -90, latMax = 90;
-  let lonMin = -180, lonMax = 180;
-  let geohash = "";
-  let isEven = true;
-  let bit = 0;
-  let ch = 0;
-
-  while (geohash.length < precision) {
-    let mid;
-    if (isEven) {
-      mid = (lonMin + lonMax) / 2;
-      if (longitude > mid) {
-        ch |= (1 << (4 - bit));
-        lonMin = mid;
-      } else {
-        lonMax = mid;
-      }
-    } else {
-      mid = (latMin + latMax) / 2;
-      if (latitude > mid) {
-        ch |= (1 << (4 - bit));
-        latMin = mid;
-      } else {
-        latMax = mid;
-      }
-    }
-
-    isEven = !isEven;
-    if (bit < 4) {
-      bit++;
-    } else {
-      geohash += BASE32[ch];
-      bit = 0;
-      ch = 0;
-    }
-  }
-  return geohash;
-}
 
 // 6. Shop Profile Sync (RTDB -> Firestore index for geohash search)
 export const onShopProfileUpdate = functions.database.ref("/shop/{shopId}")

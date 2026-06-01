@@ -1,0 +1,12 @@
+# Compiled TypeScript output — regenerated on deploy via the predeploy build hook.
+lib/
+
+# Dependencies
+node_modules/
+
+# Firebase / runtime
+.env
+*.local
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log

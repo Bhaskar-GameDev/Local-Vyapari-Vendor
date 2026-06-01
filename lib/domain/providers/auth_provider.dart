@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -7,12 +7,25 @@ import 'package:firebase_database/firebase_database.dart';
 import '../../core/exceptions/error_handler.dart';
 import '../../core/services/role_service.dart';
 
-// ─── Repository ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Repository â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class AuthRepository {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  /// Dependencies default to the real Firebase singletons in production but can
+  /// be injected with fakes/mocks in tests. The `?? .instance` fallbacks
+  /// short-circuit when a dependency is supplied, so tests never touch a live
+  /// Firebase instance.
+  AuthRepository({
+    FirebaseAuth? auth,
+    FirebaseFunctions? functions,
+    FirebaseDatabase? database,
+  })  : _auth = auth ?? FirebaseAuth.instance,
+        _functions = functions ?? FirebaseFunctions.instance,
+        _db = database ?? FirebaseDatabase.instance;
 
-  /// Stream of auth state changes — null means logged out
+  final FirebaseAuth _auth;
+  final FirebaseFunctions _functions;
+  final FirebaseDatabase _db;
+
+  /// Stream of auth state changes â€” null means logged out
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
@@ -44,69 +57,121 @@ class AuthRepository {
       email: email.trim(),
       password: password.trim(),
     );
-    final uid = credential.user?.uid;
+    final user = credential.user;
+    final uid = user?.uid;
     if (uid != null) {
-      final updates = {
-        'email': email.trim(),
-        'createdAt': ServerValue.timestamp,
-      };
-      if (phone != null && phone.isNotEmpty) {
-        updates['phone'] = phone.trim();
-        updates['verified'] = true;
-      }
+      // The auth account now exists. If any of the profile writes below fail
+      // (network/rules), roll the account back so we don't leave an orphaned
+      // login with no users/{uid} record — which would lock the person out with
+      // a misleading "account suspended" on their next sign-in.
+      try {
+        final updates = {
+          'email': email.trim(),
+          'createdAt': ServerValue.timestamp,
+        };
+        if (phone != null && phone.isNotEmpty) {
+          updates['phone'] = phone.trim();
+          updates['verified'] = true;
+        }
 
-      await FirebaseDatabase.instance.ref('users').child(uid).update(updates);
+        await _db.ref('users').child(uid).update(updates);
 
-      if (phone != null && phone.isNotEmpty) {
-        await FirebaseDatabase.instance
-            .ref('phones')
-            .child(phone.trim())
-            .set(uid);
-      }
+        if (phone != null && phone.isNotEmpty) {
+          await _db.ref('phones').child(phone.trim()).set(uid);
+        }
 
-      if (role == 'merchant') {
-        await FirebaseDatabase.instance.ref('shop').child(uid).set({
-          'name': shopName ?? 'My Shop',
-          'description': 'Welcome to our shop!',
-          'address': '',
-          'phone': phone ?? '',
-          'isOpen': true,
-          'isVerified': false,
-        });
+        if (role == 'merchant') {
+          await _db.ref('shop').child(uid).set({
+            'name': shopName ?? 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': phone ?? '',
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
+      } catch (e) {
+        // Best-effort rollback; ignore a delete failure and surface the
+        // original write error to the caller.
+        try {
+          await user!.delete();
+        } catch (_) {/* leave cleanup to a server reaper if delete fails */}
+        rethrow;
       }
     }
     return credential;
+  }
+
+  /// Writes the initial profile (users + phones index + shop) for a brand-new
+  /// account created via phone OTP, then rolls the auth account back if any
+  /// write fails — same orphan-prevention contract as [register]. Centralizing
+  /// these writes here (instead of in the notifier) keeps them behind the
+  /// injectable [_db] so the rollback can be unit tested.
+  Future<void> completePhoneSignupProfile({
+    required User user,
+    required String email,
+    required String phone,
+    String? shopName,
+  }) async {
+    try {
+      await _db.ref('users').child(user.uid).update({
+        'email': email,
+        'phone': phone,
+        'createdAt': ServerValue.timestamp,
+        'verified': true,
+      });
+
+      await _db.ref('phones').child(phone).set(user.uid);
+
+      await _db.ref('shop').child(user.uid).set({
+        'name': shopName ?? 'My Shop',
+        'description': 'Welcome to our shop!',
+        'address': '',
+        'phone': phone,
+        'isOpen': true,
+        'isVerified': false,
+      });
+    } catch (e) {
+      try {
+        await user.delete();
+      } catch (_) {/* leave cleanup to a server reaper if delete fails */}
+      rethrow;
+    }
   }
 
   Future<bool> isMerchantUser(User user) async {
     return await validateUserSession(user, 'merchant');
   }
 
+  /// Validates the session for [role] against the `validateSession` callable.
+  ///
+  /// Returns `true` when the backend confirms the session, `false` when it
+  /// explicitly rejects it (wrong role / suspended). Crucially it does NOT
+  /// swallow infrastructure failures: a [FirebaseFunctionsException] (e.g.
+  /// `unavailable`/`internal` on a flaky network) is rethrown so the caller can
+  /// tell "you're not authorized" apart from "we couldn't reach the server" and
+  /// avoid logging a legitimate user out with a false "suspended" message.
   Future<bool> validateUserSession(User user, String role) async {
-    try {
-      final result =
-          await _functions.httpsCallable('validateSession').call<dynamic>({
-        'targetRole': role,
-        'deviceInfo': {
-          'platform': 'flutter-client',
-        }
-      });
-      final data = Map<String, dynamic>.from(result.data as Map);
-      if (data['success'] == true) {
-        await user.getIdToken(true);
-        return true;
+    final result =
+        await _functions.httpsCallable('validateSession').call<dynamic>({
+      'targetRole': role,
+      'deviceInfo': {
+        'platform': 'flutter-client',
       }
-      return false;
-    } catch (_) {
-      return false;
+    });
+    final data = Map<String, dynamic>.from(result.data as Map);
+    if (data['success'] == true) {
+      await user.getIdToken(true);
+      return true;
     }
+    return false;
   }
 
   // --- Native Firebase Phone Auth Support ---
 
   Future<bool> isPhoneRegistered(String phone) async {
     final snapshot =
-        await FirebaseDatabase.instance.ref('phones').child(phone).get();
+        await _db.ref('phones').child(phone).get();
     return snapshot.exists && snapshot.value != null;
   }
 
@@ -136,14 +201,14 @@ class AuthRepository {
           if (user != null) {
             await user.linkWithCredential(credential);
             // Update database records
-            await FirebaseDatabase.instance
+            await _db
                 .ref('users')
                 .child(user.uid)
                 .update({
               'phone': phone,
               'verified': true,
             });
-            await FirebaseDatabase.instance
+            await _db
                 .ref('phones')
                 .child(phone)
                 .set(user.uid);
@@ -152,7 +217,7 @@ class AuthRepository {
           }
         } catch (e) {
           // Auto-verification is best-effort, but a failure here can leave the
-          // 'phones' index / 'verified' flag out of sync — surface it for debugging.
+          // 'phones' index / 'verified' flag out of sync â€” surface it for debugging.
           if (kDebugMode) {
             debugPrint('Phone auto-verification post-link write failed: $e');
           }
@@ -187,11 +252,11 @@ class AuthRepository {
     // Update database records
     final phone = user.phoneNumber ?? '';
     if (phone.isNotEmpty) {
-      await FirebaseDatabase.instance.ref('users').child(user.uid).update({
+      await _db.ref('users').child(user.uid).update({
         'phone': phone,
         'verified': true,
       });
-      await FirebaseDatabase.instance.ref('phones').child(phone).set(user.uid);
+      await _db.ref('phones').child(phone).set(user.uid);
     }
   }
 
@@ -201,7 +266,7 @@ class AuthRepository {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not logged in');
 
-    await FirebaseDatabase.instance
+    await _db
         .ref('users')
         .child(uid)
         .child('email')
@@ -219,7 +284,7 @@ class AuthRepository {
   Future<void> logout() async => await _auth.signOut();
 }
 
-// ─── Providers ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository());
 
@@ -229,7 +294,7 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return authRepo.authStateChanges;
 });
 
-// ─── Auth State ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Auth State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class AuthNotifierState {
   final bool isLoading;
   final String? error;
@@ -246,8 +311,16 @@ class AuthNotifierState {
 
 class AuthNotifier extends StateNotifier<AuthNotifierState> {
   final AuthRepository _repository;
+  final RoleService? _roleServiceOverride;
 
-  AuthNotifier(this._repository) : super(const AuthNotifierState());
+  /// Resolved lazily so that constructing an [AuthNotifier] in a test (without a
+  /// `roleService`) never evaluates `RoleService.instance` — that singleton binds
+  /// `FirebaseAuth.instance` and would throw without a live Firebase app.
+  RoleService get _roleService => _roleServiceOverride ?? RoleService.instance;
+
+  AuthNotifier(this._repository, {RoleService? roleService})
+      : _roleServiceOverride = roleService,
+        super(const AuthNotifierState());
 
   void clearError() {
     state = AuthNotifierState(isLoading: state.isLoading, error: null);
@@ -264,7 +337,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final dbRoles = await _roleService.getRolesFromDatabase(user.uid);
       final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
 
       final isValid = await _repository.validateUserSession(user, targetRole);
@@ -276,7 +349,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      final roles = await _roleService.getRoles(forceRefresh: true);
       final isCustomer = roles['customer'] == true;
       final isMerchant = roles['merchant'] == true;
 
@@ -356,7 +429,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final dbRoles = await _roleService.getRolesFromDatabase(user.uid);
       final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
 
       final isValid = await _repository.validateUserSession(user, targetRole);
@@ -368,7 +441,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      final roles = await _roleService.getRoles(forceRefresh: true);
       final isCustomer = roles['customer'] == true;
       final isMerchant = roles['merchant'] == true;
 
@@ -463,26 +536,14 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
           final phoneNum = phone ?? user.phoneNumber ?? '';
           final email = '${phoneNum.replaceAll('+', '')}@localvyapari.com';
 
-          await FirebaseDatabase.instance.ref('users').child(user.uid).update({
-            'email': email,
-            'phone': phoneNum,
-            'createdAt': ServerValue.timestamp,
-            'verified': true,
-          });
-
-          await FirebaseDatabase.instance
-              .ref('phones')
-              .child(phoneNum)
-              .set(user.uid);
-
-          await FirebaseDatabase.instance.ref('shop').child(user.uid).set({
-            'name': shopName ?? 'My Shop',
-            'description': 'Welcome to our shop!',
-            'address': '',
-            'phone': phoneNum,
-            'isOpen': true,
-            'isVerified': false,
-          });
+          // Rolls the just-created account back if any profile write fails,
+          // so a failed signup never leaves an orphaned phone-OTP login.
+          await _repository.completePhoneSignupProfile(
+            user: user,
+            email: email,
+            phone: phoneNum,
+            shopName: shopName,
+          );
         }
       }
       return true;
@@ -490,7 +551,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
-      state = AuthNotifierState(error: e.toString());
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
@@ -749,7 +810,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final dbRoles = await RoleService.instance.getRolesFromDatabase(user.uid);
+      final dbRoles = await _roleService.getRolesFromDatabase(user.uid);
       final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
 
       final isValid = await _repository.validateUserSession(user, targetRole);
@@ -761,7 +822,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         return false;
       }
 
-      final roles = await RoleService.instance.getRoles(forceRefresh: true);
+      final roles = await _roleService.getRoles(forceRefresh: true);
       if (roles['customer'] != true && roles['merchant'] != true) {
         await _repository.logout();
         state = const AuthNotifierState(error: 'Access Denied: Invalid account role.');
@@ -803,7 +864,7 @@ final userProfileProvider = StreamProvider<Map<String, dynamic>?>((ref) {
       .ref('users')
       .child(user.uid)
       .onValue
-      .map((event) {
+      .map((DatabaseEvent event) {
     if (event.snapshot.value == null) return null;
     return Map<String, dynamic>.from(event.snapshot.value as Map);
   });
