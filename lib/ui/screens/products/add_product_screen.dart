@@ -31,8 +31,36 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _offerPriceController = TextEditingController();
   final _stockController = TextEditingController();
   
-  String _selectedCategory = 'Groceries';
-  final List<String> _categories = ['Groceries', 'Electronics', 'Clothing', 'Pharmacy', 'Other'];
+  String _selectedCategory = 'Groceries & Staples';
+  final List<String> _categories = [
+    'Groceries & Staples',
+    'Fruits & Vegetables',
+    'Dairy & Eggs',
+    'Meat & Seafood',
+    'Bakery & Sweets',
+    'Snacks & Beverages',
+    'Electronics',
+    'Mobile & Accessories',
+    'Clothing & Apparel',
+    'Sarees & Ethnic Wear',
+    'Footwear',
+    'Jewellery & Accessories',
+    'Home & Kitchen',
+    'Furniture & Decor',
+    'Pharmacy & Healthcare',
+    'Beauty & Personal Care',
+    'Books & Stationery',
+    'Toys & Games',
+    'Sports & Fitness',
+    'Hardware & Tools',
+    'Auto Parts & Accessories',
+    'Agriculture & Farming',
+    'Flowers & Plants',
+    'Gifts & Handicrafts',
+    'Pet Supplies',
+    'Office Supplies',
+    'Other',
+  ];
   
   final List<dynamic> _images = [];
   bool _isLoading = false;
@@ -47,9 +75,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _priceController.text = p.actualPrice.toString();
       _offerPriceController.text = p.offerPrice?.toString() ?? '';
       _stockController.text = p.stockQuantity.toString();
-      if (_categories.contains(p.category)) {
-        _selectedCategory = p.category;
-      }
+      _selectedCategory = p.category;
       _images.addAll(p.images);
     }
   }
@@ -259,17 +285,59 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     AppSpacing.verticalMd,
-                    DropdownButtonFormField<String>(
-                      // ignore: deprecated_member_use
-      value: _selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        filled: true,
-                        fillColor: Theme.of(context).colorScheme.surface,
-                        border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
-                      ),
-                      items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => _selectedCategory = val!),
+                    Autocomplete<String>(
+                      initialValue: TextEditingValue(text: _selectedCategory),
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        final query = textEditingValue.text.toLowerCase();
+                        if (query.isEmpty) return _categories;
+                        return _categories.where(
+                          (c) => c.toLowerCase().contains(query),
+                        );
+                      },
+                      onSelected: (String selection) {
+                        setState(() => _selectedCategory = selection);
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Category',
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
+                            border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                          validator: (val) =>
+                              val == null || val.trim().isEmpty ? 'Required' : null,
+                          onChanged: (val) => _selectedCategory = val,
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: AppRadius.borderMedium,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 220),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final option = options.elementAt(index);
+                                  return ListTile(
+                                    dense: true,
+                                    title: Text(option),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     AppSpacing.verticalMd,
                     Row(
