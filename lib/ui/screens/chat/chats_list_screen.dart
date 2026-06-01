@@ -11,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../domain/providers/chat_provider.dart';
 import '../../common/app_animations.dart';
 import '../../common/error_view.dart';
+import '../../common/responsive_center.dart';
 
 class ChatsListScreen extends ConsumerWidget {
   const ChatsListScreen({super.key});
@@ -74,7 +75,8 @@ class ChatsListScreen extends ConsumerWidget {
               );
             }
 
-            return ListView.separated(
+            return ResponsiveCenter(
+              child: ListView.separated(
               padding: const EdgeInsets.symmetric(
                 vertical: AppSpacing.sm,
                 horizontal: AppDimensions.horizontalPadding,
@@ -138,6 +140,7 @@ class ChatsListScreen extends ConsumerWidget {
                   ),
                 );
               },
+            ),
             );
           },
           loading: () => _buildShimmerLoading(context),

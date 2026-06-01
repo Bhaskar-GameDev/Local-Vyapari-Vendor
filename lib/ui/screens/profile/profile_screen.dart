@@ -12,6 +12,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
+import '../../common/resend_otp_timer.dart';
 import '../../../data/models/shop_model.dart';
 import '../shop/setup_shop_screen.dart';
 import '../../../core/providers/theme_provider.dart';
@@ -956,6 +957,10 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
                     if (val.length != 6) return 'OTP must be 6 digits';
                     return null;
                   },
+                ),
+                ResendOtpTimer(
+                  enabled: !_isLoading,
+                  onResend: _sendOtp,
                 ),
               ],
             ],

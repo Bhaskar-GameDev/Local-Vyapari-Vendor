@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/security/mfa_service.dart';
+import '../../common/responsive_center.dart';
 
 /// Walks the user through enrolling an authenticator-app (TOTP) second factor:
 /// show QR + secret, then verify the first code.
@@ -105,7 +106,8 @@ class _MfaEnrollScreenState extends ConsumerState<MfaEnrollScreen> {
                 ? _errorState(theme)
                 : SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Column(
+                    child: ResponsiveCenter.form(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text('1. Scan this QR code',
@@ -179,6 +181,7 @@ class _MfaEnrollScreenState extends ConsumerState<MfaEnrollScreen> {
                               : const Text('Verify & enable'),
                         ),
                       ],
+                    ),
                     ),
                   ),
       ),

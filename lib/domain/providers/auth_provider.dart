@@ -247,10 +247,27 @@ class AuthRepository {
       smsCode: smsCode,
     );
 
-    await user.linkWithCredential(credential);
+    try {
+      await user.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      // The phone provider is already linked to THIS account in Firebase Auth,
+      // but the RTDB 'phones' index can be out of sync if the original link's
+      // database write failed — leaving the number "already linked" yet "not
+      // registered", and impossible to re-link. Rather than dead-ending the
+      // user, prove they still control this number by reauthenticating with the
+      // OTP (this validates the code and rejects a different number via
+      // 'user-mismatch'), then fall through to reconcile the index below.
+      if (e.code == 'provider-already-linked') {
+        await user.reauthenticateWithCredential(credential);
+      } else {
+        rethrow;
+      }
+    }
 
-    // Update database records
-    final phone = user.phoneNumber ?? '';
+    // Reconcile DB records — runs whether the link just happened or was already
+    // present, repairing the desynced 'phones' index going forward.
+    await user.reload();
+    final phone = _auth.currentUser?.phoneNumber ?? user.phoneNumber ?? '';
     if (phone.isNotEmpty) {
       await _db.ref('users').child(user.uid).update({
         'phone': phone,
@@ -663,6 +680,9 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       await _repository.verifyAndLinkPhone(verificationId, code);
       state = const AuthNotifierState();
       return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
+      return false;
     } catch (e) {
       state = AuthNotifierState(
           error: e.toString().replaceFirst('Exception: ', ''));

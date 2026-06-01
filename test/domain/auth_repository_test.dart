@@ -20,10 +20,12 @@ class _MockFunctions extends Mock implements FirebaseFunctions {}
 class _MockRef extends Mock implements DatabaseReference {}
 class _MockCredential extends Mock implements UserCredential {}
 class _MockUser extends Mock implements User {}
+class _FakeAuthCredential extends Mock implements PhoneAuthCredential {}
 
 void main() {
   setUpAll(() {
     registerFallbackValue(<String, Object?>{});
+    registerFallbackValue(_FakeAuthCredential());
   });
 
   late _MockAuth auth;
@@ -104,6 +106,62 @@ void main() {
       );
 
       verify(() => user.delete()).called(1);
+    });
+  });
+
+  group('verifyAndLinkPhone reconciliation', () {
+    late _MockRef usersRef;
+    late _MockRef usersChild;
+    late _MockRef phonesRef;
+    late _MockRef phonesChild;
+
+    setUp(() {
+      when(() => auth.currentUser).thenReturn(user);
+      when(() => user.uid).thenReturn('uid123');
+      when(() => user.phoneNumber).thenReturn('+919063889294');
+      when(() => user.reload()).thenAnswer((_) async {});
+
+      usersRef = _MockRef();
+      usersChild = _MockRef();
+      phonesRef = _MockRef();
+      phonesChild = _MockRef();
+      when(() => db.ref('users')).thenReturn(usersRef);
+      when(() => usersRef.child('uid123')).thenReturn(usersChild);
+      when(() => usersChild.update(any())).thenAnswer((_) async {});
+      when(() => db.ref('phones')).thenReturn(phonesRef);
+      when(() => phonesRef.child('+919063889294')).thenReturn(phonesChild);
+      when(() => phonesChild.set(any())).thenAnswer((_) async {});
+    });
+
+    test(
+        'when the provider is already linked, reauthenticates and repairs the '
+        'phones index instead of throwing', () async {
+      when(() => user.linkWithCredential(any()))
+          .thenThrow(FirebaseAuthException(code: 'provider-already-linked'));
+      when(() => user.reauthenticateWithCredential(any()))
+          .thenAnswer((_) async => _MockCredential());
+
+      // Must NOT throw — the desynced index is reconciled.
+      await repo.verifyAndLinkPhone('vid', '654321');
+
+      verify(() => user.reauthenticateWithCredential(any())).called(1);
+      // The phones/{phone} -> uid index is (re)written.
+      verify(() => phonesChild.set('uid123')).called(1);
+    });
+
+    test('a different/expired code on the already-linked path propagates',
+        () async {
+      when(() => user.linkWithCredential(any()))
+          .thenThrow(FirebaseAuthException(code: 'provider-already-linked'));
+      // Reauth rejects a code for a different number / wrong code.
+      when(() => user.reauthenticateWithCredential(any()))
+          .thenThrow(FirebaseAuthException(code: 'user-mismatch'));
+
+      await expectLater(
+        repo.verifyAndLinkPhone('vid', '000000'),
+        throwsA(isA<FirebaseAuthException>()),
+      );
+      verifyNever(() => phonesChild.set(any()));
     });
   });
 }

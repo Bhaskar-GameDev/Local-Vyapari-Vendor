@@ -55,6 +55,18 @@ class ErrorHandler {
         return 'Please enter a valid email address.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
+      case 'provider-already-linked':
+        return 'This phone number is already linked to your account.';
+      case 'credential-already-in-use':
+        return 'This phone number is already registered to another account.';
+      case 'user-mismatch':
+        return 'This code was sent to a different number than the one on your account.';
+      case 'invalid-verification-code':
+        return 'The code you entered is incorrect. Please try again.';
+      case 'invalid-verification-id':
+      case 'session-expired':
+      case 'code-expired':
+        return 'The code has expired. Please request a new one.';
       default:
         return e.message ?? 'Authentication error. Please try again.';
     }

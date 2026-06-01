@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/responsive.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../common/app_animations.dart';
 
@@ -53,7 +54,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               slideOffset: 40.0,
               child: Image.asset(
                 'assets/images/logo.png',
-                height: 180,
+                height: Responsive.isTablet(context) ? 240 : 180,
                 fit: BoxFit.contain,
               ),
             ),

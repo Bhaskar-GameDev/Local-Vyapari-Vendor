@@ -7,6 +7,7 @@ import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
 import '../../common/custom_snack_bar.dart';
+import '../../common/resend_otp_timer.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -71,6 +72,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           builder: (dialogContext) {
             final codeController = TextEditingController();
             bool isVerifying = false;
+            // Mutable so a resend can swap in the fresh verificationId.
+            String currentVerificationId = verificationId;
 
             return StatefulBuilder(
               builder: (context, setState) {
@@ -87,6 +90,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.lock_outline,
                       ),
+                      ResendOtpTimer(
+                        enabled: !isVerifying,
+                        onResend: () {
+                          authNotifier.sendRegistrationOtp(
+                            phone,
+                            onCodeSent: (vid) {
+                              currentVerificationId = vid;
+                              if (context.mounted) {
+                                CustomSnackBar.showSuccess(
+                                  context: context,
+                                  message: 'A new OTP has been sent.',
+                                  title: 'Code Resent',
+                                );
+                              }
+                            },
+                            onFailed: (err) {
+                              if (context.mounted) {
+                                CustomSnackBar.showError(
+                                  context: context,
+                                  message: err,
+                                  title: 'Resend Failed',
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
                     ],
                   ),
                   actions: [
@@ -102,7 +132,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         setState(() => isVerifying = true);
 
                         final regSuccess = await authNotifier.registerWithPhoneOtp(
-                          verificationId: verificationId,
+                          verificationId: currentVerificationId,
                           code: code,
                           email: email,
                           password: password,

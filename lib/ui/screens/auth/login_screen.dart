@@ -14,6 +14,7 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
+import '../../common/resend_otp_timer.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -622,6 +623,10 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
                     if (val.length != 6) return 'OTP must be 6 digits';
                     return null;
                   },
+                ),
+                ResendOtpTimer(
+                  enabled: !_isLoading,
+                  onResend: _sendOtp,
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(

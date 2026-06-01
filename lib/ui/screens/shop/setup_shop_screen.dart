@@ -19,6 +19,7 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
+import '../../common/resend_otp_timer.dart';
 
 class SetupShopScreen extends ConsumerStatefulWidget {
   final ShopModel? existingShop;
@@ -256,6 +257,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
           builder: (dialogContext) {
             final codeController = TextEditingController();
             bool isVerifying = false;
+            // Mutable so a resend can swap in the fresh verificationId.
+            String currentVerificationId = verificationId;
 
             return StatefulBuilder(
               builder: (context, setState) {
@@ -272,6 +275,35 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.lock_outline,
                       ),
+                      ResendOtpTimer(
+                        enabled: !isVerifying,
+                        onResend: () {
+                          authNotifier.requestBindPhoneOtp(
+                            fullPhone,
+                            onCodeSent: (vid) {
+                              currentVerificationId = vid;
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('A new OTP has been sent.'),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                              }
+                            },
+                            onFailed: (err) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
                     ],
                   ),
                   actions: [
@@ -286,7 +318,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
                         setState(() => isVerifying = true);
 
-                        final success = await authNotifier.verifyAndBindPhone(verificationId, code);
+                        final success = await authNotifier.verifyAndBindPhone(currentVerificationId, code);
 
                         if (context.mounted) {
                           setState(() => isVerifying = false);

@@ -222,10 +222,14 @@ class ProductsListScreen extends ConsumerWidget {
                       AppSpacing.verticalXs,
                       Row(
                         children: [
-                          Text(
-                            product.category,
-                            style: TextStyle(
-                                fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          Flexible(
+                            child: Text(
+                              product.category,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            ),
                           ),
                           AppSpacing.horizontalSm,
                           Container(
@@ -472,28 +476,39 @@ class ProductsListScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              '₹${product.offerPrice ?? product.actualPrice}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                  fontSize: 13),
-                            ),
-                            if (product.offerPrice != null) ...[
-                              AppSpacing.horizontalXs,
-                              Text(
-                                '₹${product.actualPrice}',
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: Theme.of(context).colorScheme.outline,
-                                  fontSize: 10,
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '₹${product.offerPrice ?? product.actualPrice}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                      fontSize: 13),
                                 ),
                               ),
+                              if (product.offerPrice != null) ...[
+                                AppSpacing.horizontalXs,
+                                Flexible(
+                                  child: Text(
+                                    '₹${product.actualPrice}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: Theme.of(context).colorScheme.outline,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
+                        AppSpacing.horizontalXs,
                         Text(
                           'Stock: ${product.stockQuantity}',
                           style: TextStyle(

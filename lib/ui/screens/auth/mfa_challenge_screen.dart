@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/auth_provider.dart';
+import '../../common/responsive_center.dart';
 
 /// Shown when a sign-in requires a TOTP second factor. The user enters the
 /// 6-digit code from their authenticator app.
@@ -60,7 +61,8 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
+          child: ResponsiveCenter.form(
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
@@ -103,6 +105,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                     : const Text('Verify'),
               ),
             ],
+            ),
           ),
         ),
       ),

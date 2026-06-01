@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/security/account_security_service.dart';
 import '../../../core/security/mfa_service.dart';
+import '../../common/responsive_center.dart';
 import 'mfa_enroll_screen.dart';
 
 /// Central account-security hub: biometric app-lock, two-factor auth,
@@ -125,7 +126,8 @@ class _SecuritySettingsScreenState
 
     return Scaffold(
       appBar: AppBar(title: const Text('Security')),
-      body: ListView(
+      body: ResponsiveCenter(
+        child: ListView(
         children: [
           _sectionHeader(context, 'Two-factor authentication'),
           if (_loadingFactors)
@@ -201,6 +203,7 @@ class _SecuritySettingsScreenState
             ),
           ),
         ],
+      ),
       ),
     );
   }
