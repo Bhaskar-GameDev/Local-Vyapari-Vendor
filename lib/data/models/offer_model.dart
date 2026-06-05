@@ -14,6 +14,7 @@ class OfferModel with _$OfferModel {
     required String endDate,
     String? linkedProductId,
     @Default(true) bool isActive,
+    @Default(false) bool isFeatured,
   }) = _OfferModel;
 
   factory OfferModel.fromJson(Map<String, dynamic> json) => _$OfferModelFromJson(json);

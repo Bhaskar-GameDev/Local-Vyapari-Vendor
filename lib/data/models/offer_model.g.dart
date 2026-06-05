@@ -16,6 +16,7 @@ _$OfferModelImpl _$$OfferModelImplFromJson(Map<String, dynamic> json) =>
       endDate: json['endDate'] as String,
       linkedProductId: json['linkedProductId'] as String?,
       isActive: json['isActive'] as bool? ?? true,
+      isFeatured: json['isFeatured'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$OfferModelImplToJson(_$OfferModelImpl instance) =>
@@ -28,4 +29,5 @@ Map<String, dynamic> _$$OfferModelImplToJson(_$OfferModelImpl instance) =>
       'endDate': instance.endDate,
       'linkedProductId': instance.linkedProductId,
       'isActive': instance.isActive,
+      'isFeatured': instance.isFeatured,
     };

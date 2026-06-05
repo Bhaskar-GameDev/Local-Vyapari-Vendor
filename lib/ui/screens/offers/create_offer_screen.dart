@@ -29,7 +29,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
-  
+
+  bool _isFeatured = false;
   bool _isLoading = false;
 
   @override
@@ -40,6 +41,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
       _titleController.text = o.title;
       _descController.text = o.description;
       _discountController.text = o.discountPercentage.toString();
+      _isFeatured = o.isFeatured;
       try {
         _startDate = DateTime.parse(o.startDate);
         _endDate = DateTime.parse(o.endDate);
@@ -92,6 +94,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
       startDate: _startDate.toIso8601String(),
       endDate: _endDate.toIso8601String(),
       isActive: widget.existingOffer?.isActive ?? true,
+      isFeatured: _isFeatured,
     );
 
     try {
@@ -243,6 +246,42 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                 child: Text(l10n.change),
                               ),
                             ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppSpacing.verticalMd,
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                        borderRadius: AppRadius.borderMedium,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.campaign_rounded, color: AppColors.primary),
+                          AppSpacing.horizontalSm,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.featureInPromoCarousel,
+                                  style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                ),
+                                AppSpacing.verticalXs,
+                                Text(
+                                  l10n.featureInPromoCarouselDescription,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                          AppSpacing.horizontalSm,
+                          Switch(
+                            value: _isFeatured,
+                            onChanged: (val) => setState(() => _isFeatured = val),
                           ),
                         ],
                       ),

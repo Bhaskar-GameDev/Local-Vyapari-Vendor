@@ -716,6 +716,11 @@ class AppLocalizations {
 
   String get launchOffer => 'Launch Offer';
 
+  String get featureInPromoCarousel => 'Feature in Promo Carousel';
+
+  String get featureInPromoCarouselDescription =>
+      'Featured offers appear in the highlighted banner at the top of the home screen for nearby users.';
+
   String get sendFeedback => 'Send Feedback';
 
   String get feedbackMenuSubtitle => 'Report a bug or suggest an improvement';

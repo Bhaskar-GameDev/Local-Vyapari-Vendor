@@ -28,6 +28,7 @@ mixin _$OfferModel {
   String get endDate => throw _privateConstructorUsedError;
   String? get linkedProductId => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
+  bool get isFeatured => throw _privateConstructorUsedError;
 
   /// Serializes this OfferModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -53,7 +54,8 @@ abstract class $OfferModelCopyWith<$Res> {
       String startDate,
       String endDate,
       String? linkedProductId,
-      bool isActive});
+      bool isActive,
+      bool isFeatured});
 }
 
 /// @nodoc
@@ -79,6 +81,7 @@ class _$OfferModelCopyWithImpl<$Res, $Val extends OfferModel>
     Object? endDate = null,
     Object? linkedProductId = freezed,
     Object? isActive = null,
+    Object? isFeatured = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -113,6 +116,10 @@ class _$OfferModelCopyWithImpl<$Res, $Val extends OfferModel>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      isFeatured: null == isFeatured
+          ? _value.isFeatured
+          : isFeatured // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -133,7 +140,8 @@ abstract class _$$OfferModelImplCopyWith<$Res>
       String startDate,
       String endDate,
       String? linkedProductId,
-      bool isActive});
+      bool isActive,
+      bool isFeatured});
 }
 
 /// @nodoc
@@ -157,6 +165,7 @@ class __$$OfferModelImplCopyWithImpl<$Res>
     Object? endDate = null,
     Object? linkedProductId = freezed,
     Object? isActive = null,
+    Object? isFeatured = null,
   }) {
     return _then(_$OfferModelImpl(
       id: null == id
@@ -191,6 +200,10 @@ class __$$OfferModelImplCopyWithImpl<$Res>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      isFeatured: null == isFeatured
+          ? _value.isFeatured
+          : isFeatured // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -206,7 +219,8 @@ class _$OfferModelImpl implements _OfferModel {
       required this.startDate,
       required this.endDate,
       this.linkedProductId,
-      this.isActive = true});
+      this.isActive = true,
+      this.isFeatured = false});
 
   factory _$OfferModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$OfferModelImplFromJson(json);
@@ -228,10 +242,13 @@ class _$OfferModelImpl implements _OfferModel {
   @override
   @JsonKey()
   final bool isActive;
+  @override
+  @JsonKey()
+  final bool isFeatured;
 
   @override
   String toString() {
-    return 'OfferModel(id: $id, title: $title, description: $description, discountPercentage: $discountPercentage, startDate: $startDate, endDate: $endDate, linkedProductId: $linkedProductId, isActive: $isActive)';
+    return 'OfferModel(id: $id, title: $title, description: $description, discountPercentage: $discountPercentage, startDate: $startDate, endDate: $endDate, linkedProductId: $linkedProductId, isActive: $isActive, isFeatured: $isFeatured)';
   }
 
   @override
@@ -251,13 +268,15 @@ class _$OfferModelImpl implements _OfferModel {
             (identical(other.linkedProductId, linkedProductId) ||
                 other.linkedProductId == linkedProductId) &&
             (identical(other.isActive, isActive) ||
-                other.isActive == isActive));
+                other.isActive == isActive) &&
+            (identical(other.isFeatured, isFeatured) ||
+                other.isFeatured == isFeatured));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, title, description,
-      discountPercentage, startDate, endDate, linkedProductId, isActive);
+      discountPercentage, startDate, endDate, linkedProductId, isActive, isFeatured);
 
   /// Create a copy of OfferModel
   /// with the given fields replaced by the non-null parameter values.
@@ -284,7 +303,8 @@ abstract class _OfferModel implements OfferModel {
       required final String startDate,
       required final String endDate,
       final String? linkedProductId,
-      final bool isActive}) = _$OfferModelImpl;
+      final bool isActive,
+      final bool isFeatured}) = _$OfferModelImpl;
 
   factory _OfferModel.fromJson(Map<String, dynamic> json) =
       _$OfferModelImpl.fromJson;
@@ -305,6 +325,8 @@ abstract class _OfferModel implements OfferModel {
   String? get linkedProductId;
   @override
   bool get isActive;
+  @override
+  bool get isFeatured;
 
   /// Create a copy of OfferModel
   /// with the given fields replaced by the non-null parameter values.
