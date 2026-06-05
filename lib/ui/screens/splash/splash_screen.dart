@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../domain/providers/auth_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../common/app_animations.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -64,7 +65,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               delay: const Duration(milliseconds: 400),
               slideOffset: 20.0,
               child: Text(
-                'Merchant Partner',
+                AppLocalizations.of(context).merchantPartner,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

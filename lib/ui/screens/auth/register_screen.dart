@@ -7,7 +7,9 @@ import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
 import '../../common/custom_snack_bar.dart';
+import '../../common/error_dialog.dart';
 import '../../common/resend_otp_timer.dart';
+import '../../../l10n/app_localizations.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -43,17 +45,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final phone = '+91${_phoneController.text.trim()}';
     final password = _passwordController.text.trim();
     final authNotifier = ref.read(authProvider.notifier);
+    final l10n = AppLocalizations.of(context);
 
     // Show request loading dialog
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Requesting verification...'),
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
+            Text(l10n.requestingVerification),
           ],
         ),
       ),
@@ -78,14 +81,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             return StatefulBuilder(
               builder: (context, setState) {
                 return AlertDialog(
-                  title: const Text('Verify Phone Number'),
+                  title: Text(l10n.verifyPhoneNumber),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('We have sent a verification OTP to $phone.'),
+                      Text(l10n.otpSentToPhone(phone)),
                       const SizedBox(height: 16),
                       CustomTextField(
-                        label: '6-Digit OTP',
+                        label: l10n.sixDigitOtp,
                         controller: codeController,
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.lock_outline,
@@ -100,17 +103,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               if (context.mounted) {
                                 CustomSnackBar.showSuccess(
                                   context: context,
-                                  message: 'A new OTP has been sent.',
-                                  title: 'Code Resent',
+                                  message: l10n.newOtpSent,
+                                  title: l10n.codeResent,
                                 );
                               }
                             },
                             onFailed: (err) {
                               if (context.mounted) {
-                                CustomSnackBar.showError(
+                                AppErrorDialog.show(
                                   context: context,
                                   message: err,
-                                  title: 'Resend Failed',
+                                  title: l10n.resendFailed,
                                 );
                               }
                             },
@@ -122,7 +125,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   actions: [
                     TextButton(
                       onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.commonCancel),
                     ),
                     ElevatedButton(
                       onPressed: isVerifying ? null : () async {
@@ -147,7 +150,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       },
                       child: isVerifying
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Verify & Register'),
+                          : Text(l10n.verifyAndRegister),
                     ),
                   ],
                 );
@@ -158,10 +161,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           if (!context.mounted) return;
           if (verified != true) {
             final error = ref.read(authProvider).error;
-            CustomSnackBar.showError(
+            AppErrorDialog.show(
               context: context,
-              message: error ?? 'Verification canceled or failed',
-              title: 'Verification Failed',
+              message: error ?? l10n.verificationCanceledOrFailed,
+              title: l10n.verificationFailed,
             );
           }
         });
@@ -170,10 +173,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         // Dismiss requesting dialog
         Navigator.pop(context);
 
-        CustomSnackBar.showError(
+        AppErrorDialog.show(
           context: context,
           message: error,
-          title: 'OTP Request Failed',
+          title: l10n.otpRequestFailed,
         );
       },
     );
@@ -182,10 +185,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: Text(l10n.createAccount),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.of(context).pop(),
@@ -224,7 +228,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Join Local Vyapari',
+                                    l10n.joinLocalVyapari,
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                           color: AppColors.primary,
                                           fontWeight: FontWeight.bold,
@@ -232,7 +236,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   ),
                                   AppSpacing.verticalXs,
                                   Text(
-                                    'Reach thousands of nearby customers',
+                                    l10n.reachNearbyCustomers,
                                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                           color: AppColors.textSecondary,
                                         ),
@@ -251,13 +255,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       delay: const Duration(milliseconds: 100),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Email Address',
+                        label: l10n.emailAddress,
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return 'Email is required';
-                          if (!val.contains('@')) return 'Enter a valid email';
+                          if (val == null || val.isEmpty) return l10n.emailRequired;
+                          if (!val.contains('@')) return l10n.enterValidEmail;
                           return null;
                         },
                       ),
@@ -269,14 +273,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       delay: const Duration(milliseconds: 200),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Phone Number',
+                        label: l10n.phoneNumber,
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         prefixIcon: Icons.phone_android,
                         prefixText: '+91 ',
                         validator: (val) {
-                          if (val == null || val.isEmpty) return 'Phone number is required';
-                          if (val.length != 10) return 'Enter a valid 10-digit number';
+                          if (val == null || val.isEmpty) return l10n.phoneRequired;
+                          if (val.length != 10) return l10n.enterValid10DigitNumber;
                           return null;
                         },
                       ),
@@ -288,13 +292,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       delay: const Duration(milliseconds: 300),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Password',
+                        label: l10n.password,
                         controller: _passwordController,
                         obscureText: true,
                         prefixIcon: Icons.lock_outline,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return 'Password is required';
-                          if (val.length < 6) return 'At least 6 characters required';
+                          if (val == null || val.isEmpty) return l10n.passwordRequired;
+                          if (val.length < 6) return l10n.atLeast6Chars;
                           return null;
                         },
                       ),
@@ -306,13 +310,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       delay: const Duration(milliseconds: 400),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Confirm Password',
+                        label: l10n.confirmPassword,
                         controller: _confirmPasswordController,
                         obscureText: true,
                         prefixIcon: Icons.lock_outline,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return 'Please confirm your password';
-                          if (val != _passwordController.text) return 'Passwords do not match';
+                          if (val == null || val.isEmpty) return l10n.pleaseConfirmPassword;
+                          if (val != _passwordController.text) return l10n.passwordsDoNotMatch;
                           return null;
                         },
                       ),
@@ -325,7 +329,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       slideOffset: 16,
                       child: ScaleOnTap(
                         child: PrimaryButton(
-                          text: 'Create My Store',
+                          text: l10n.createMyStore,
                           isLoading: authState.isLoading,
                           onPressed: _handleRegister,
                         ),
@@ -341,12 +345,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Already have an account?',
+                            l10n.alreadyHaveAccount,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Sign In'),
+                            child: Text(l10n.signIn),
                           ),
                         ],
                       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/exceptions/error_handler.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 /// A reusable full-area error state widget for use inside [AsyncValue.when]
 /// error callbacks. Shows an icon, a user-friendly message from
@@ -57,7 +58,7 @@ class ErrorView extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Try Again'),
+                label: Text(AppLocalizations.of(context).tryAgain),
               ),
             ],
           ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -11,18 +10,22 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../domain/providers/chat_provider.dart';
 import '../../common/app_animations.dart';
 import '../../common/error_view.dart';
+import '../../common/incremental_list.dart';
 import '../../common/responsive_center.dart';
+import '../../common/skeleton.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ChatsListScreen extends ConsumerWidget {
   const ChatsListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final chatsAsync = ref.watch(vendorChatsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Customer Chats'),
+        title: Text(l10n.customerChats),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -31,7 +34,8 @@ class ChatsListScreen extends ConsumerWidget {
             if (chats.isEmpty) {
               return Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppDimensions.horizontalPadding),
+                  padding:
+                      const EdgeInsets.all(AppDimensions.horizontalPadding),
                   child: FadeInSlide(
                     duration: const Duration(milliseconds: 600),
                     child: Column(
@@ -51,8 +55,11 @@ class ChatsListScreen extends ConsumerWidget {
                         ),
                         AppSpacing.verticalMd,
                         Text(
-                          'No messages yet',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          l10n.noMessagesYet,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),
@@ -61,10 +68,13 @@ class ChatsListScreen extends ConsumerWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
                           child: Text(
-                            'When customers query your products or shop, their conversations will appear here.',
+                            l10n.noMessagesBody,
                             textAlign: TextAlign.center,
-                            style: AppTextStyles.getBodyMedium(context).copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            style:
+                                AppTextStyles.getBodyMedium(context).copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -76,77 +86,87 @@ class ChatsListScreen extends ConsumerWidget {
             }
 
             return ResponsiveCenter(
-              child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.sm,
-                horizontal: AppDimensions.horizontalPadding,
-              ),
-              itemCount: chats.length,
-              separatorBuilder: (context, index) => Divider(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                height: 1,
-              ),
-              itemBuilder: (context, index) {
-                final chat = chats[index];
-                return FadeInSlide(
-                  duration: const Duration(milliseconds: 400),
-                  delay: Duration(milliseconds: 50 * index),
-                  slideOffset: 12,
-                  child: Dismissible(
-                    key: Key(chat.userId),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: AppColors.error,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      child: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    confirmDismiss: (direction) async {
-                      return await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Delete Chat'),
-                          content: Text('Are you sure you want to delete this conversation with ${chat.userName}? This will remove it from your chats list.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    onDismissed: (direction) async {
-                      await ref.read(chatServiceProvider).deleteChat(chat.userId);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Conversation with ${chat.userName} deleted'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: AppColors.primary,
-                          ),
-                        );
-                      }
-                    },
-                    child: _ChatSummaryTile(chat: chat),
+              child: IncrementalList(
+                itemCount: chats.length,
+                builder: (context, controller, visibleCount) =>
+                    ListView.separated(
+                  controller: controller,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.sm,
+                    horizontal: AppDimensions.horizontalPadding,
                   ),
-                );
-              },
-            ),
+                  itemCount: visibleCount,
+                  separatorBuilder: (context, index) => Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    height: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final chat = chats[index];
+                    return FadeInSlide(
+                      duration: const Duration(milliseconds: 400),
+                      delay: Duration(milliseconds: 50 * index),
+                      slideOffset: 12,
+                      child: Dismissible(
+                        key: Key(chat.userId),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          color: AppColors.error,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          return await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(l10n.deleteChat),
+                              content: Text(l10n.confirmDeleteChat(chat.userName)),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: Text(l10n.commonCancel),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.error),
+                                  child: Text(l10n.commonDelete),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onDismissed: (direction) async {
+                          await ref
+                              .read(chatServiceProvider)
+                              .deleteChat(chat.userId);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    l10n.conversationDeleted(chat.userName)),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        },
+                        child: _ChatSummaryTile(chat: chat),
+                      ),
+                    );
+                  },
+                ),
+              ),
             );
           },
           loading: () => _buildShimmerLoading(context),
           error: (error, stack) => ErrorView(
             error: error,
-            title: 'Failed to load chats',
+            title: l10n.failedToLoadChats,
             onRetry: () => ref.invalidate(vendorChatsProvider),
           ),
         ),
@@ -155,56 +175,12 @@ class ChatsListScreen extends ConsumerWidget {
   }
 
   Widget _buildShimmerLoading(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(
+    return const SkeletonList(
+      itemCount: 5,
+      padding: EdgeInsets.symmetric(
         vertical: AppSpacing.sm,
         horizontal: AppDimensions.horizontalPadding,
       ),
-      itemCount: 5,
-      separatorBuilder: (context, index) => Divider(
-        color: Theme.of(context).colorScheme.outlineVariant,
-        height: 1,
-      ),
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                AppSpacing.horizontalMd,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 120,
-                        height: 16,
-                        color: Colors.white,
-                      ),
-                      AppSpacing.verticalXs,
-                      Container(
-                        width: double.infinity,
-                        height: 12,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -216,8 +192,10 @@ class _ChatSummaryTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final initials = chat.userName.isNotEmpty ? chat.userName[0].toUpperCase() : 'C';
-    final formattedTime = _formatDateTime(chat.timestamp);
+    final l10n = AppLocalizations.of(context);
+    final initials =
+        chat.userName.isNotEmpty ? chat.userName[0].toUpperCase() : 'C';
+    final formattedTime = _formatDateTime(l10n, chat.timestamp);
 
     // Generate a consistent color based on user ID
     final avatarColor = _getAvatarColor(chat.userId);
@@ -234,7 +212,9 @@ class _ChatSummaryTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         decoration: BoxDecoration(
           borderRadius: AppRadius.borderSm,
-          color: chat.unread ? AppColors.primary.withValues(alpha: 0.02) : Colors.transparent,
+          color: chat.unread
+              ? AppColors.primary.withValues(alpha: 0.02)
+              : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -262,7 +242,8 @@ class _ChatSummaryTile extends ConsumerWidget {
                         child: Text(
                           chat.userName,
                           style: TextStyle(
-                            fontWeight: chat.unread ? FontWeight.bold : FontWeight.w600,
+                            fontWeight:
+                                chat.unread ? FontWeight.bold : FontWeight.w600,
                             fontSize: 15,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
@@ -274,8 +255,11 @@ class _ChatSummaryTile extends ConsumerWidget {
                         formattedTime,
                         style: TextStyle(
                           fontSize: 11,
-                          color: chat.unread ? AppColors.accent : Theme.of(context).colorScheme.outline,
-                          fontWeight: chat.unread ? FontWeight.bold : FontWeight.normal,
+                          color: chat.unread
+                              ? AppColors.accent
+                              : Theme.of(context).colorScheme.outline,
+                          fontWeight:
+                              chat.unread ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -285,11 +269,19 @@ class _ChatSummaryTile extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          chat.lastMessageText.isNotEmpty ? chat.lastMessageText : 'Start chatting',
+                          chat.lastMessageText.isNotEmpty
+                              ? chat.lastMessageText
+                              : l10n.startChatting,
                           style: TextStyle(
-                            color: chat.unread ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: chat.unread
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                             fontSize: 13,
-                            fontWeight: chat.unread ? FontWeight.w500 : FontWeight.normal,
+                            fontWeight: chat.unread
+                                ? FontWeight.w500
+                                : FontWeight.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -331,14 +323,14 @@ class _ChatSummaryTile extends ConsumerWidget {
     return colors[hash % colors.length];
   }
 
-  String _formatDateTime(DateTime dateTime) {
+  String _formatDateTime(AppLocalizations l10n, DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inDays == 0) {
       return DateFormat('hh:mm a').format(dateTime);
     } else if (difference.inDays == 1) {
-      return 'Yesterday';
+      return l10n.yesterday;
     } else if (difference.inDays < 7) {
       return DateFormat('EEEE').format(dateTime);
     } else {

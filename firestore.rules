@@ -89,6 +89,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Vendor feedback. Clients may only create (one auto-ID doc per submission)
+    // for themselves with a valid type and a 1–500 char message; the admin app
+    // owns reads and the `status` lifecycle, so reads/updates/deletes are denied.
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 500
+        && request.resource.data.type in ['bug', 'feature', 'general'];
+      allow read, update, delete: if false;
+    }
+
     // Analytics events and server-managed sessions are written only by Cloud
     // Functions via the Admin SDK (which bypasses these rules). Clients get no access.
     match /events/{eventId} {

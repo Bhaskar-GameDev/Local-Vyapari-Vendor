@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../core/security/social_auth_service.dart';
-import 'mfa_challenge_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
@@ -14,7 +13,9 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
-import '../../common/resend_otp_timer.dart';
+import '../../common/error_dialog.dart';
+import '../../../l10n/app_localizations.dart';
+import 'reset_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -28,8 +29,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isEmailMode = true;
+  bool _isSocialLoading = false;
 
   @override
   void initState() {
@@ -56,607 +58,429 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final ok = _isEmailMode
-        ? await ref.read(authProvider.notifier).login(
+    // The router redirect handles navigation on success; a failure surfaces via
+    // the authProvider error listener in build().
+    if (_isEmailMode) {
+      await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text.trim(),
-          )
-        : await ref.read(authProvider.notifier).loginWithPhoneAndPassword(
+          );
+    } else {
+      await ref.read(authProvider.notifier).loginWithPhoneAndPassword(
             '+91${_phoneController.text.trim()}',
             _passwordController.text.trim(),
           );
-    if (!ok) _routeToMfaIfNeeded();
-  }
-
-  /// If the last sign-in attempt raised an MFA challenge, open the challenge screen.
-  void _routeToMfaIfNeeded() {
-    final resolver = ref.read(authProvider).mfaResolver;
-    if (resolver != null && mounted) {
-      ref.read(authProvider.notifier).clearMfa();
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => MfaChallengeScreen(resolver: resolver)),
-      );
     }
   }
 
   Future<void> _handleSocial(Future<UserCredential?> Function() signIn) async {
+    // The Google/Apple flow runs outside the auth notifier, so authState.isLoading
+    // never flips — without this local flag the screen sits idle (no feedback)
+    // through the account picker and the blocking role-sync. The overlay covers
+    // that gap.
+    setState(() => _isSocialLoading = true);
     try {
       final credential = await signIn();
       if (credential == null) return; // user cancelled
       // The blocking beforeSignIn function syncs roles/claims; authStateChanges
       // + the router redirect take it from here.
-    } on FirebaseAuthMultiFactorException catch (e) {
+    } catch (e, st) {
       if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-              builder: (_) => MfaChallengeScreen(resolver: e.resolver)),
+        AppErrorDialog.fromError(
+          context: context,
+          error: e,
+          stackTrace: st,
+          title: AppLocalizations.of(context).signInFailed,
         );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign-in failed: $e')),
-        );
-      }
+    } finally {
+      // On success the router redirect disposes this screen (mounted == false),
+      // so the overlay stays up until we navigate away; on cancel/error it clears.
+      if (mounted) setState(() => _isSocialLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final l10n = AppLocalizations.of(context);
+    final busy = authState.isLoading || _isSocialLoading;
+
+    // Surface any sign-in failure as a pop-up the user must acknowledge.
+    ref.listen<AuthNotifierState>(authProvider, (prev, next) {
+      final err = next.error;
+      if (err != null && err != prev?.error && mounted) {
+        AppErrorDialog.show(
+          context: context,
+          message: err,
+          title: l10n.authenticationFailed,
+        );
+      }
+    });
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.horizontalPadding,
-              vertical: AppSpacing.lg,
-            ),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AppSpacing.verticalXl,
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      slideOffset: 30,
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        height: 120,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    AppSpacing.verticalSm,
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 100),
-                      slideOffset: 20,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Merchant Portal',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                              letterSpacing: 1.2,
-                            ),
-                            textAlign: TextAlign.center,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.horizontalPadding,
+                  vertical: AppSpacing.lg,
+                ),
+                child: Container(
+                  constraints: const BoxConstraints(
+                      maxWidth: AppDimensions.maxFormWidth),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppSpacing.verticalXl,
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          slideOffset: 30,
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 120,
+                            fit: BoxFit.contain,
                           ),
-                          AppSpacing.verticalXs,
-                          Text(
-                            'Local Vyapari Storefront Terminal',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    AppSpacing.verticalXxl,
-
-                    // Toggle tabs
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 300),
-                      slideOffset: 20,
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.xs),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          borderRadius: AppRadius.borderMedium,
-                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
-                        child: Row(
-                          children: [
-                             Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (!_isEmailMode) {
-                                    setState(() => _isEmailMode = true);
-                                    ref.read(authProvider.notifier).clearError();
-                                  }
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                                  decoration: BoxDecoration(
-                                    color: _isEmailMode ? AppColors.primary : Colors.transparent,
-                                    borderRadius: AppRadius.borderSm,
-                                  ),
-                                  child: Text(
-                                    'Email Address',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: _isEmailMode ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (_isEmailMode) {
-                                    setState(() => _isEmailMode = false);
-                                    ref.read(authProvider.notifier).clearError();
-                                  }
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                                  decoration: BoxDecoration(
-                                    color: !_isEmailMode ? AppColors.primary : Colors.transparent,
-                                    borderRadius: AppRadius.borderSm,
-                                  ),
-                                  child: Text(
-                                    'Phone Number',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: !_isEmailMode ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    AppSpacing.verticalXl,
-
-                    // Fields based on selection (AnimatedSwitcher to transition between fields!)
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 400),
-                      slideOffset: 20,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 250),
-                        child: _isEmailMode
-                            ? CustomTextField(
-                                key: const ValueKey('email_field'),
-                                label: 'Email Address',
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                prefixIcon: Icons.email_outlined,
-                                validator: (val) {
-                                  if (val == null || val.isEmpty) return 'Email is required';
-                                  if (!val.contains('@')) return 'Enter a valid email address';
-                                  return null;
-                                },
-                              )
-                            : CustomTextField(
-                                key: const ValueKey('phone_field'),
-                                label: 'Phone Number',
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                prefixIcon: Icons.phone_android,
-                                prefixText: '+91 ',
-                                validator: (val) {
-                                  if (val == null || val.isEmpty) return 'Phone number is required';
-                                  if (val.length != 10) return 'Enter a valid 10-digit number';
-                                  return null;
-                                },
-                              ),
-                      ),
-                    ),
-                    AppSpacing.verticalMd,
-                    
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 500),
-                      slideOffset: 20,
-                      child: CustomTextField(
-                        label: 'Password',
-                        controller: _passwordController,
-                        obscureText: true,
-                        prefixIcon: Icons.lock_outline,
-                        validator: (val) {
-                          if (val == null || val.isEmpty) return 'Password is required';
-                          if (val.length < 6) return 'Password must be at least 6 characters';
-                          return null;
-                        },
-                      ),
-                    ),
-
-                    if (authState.error != null) ...[
-                      AppSpacing.verticalMd,
-                      FadeInSlide(
-                        duration: const Duration(milliseconds: 350),
-                        slideOffset: 12,
-                        child: Container(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withValues(alpha: 0.06),
-                            borderRadius: AppRadius.borderLg,
-                            border: Border.all(
-                              color: AppColors.error.withValues(alpha: 0.25),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        AppSpacing.verticalSm,
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 100),
+                          slideOffset: 20,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: AppColors.error,
-                                size: 24,
+                              Text(
+                                l10n.merchantPortal,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                      letterSpacing: 1.2,
+                                    ),
+                                textAlign: TextAlign.center,
                               ),
-                              AppSpacing.horizontalSm,
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Authentication Failure',
-                                      style: TextStyle(
-                                        color: AppColors.error,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        letterSpacing: 0.3,
-                                      ),
+                              AppSpacing.verticalXs,
+                              Text(
+                                l10n.storefrontTagline,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
                                     ),
-                                    AppSpacing.verticalXs,
-                                    Text(
-                                      authState.error!,
-                                      style: TextStyle(
-                                        color: AppColors.error.withValues(alpha: 0.85),
-                                        fontSize: 13,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                    AppSpacing.verticalLg,
-                    
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 600),
-                      slideOffset: 20,
-                      child: ScaleOnTap(
-                        child: PrimaryButton(
-                          text: authState.isLoading ? 'Signing In...' : 'Sign In',
-                          isLoading: authState.isLoading,
-                          onPressed: _handleLogin,
-                        ),
-                      ),
-                    ),
+                        AppSpacing.verticalXxl,
 
-                    AppSpacing.verticalLg,
-
-                    // ── Social sign-in ──
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                          child: Text('or continue with',
-                              style: Theme.of(context).textTheme.bodySmall),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    AppSpacing.verticalMd,
-                    OutlinedButton.icon(
-                      onPressed: authState.isLoading
-                          ? null
-                          : () => _handleSocial(
-                              ref.read(socialAuthServiceProvider).signInWithGoogle),
-                      icon: const Icon(Icons.g_mobiledata, size: 28),
-                      label: const Text('Continue with Google'),
-                    ),
-                    if (Platform.isIOS || Platform.isMacOS) ...[
-                      AppSpacing.verticalSm,
-                      OutlinedButton.icon(
-                        onPressed: authState.isLoading
-                            ? null
-                            : () => _handleSocial(
-                                ref.read(socialAuthServiceProvider).signInWithApple),
-                        icon: const Icon(Icons.apple, size: 24),
-                        label: const Text('Continue with Apple'),
-                      ),
-                    ],
-
-                    AppSpacing.verticalMd,
-                    
-                    FadeInSlide(
-                      duration: const Duration(milliseconds: 600),
-                      delay: const Duration(milliseconds: 700),
-                      slideOffset: 20,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          TextButton(
-                            onPressed: () async {
-                              final resetSuccess = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => _ResetPasswordDialog(ref: ref),
-                              );
-                              if (resetSuccess == true && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Password reset successfully! You can now log in.'),
-                                    backgroundColor: AppColors.success,
-                                    behavior: SnackBarBehavior.floating,
+                        // Toggle tabs
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 300),
+                          slideOffset: 20,
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: AppRadius.borderMedium,
+                              border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (!_isEmailMode) {
+                                        setState(() => _isEmailMode = true);
+                                        ref
+                                            .read(authProvider.notifier)
+                                            .clearError();
+                                      }
+                                    },
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: AppSpacing.sm),
+                                      decoration: BoxDecoration(
+                                        color: _isEmailMode
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: AppRadius.borderSm,
+                                      ),
+                                      child: Text(
+                                        l10n.emailAddress,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: _isEmailMode
+                                              ? Colors.white
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                );
-                              }
-                            },
-                            child: const Text('Forgot Password?'),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (_isEmailMode) {
+                                        setState(() => _isEmailMode = false);
+                                        ref
+                                            .read(authProvider.notifier)
+                                            .clearError();
+                                      }
+                                    },
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: AppSpacing.sm),
+                                      decoration: BoxDecoration(
+                                        color: !_isEmailMode
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: AppRadius.borderSm,
+                                      ),
+                                      child: Text(
+                                        l10n.phoneNumber,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: !_isEmailMode
+                                              ? Colors.white
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          TextButton(
-                            onPressed: () => context.push('/register'),
-                            child: const Text('Create Account'),
+                        ),
+                        AppSpacing.verticalXl,
+
+                        // Fields based on selection (AnimatedSwitcher to transition between fields!)
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 400),
+                          slideOffset: 20,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: _isEmailMode
+                                ? CustomTextField(
+                                    key: const ValueKey('email_field'),
+                                    label: l10n.emailAddress,
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    prefixIcon: Icons.email_outlined,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return l10n.emailRequired;
+                                      }
+                                      if (!val.contains('@')) {
+                                        return l10n.enterValidEmailAddress;
+                                      }
+                                      return null;
+                                    },
+                                  )
+                                : CustomTextField(
+                                    key: const ValueKey('phone_field'),
+                                    label: l10n.phoneNumber,
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    prefixIcon: Icons.phone_android,
+                                    prefixText: '+91 ',
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return l10n.phoneRequired;
+                                      }
+                                      if (val.length != 10) {
+                                        return l10n.enterValid10DigitNumber;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                          ),
+                        ),
+                        AppSpacing.verticalMd,
+
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 500),
+                          slideOffset: 20,
+                          child: CustomTextField(
+                            label: l10n.password,
+                            controller: _passwordController,
+                            obscureText: true,
+                            prefixIcon: Icons.lock_outline,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) {
+                                return l10n.passwordRequired;
+                              }
+                              if (val.length < 6) {
+                                return l10n.passwordMinChars;
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+
+                        AppSpacing.verticalLg,
+
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 600),
+                          slideOffset: 20,
+                          child: ScaleOnTap(
+                            child: PrimaryButton(
+                              text: authState.isLoading
+                                  ? l10n.signingIn
+                                  : l10n.signIn,
+                              isLoading: authState.isLoading,
+                              onPressed: _handleLogin,
+                            ),
+                          ),
+                        ),
+
+                        AppSpacing.verticalLg,
+
+                        // ── Social sign-in ──
+                        Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm),
+                              child: Text(l10n.orContinueWith,
+                                  style: Theme.of(context).textTheme.bodySmall),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                        AppSpacing.verticalMd,
+                        OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => _handleSocial(ref
+                                  .read(socialAuthServiceProvider)
+                                  .signInWithGoogle),
+                          icon: const Icon(Icons.g_mobiledata, size: 28),
+                          label: Text(l10n.continueWithGoogle),
+                        ),
+                        if (Platform.isIOS || Platform.isMacOS) ...[
+                          AppSpacing.verticalSm,
+                          OutlinedButton.icon(
+                            onPressed: busy
+                                ? null
+                                : () => _handleSocial(ref
+                                    .read(socialAuthServiceProvider)
+                                    .signInWithApple),
+                            icon: const Icon(Icons.apple, size: 24),
+                            label: Text(l10n.continueWithApple),
                           ),
                         ],
-                      ),
+
+                        AppSpacing.verticalMd,
+
+                        FadeInSlide(
+                          duration: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 700),
+                          slideOffset: 20,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: () async {
+                                  final resetSuccess =
+                                      await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ResetPasswordScreen(),
+                                    ),
+                                  );
+                                  if (resetSuccess == true && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            l10n.passwordResetSuccess),
+                                        backgroundColor: AppColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Text(l10n.forgotPassword),
+                              ),
+                              TextButton(
+                                onPressed: () => context.push('/register'),
+                                child: Text(l10n.createAccount),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+          if (_isSocialLoading)
+            const Positioned.fill(child: _SocialLoadingOverlay()),
+        ],
       ),
     );
   }
 }
 
-class _ResetPasswordDialog extends StatefulWidget {
-  final WidgetRef ref;
-
-  const _ResetPasswordDialog({required this.ref});
-
-  @override
-  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
-}
-
-class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  bool _otpSent = false;
-  bool _isLoading = false;
-  String? _verificationId;
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _otpController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length != 10) {
-      showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Invalid Number'),
-          content: const Text('Please enter a valid 10-digit number'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final fullPhone = '+91$phone';
-    await widget.ref.read(authProvider.notifier).requestPasswordResetOtp(
-      fullPhone,
-      onCodeSent: (verificationId) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _otpSent = true;
-            _verificationId = verificationId;
-          });
-          showDialog<void>(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('OTP Sent'),
-              content: const Text('OTP sent successfully. Please check your messages.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      },
-      onFailed: (error) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          showDialog<void>(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Error'),
-              content: Text(error),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      },
-    );
-  }
-
-  void _resetPassword() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final code = _otpController.text.trim();
-    final newPassword = _passwordController.text.trim();
-
-    // Show progress dialog
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Resetting password...'),
-            ],
-          ),
-        );
-      },
-    );
-
-    final success = await widget.ref.read(authProvider.notifier).resetPasswordWithPhoneOtp(
-      verificationId: _verificationId!,
-      code: code,
-      newPassword: newPassword,
-    );
-
-    if (context.mounted) {
-      Navigator.pop(context);
-      if (success) {
-        Navigator.pop(context, true);
-      } else {
-        final error = widget.ref.read(authProvider).error;
-        showDialog<void>(
-          context: context,
-          builder: (dialogCtx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error_outline, color: AppColors.error),
-                SizedBox(width: 8),
-                Text('Error'),
-              ],
-            ),
-            content: Text(error ?? 'Password reset failed'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-  }
+/// Full-screen translucent barrier shown while a social (Google/Apple) sign-in
+/// is in flight, so the screen isn't silently idle during the picker + role sync.
+class _SocialLoadingOverlay extends StatelessWidget {
+  const _SocialLoadingOverlay();
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Reset Password via OTP'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
+    return AbsorbPointer(
+      child: ColoredBox(
+        color: Colors.black54,
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
-              CustomTextField(
-                label: 'Registered Phone Number',
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                prefixIcon: Icons.phone_android,
-                prefixText: '+91 ',
-                readOnly: _otpSent,
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Phone number is required';
-                  if (val.length != 10) return 'Enter a valid 10-digit number';
-                  return null;
-                },
+              const CircularProgressIndicator(color: Colors.white),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                AppLocalizations.of(context).signingYouIn,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
               ),
-              if (_otpSent) ...[
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Enter 6-Digit OTP',
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  prefixIcon: Icons.lock_outline,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'OTP is required';
-                    if (val.length != 6) return 'OTP must be 6 digits';
-                    return null;
-                  },
-                ),
-                ResendOtpTimer(
-                  enabled: !_isLoading,
-                  onResend: _sendOtp,
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'New Password',
-                  controller: _passwordController,
-                  obscureText: true,
-                  prefixIcon: Icons.lock_outline,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'New password is required';
-                    if (val.length < 6) return 'At least 6 characters required';
-                    return null;
-                  },
-                ),
-              ],
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : (_otpSent ? _resetPassword : _sendOtp),
-          child: _isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(_otpSent ? 'Reset Password' : 'Send OTP'),
-        ),
-      ],
     );
   }
 }

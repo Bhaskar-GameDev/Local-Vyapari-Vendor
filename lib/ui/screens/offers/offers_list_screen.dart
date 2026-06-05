@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../../domain/providers/offer_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -10,24 +9,29 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
 import '../../common/error_view.dart';
+import '../../common/incremental_list.dart';
+import '../../common/skeleton.dart';
 import 'create_offer_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 class OffersListScreen extends ConsumerWidget {
   const OffersListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final offersState = ref.watch(offersProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Active Offers'),
+        title: Text(l10n.activeOffers),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
             child: offersState.when(
               data: (offers) {
                 if (offers.isEmpty) {
@@ -35,8 +39,10 @@ class OffersListScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
-                        'No active offers. Create a flash sale!',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        l10n.noOffers,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
                   );
@@ -60,11 +66,14 @@ class OffersListScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          AppPageRoute.slideUp<void>(CreateOfferScreen(existingOffer: offer)),
+                          AppPageRoute.slideUp<void>(
+                              CreateOfferScreen(existingOffer: offer)),
                         );
                       },
                       child: Card(
-                        margin: cols == 1 ? const EdgeInsets.only(bottom: AppSpacing.sm) : EdgeInsets.zero,
+                        margin: cols == 1
+                            ? const EdgeInsets.only(bottom: AppSpacing.sm)
+                            : EdgeInsets.zero,
                         clipBehavior: Clip.antiAlias,
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
@@ -75,12 +84,17 @@ class OffersListScreen extends ConsumerWidget {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: (effectiveActive ? AppColors.warning : Colors.grey).withValues(alpha: 0.15),
+                              color: (effectiveActive
+                                      ? AppColors.warning
+                                      : Colors.grey)
+                                  .withValues(alpha: 0.15),
                               borderRadius: AppRadius.borderSm,
                             ),
                             child: Icon(
                               Icons.local_offer_rounded,
-                              color: effectiveActive ? AppColors.warning : Colors.grey,
+                              color: effectiveActive
+                                  ? AppColors.warning
+                                  : Colors.grey,
                               size: 22,
                             ),
                           ),
@@ -88,7 +102,11 @@ class OffersListScreen extends ConsumerWidget {
                             offer.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: effectiveActive ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: effectiveActive
+                                  ? Theme.of(context).colorScheme.onSurface
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -97,11 +115,15 @@ class OffersListScreen extends ConsumerWidget {
                             padding: const EdgeInsets.only(top: AppSpacing.xs),
                             child: Text(
                               isExpired
-                                  ? 'Expired on ${DateFormat('MMM dd, hh:mm a').format(endDate)}'
-                                  : '${offer.discountPercentage.toInt()}% OFF • Ends ${DateFormat('MMM dd, hh:mm a').format(endDate)}',
+                                  ? l10n.expiredOn(DateFormat('MMM dd, hh:mm a').format(endDate))
+                                  : l10n.offerSubtitle(offer.discountPercentage.toInt(), DateFormat('MMM dd, hh:mm a').format(endDate)),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isExpired ? AppColors.error : Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: isExpired
+                                    ? AppColors.error
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -115,14 +137,20 @@ class OffersListScreen extends ConsumerWidget {
                                 onChanged: isExpired
                                     ? null
                                     : (val) {
-                                        ref.read(offersProvider.notifier).toggleOfferAvailability(offer.id, val);
+                                        ref
+                                            .read(offersProvider.notifier)
+                                            .toggleOfferAvailability(
+                                                offer.id, val);
                                       },
                                 activeThumbColor: AppColors.success,
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    color: AppColors.error),
                                 onPressed: () {
-                                  ref.read(offersProvider.notifier).deleteOffer(offer.id);
+                                  ref
+                                      .read(offersProvider.notifier)
+                                      .deleteOffer(offer.id);
                                 },
                               ),
                             ],
@@ -133,30 +161,38 @@ class OffersListScreen extends ConsumerWidget {
                   );
                 }
 
-                if (cols == 2) {
-                  return GridView.builder(
-                    padding: padding,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.55,
-                    ),
-                    itemCount: offers.length,
-                    itemBuilder: (_, i) => buildOfferTile(i),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: padding,
+                return IncrementalList(
                   itemCount: offers.length,
-                  itemBuilder: (_, i) => buildOfferTile(i),
+                  builder: (context, controller, visibleCount) {
+                    if (cols == 2) {
+                      return GridView.builder(
+                        controller: controller,
+                        padding: padding,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.55,
+                        ),
+                        itemCount: visibleCount,
+                        itemBuilder: (_, i) => buildOfferTile(i),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: controller,
+                      padding: padding,
+                      itemCount: visibleCount,
+                      itemBuilder: (_, i) => buildOfferTile(i),
+                    );
+                  },
                 );
               },
               loading: () => _buildShimmerLoading(context),
               error: (error, stack) => ErrorView(
                 error: error,
-                title: 'Failed to load offers',
+                title: l10n.failedToLoadOffers,
                 onRetry: () => ref.invalidate(offersProvider),
               ),
             ),
@@ -172,7 +208,7 @@ class OffersListScreen extends ConsumerWidget {
           );
         },
         icon: const Icon(Icons.local_offer),
-        label: const Text('Create Offer'),
+        label: Text(l10n.createOffer),
       ),
     );
   }
@@ -180,11 +216,9 @@ class OffersListScreen extends ConsumerWidget {
   Widget _buildShimmerLoading(BuildContext context) {
     final hPad = Responsive.horizontalPadding(context);
     final cols = Responsive.offerGridColumns(context);
-    final shimmerCard = Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
+    const shimmerCard = Skeleton(
       child: Card(
-        child: Container(height: 84, color: Colors.white),
+        child: SkeletonBox(height: 84, radius: 0),
       ),
     );
     if (cols == 2) {
@@ -203,8 +237,8 @@ class OffersListScreen extends ConsumerWidget {
     return ListView.builder(
       padding: EdgeInsets.all(hPad),
       itemCount: 4,
-      itemBuilder: (_, __) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      itemBuilder: (_, __) => const Padding(
+        padding: EdgeInsets.only(bottom: AppSpacing.sm),
         child: shimmerCard,
       ),
     );

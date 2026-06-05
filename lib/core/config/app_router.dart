@@ -5,11 +5,13 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/shop_provider.dart';
 import '../../ui/screens/auth/login_screen.dart';
 import '../../ui/screens/auth/register_screen.dart';
+import '../../ui/screens/auth/link_phone_screen.dart';
 import '../../ui/screens/main_navigation.dart';
 import '../../ui/screens/shop/setup_shop_screen.dart';
 import '../../ui/screens/splash/splash_screen.dart';
 import '../../ui/screens/chat/chat_screen.dart';
 import '../../ui/screens/security/security_settings_screen.dart';
+import '../../ui/screens/feedback/feedback_screen.dart';
 
 final authRouteStateProvider = Provider((ref) {
   return (
@@ -67,6 +69,13 @@ final appRouter = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/link-phone',
+        pageBuilder: (context, state) => buildFadeThroughPage(
+          key: state.pageKey,
+          child: const LinkPhoneScreen(),
+        ),
+      ),
+      GoRoute(
         path: '/setup-shop',
         pageBuilder: (context, state) => buildFadeThroughPage(
           key: state.pageKey,
@@ -97,6 +106,13 @@ final appRouter = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => buildSlideRightPage(
           key: state.pageKey,
           child: const SecuritySettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/feedback',
+        pageBuilder: (context, state) => buildSlideRightPage(
+          key: state.pageKey,
+          child: const FeedbackScreen(),
         ),
       ),
     ],
@@ -143,8 +159,29 @@ final appRouter = Provider<GoRouter>((ref) {
           ref.read(authRepositoryProvider).logout();
           return '/login';
         }
+      }
 
-        // Check if user is a merchant (role validation)
+      // Require a verified mobile number before anything else. Federated
+      // sign-ins (Google/Apple) never carry a phone number, but the whole
+      // marketplace keys identity and discovery on phone — so park the vendor
+      // on the link-phone screen until one is verified.
+      final hasAuthPhone = (user.phoneNumber ?? '').isNotEmpty;
+      final profilePhone = userProfile?['phone']?.toString() ?? '';
+      final profileVerified = userProfile?['verified'] == true;
+      final hasVerifiedPhone =
+          hasAuthPhone || (profilePhone.isNotEmpty && profileVerified);
+
+      // Don't decide until the profile has loaded, otherwise a returning user
+      // who has a phone could be bounced to the link screen on a cold start.
+      if (!hasVerifiedPhone && userProfileState.isLoading) {
+        return null;
+      }
+      if (!hasVerifiedPhone) {
+        return location == '/link-phone' ? null : '/link-phone';
+      }
+
+      // Phone is on file — check the merchant role (onboarding gate).
+      if (userProfileState.hasValue && userProfile != null) {
         final roles = userProfile['roles'] as Map?;
         final isMerchant = roles?['merchant'] == true;
         if (!isMerchant) {
@@ -165,7 +202,10 @@ final appRouter = Provider<GoRouter>((ref) {
       }
 
       // User is logged in, is merchant, and shop is setup, prevent accessing onboarding/guest routes
-      if (location == '/login' || location == '/register' || location == '/setup-shop') {
+      if (location == '/login' ||
+          location == '/register' ||
+          location == '/setup-shop' ||
+          location == '/link-phone') {
         return '/';
       }
 

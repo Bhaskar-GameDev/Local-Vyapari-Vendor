@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 /// A "Resend code" affordance that is disabled for [cooldown] after each send,
 /// showing a live countdown, then becomes tappable.
@@ -83,7 +84,9 @@ class _ResendOtpTimerState extends State<ResendOtpTimer> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         label: Text(
-          waiting ? 'Resend code in ${_remaining}s' : 'Resend code',
+          waiting
+              ? AppLocalizations.of(context).resendCodeIn(_remaining)
+              : AppLocalizations.of(context).resendCode,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,

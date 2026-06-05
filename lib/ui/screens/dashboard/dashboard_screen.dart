@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
@@ -13,24 +12,27 @@ import '../../../domain/providers/offer_provider.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/analytics_provider.dart';
 import '../../common/app_animations.dart';
+import '../../common/skeleton.dart';
 import '../products/add_product_screen.dart';
 import '../../../domain/providers/review_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../reviews/vendor_reviews_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  static String _greeting() {
+  static String _greeting(AppLocalizations l10n) {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning,';
-    if (h < 17) return 'Good afternoon,';
-    return 'Good evening,';
+    if (h < 12) return l10n.goodMorning;
+    if (h < 17) return l10n.goodAfternoon;
+    return l10n.goodEvening;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final shopState = ref.watch(shopProvider);
-    final shopName = shopState.maybeWhen(data: (s) => s?.name ?? 'Your Store', orElse: () => 'Your Store');
+    final shopName = shopState.maybeWhen(data: (s) => s?.name ?? l10n.yourStore, orElse: () => l10n.yourStore);
 
     return Scaffold(
       appBar: AppBar(
@@ -39,7 +41,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_greeting(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Theme.of(context).colorScheme.outline, height: 1)),
+            Text(_greeting(l10n), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Theme.of(context).colorScheme.outline, height: 1)),
             Text(shopName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface, height: 1.3)),
           ],
         ),
@@ -47,7 +49,7 @@ class DashboardScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, size: 22),
             onPressed: () {},
-            tooltip: 'Notifications',
+            tooltip: l10n.notifications,
           ),
           const SizedBox(width: 4),
         ],
@@ -90,6 +92,7 @@ class _HeroCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final shopState = ref.watch(shopProvider);
     final analyticsState = ref.watch(analyticsProvider);
     final analytics = analyticsState.value ?? const AnalyticsModel();
@@ -129,7 +132,7 @@ class _HeroCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  shop?.name ?? 'Your Store',
+                  shop?.name ?? l10n.yourStore,
                   style: TextStyle(color: Colors.white, fontSize: 22 * ts, fontWeight: FontWeight.w700, height: 1.2, fontFamily: 'Poppins'),
                 ),
                 if (shop?.address.isNotEmpty == true) ...[
@@ -158,11 +161,11 @@ class _HeroCard extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      _HeroMiniStat(icon: Icons.visibility_outlined, value: '${todayStat.views}', label: "Today's views"),
+                      _HeroMiniStat(icon: Icons.visibility_outlined, value: '${todayStat.views}', label: l10n.todaysViews),
                       _VertDivider(),
-                      _HeroMiniStat(icon: Icons.ads_click_rounded, value: '${todayStat.clicks}', label: "Today's clicks"),
+                      _HeroMiniStat(icon: Icons.ads_click_rounded, value: '${todayStat.clicks}', label: l10n.todaysClicks),
                       _VertDivider(),
-                      _HeroMiniStat(icon: Icons.star_outline_rounded, value: '${shop?.totalReviews ?? 0}', label: 'Total reviews'),
+                      _HeroMiniStat(icon: Icons.star_outline_rounded, value: '${shop?.totalReviews ?? 0}', label: l10n.totalReviews),
                     ],
                   ),
                 ),
@@ -204,7 +207,7 @@ class _StatusPill extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isOpen ? 'Open' : 'Closed',
+            isOpen ? AppLocalizations.of(context).open : AppLocalizations.of(context).closed,
             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
           ),
         ],
@@ -286,6 +289,7 @@ class _StatsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final productsState = ref.watch(productsProvider);
     final offersState = ref.watch(offersProvider);
     final analyticsState = ref.watch(analyticsProvider);
@@ -295,28 +299,28 @@ class _StatsRow extends ConsumerWidget {
 
     final stats = [
       _StatData(
-        label: 'Products',
+        label: l10n.products,
         value: productsState.maybeWhen(data: (l) => '${l.length}', orElse: () => '—'),
         icon: Icons.inventory_2_rounded,
         color: AppColors.info,
         loading: productsState.isLoading,
       ),
       _StatData(
-        label: 'Live Offers',
+        label: l10n.liveOffers,
         value: offersState.maybeWhen(data: (l) => '${l.length}', orElse: () => '—'),
         icon: Icons.local_offer_rounded,
         color: AppColors.warning,
         loading: offersState.isLoading,
       ),
       _StatData(
-        label: 'Views Today',
+        label: l10n.viewsToday,
         value: analyticsState.isLoading ? '—' : '${todayStat.views}',
         icon: Icons.visibility_rounded,
         color: AppColors.accent,
         loading: analyticsState.isLoading,
       ),
       _StatData(
-        label: 'Total Clicks',
+        label: l10n.totalClicksLabel,
         value: analyticsState.isLoading ? '—' : '${analytics.totalClicks}',
         icon: Icons.ads_click_rounded,
         color: AppColors.primaryLight,
@@ -329,11 +333,11 @@ class _StatsRow extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FadeInSlide(
-          duration: Duration(milliseconds: 400),
-          delay: Duration(milliseconds: 80),
+        FadeInSlide(
+          duration: const Duration(milliseconds: 400),
+          delay: const Duration(milliseconds: 80),
           slideOffset: 10,
-          child: _SectionHeader(title: 'Overview'),
+          child: _SectionHeader(title: l10n.overview),
         ),
         const SizedBox(height: 10),
         if (useGrid)
@@ -423,10 +427,8 @@ class _StatTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               data.loading
-                  ? Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: Container(width: 40, height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                  ? const Skeleton(
+                      child: SkeletonBox(width: 40, height: 26, radius: 4),
                     )
                   : Text(data.value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: textColor, height: 1, fontFamily: 'Poppins')),
               const SizedBox(height: 2),
@@ -446,6 +448,7 @@ class _AnalyticsChartSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final analyticsState = ref.watch(analyticsProvider);
     final analytics = analyticsState.value ?? const AnalyticsModel();
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -460,7 +463,7 @@ class _AnalyticsChartSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const _SectionHeader(title: 'Performance'),
+              _SectionHeader(title: l10n.performance),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -468,7 +471,7 @@ class _AnalyticsChartSection extends ConsumerWidget {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(32),
                 ),
-                child: const Text('7 days', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                child: Text(l10n.sevenDays, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
               ),
             ],
           ),
@@ -480,6 +483,7 @@ class _AnalyticsChartSection extends ConsumerWidget {
   }
 
   Widget _buildChart(BuildContext context, AnalyticsModel analytics, Color bg, bool isDark) {
+    final l10n = AppLocalizations.of(context);
     final last7Days = List.generate(7, (i) => DateTime.now().subtract(Duration(days: 6 - i)));
     final spotsViews = <FlSpot>[];
     final spotsClicks = <FlSpot>[];
@@ -509,11 +513,11 @@ class _AnalyticsChartSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              _LegendDot(color: AppColors.primary, label: 'Views'),
-              SizedBox(width: 16),
-              _LegendDot(color: AppColors.warning, label: 'Clicks'),
+              _LegendDot(color: AppColors.primary, label: l10n.viewsLegend),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppColors.warning, label: l10n.clicksLegend),
             ],
           ),
           const SizedBox(height: 14),
@@ -521,7 +525,7 @@ class _AnalyticsChartSection extends ConsumerWidget {
             height: Responsive.chartHeight(context),
             child: !hasData
                 ? Center(
-                    child: Text('No traffic data yet.', style: TextStyle(color: isDark ? Colors.white38 : AppColors.textHint, fontSize: 13)),
+                    child: Text(l10n.noTrafficData, style: TextStyle(color: isDark ? Colors.white38 : AppColors.textHint, fontSize: 13)),
                   )
                 : LineChart(LineChartData(
                     gridData: FlGridData(
@@ -610,6 +614,7 @@ class _RatingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final ratingDist = ref.watch(vendorRatingDistributionProvider);
     return FadeInSlide(
       duration: const Duration(milliseconds: 500),
@@ -620,10 +625,10 @@ class _RatingsSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const _SectionHeader(title: 'Customer Ratings'),
+              _SectionHeader(title: l10n.customerRatings),
               const Spacer(),
               if (ratingDist.totalCount > 0)
-                Text('${ratingDist.totalCount} total', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
+                Text(l10n.nTotal(ratingDist.totalCount), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
             ],
           ),
           const SizedBox(height: 12),
@@ -645,11 +650,11 @@ class _LowStockSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FadeInSlide(
-          duration: Duration(milliseconds: 500),
-          delay: Duration(milliseconds: 300),
+        FadeInSlide(
+          duration: const Duration(milliseconds: 500),
+          delay: const Duration(milliseconds: 300),
           slideOffset: 10,
-          child: _SectionHeader(title: 'Low Stock Alerts'),
+          child: _SectionHeader(title: AppLocalizations.of(context).lowStockAlerts),
         ),
         const SizedBox(height: 12),
         _buildLowStockList(context, productsState),
@@ -676,21 +681,23 @@ class _SectionHeader extends StatelessWidget {
 // ─── Low stock list builder (top-level function) ──────────────────────────────
 
 Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> productsState) {
+  final l10n = AppLocalizations.of(context);
   if (productsState.isLoading) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 2,
-      itemBuilder: (_, __) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(height: 72, margin: const EdgeInsets.only(bottom: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16))),
+      itemBuilder: (_, __) => const Skeleton(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: SkeletonBox(height: 72, radius: 16),
+        ),
       ),
     );
   }
 
   if (productsState.hasError) {
-    return Text('Error loading inventory.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
+    return Text(l10n.errorLoadingInventory, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
   }
 
   final allProducts = productsState.asData?.value ?? [];
@@ -712,7 +719,7 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
           children: [
             const Icon(Icons.check_circle_outline_rounded, color: AppColors.accent, size: 18),
             const SizedBox(width: 10),
-            Text('All products are well-stocked.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
+            Text(l10n.allProductsStocked, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -754,7 +761,7 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
                     children: [
                       Text(product.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Theme.of(context).colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 1),
-                      Text('Only ${product.stockQuantity} left', style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                      Text(l10n.onlyNLeft(product.stockQuantity), style: const TextStyle(color: AppColors.error, fontSize: 12)),
                     ],
                   ),
                 ),

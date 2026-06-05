@@ -19,7 +19,9 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
 import '../../common/app_animations.dart';
+import '../../common/error_dialog.dart';
 import '../../common/resend_otp_timer.dart';
+import '../../../l10n/app_localizations.dart';
 
 class SetupShopScreen extends ConsumerStatefulWidget {
   final ShopModel? existingShop;
@@ -164,7 +166,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   }
 
   String _formatTime(TimeOfDay? time) {
-    if (time == null) return 'Select Time';
+    if (time == null) return AppLocalizations.of(context).selectTime;
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
@@ -199,8 +201,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Shop coordinates updated!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).shopCoordinatesUpdated),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -209,12 +211,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     } catch (e) {
       final errorMsg = e.toString().replaceFirst('Exception: ', '');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not fetch location: $errorMsg'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppErrorDialog.show(
+          context: context,
+          message: AppLocalizations.of(context).couldNotFetchLocation(errorMsg),
+          title: AppLocalizations.of(context).locationError,
         );
       }
     } finally {
@@ -227,18 +227,19 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     final fullPhone = phoneNum.startsWith('+') ? phoneNum : '+91$phoneNum';
 
     final authNotifier = ref.read(authProvider.notifier);
+    final l10n = AppLocalizations.of(context);
     final completer = Completer<bool>();
 
     // Show request loading dialog
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Requesting verification...'),
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
+            Text(l10n.requestingVerification),
           ],
         ),
       ),
@@ -263,14 +264,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
             return StatefulBuilder(
               builder: (context, setState) {
                 return AlertDialog(
-                  title: const Text('Verify Phone Number'),
+                  title: Text(l10n.verifyPhoneNumber),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('We have sent a verification OTP to $fullPhone.'),
+                      Text(l10n.otpSentToPhone(fullPhone)),
                       AppSpacing.verticalMd,
                       CustomTextField(
-                        label: '6-Digit OTP',
+                        label: l10n.sixDigitOtp,
                         controller: codeController,
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.lock_outline,
@@ -284,8 +285,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                               currentVerificationId = vid;
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('A new OTP has been sent.'),
+                                  SnackBar(
+                                    content: Text(l10n.newOtpSent),
                                     backgroundColor: AppColors.primary,
                                   ),
                                 );
@@ -293,11 +294,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             },
                             onFailed: (err) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(err),
-                                    backgroundColor: AppColors.error,
-                                  ),
+                                AppErrorDialog.show(
+                                  context: context,
+                                  message: err,
+                                  title: l10n.resendFailed,
                                 );
                               }
                             },
@@ -309,7 +309,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                   actions: [
                     TextButton(
                       onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.commonCancel),
                     ),
                     ElevatedButton(
                       onPressed: isVerifying ? null : () async {
@@ -327,7 +327,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       },
                       child: isVerifying
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Verify'),
+                          : Text(l10n.verify),
                     ),
                   ],
                 );
@@ -342,11 +342,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         // Dismiss requesting dialog
         Navigator.pop(context);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: AppColors.error,
-          ),
+        AppErrorDialog.show(
+          context: context,
+          message: error,
+          title: l10n.otpRequestFailed,
         );
         completer.complete(false);
       },
@@ -432,11 +431,12 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
       }
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isEditing
-                ? 'Shop profile updated successfully!'
-                : 'Shop storefront created successfully!'),
+                ? l10n.shopProfileUpdated
+                : l10n.shopStorefrontCreated),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -445,14 +445,13 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
           Navigator.pop(context);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving shop profile: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppErrorDialog.fromError(
+          context: context,
+          error: e,
+          stackTrace: st,
+          title: AppLocalizations.of(context).saveFailed,
         );
       }
     } finally {
@@ -462,13 +461,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.existingShop != null && 
-                      widget.existingShop!.address.isNotEmpty && 
+    final l10n = AppLocalizations.of(context);
+    final isEditing = widget.existingShop != null &&
+                      widget.existingShop!.address.isNotEmpty &&
                       widget.existingShop!.latitude != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Shop Profile' : 'Set Up Your Shop'),
+        title: Text(isEditing ? l10n.editShopProfile : l10n.setUpYourShop),
         automaticallyImplyLeading: isEditing,
         leading: isEditing
             ? IconButton(
@@ -521,7 +521,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                   AppSpacing.horizontalSm,
                                   Expanded(
                                     child: Text(
-                                      'Merchant Profile Pending: Complete your shop setup to activate your vendor account.',
+                                      l10n.merchantProfilePending,
                                       style: TextStyle(
                                         color: AppColors.warning.withValues(alpha: 0.9),
                                         fontSize: 13,
@@ -543,7 +543,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         duration: const Duration(milliseconds: 500),
                         slideOffset: 20,
                         child: Text(
-                          'Welcome to Local Vyapari!',
+                          l10n.welcomeToLocalVyapari,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
@@ -557,7 +557,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         delay: const Duration(milliseconds: 100),
                         slideOffset: 16,
                         child: Text(
-                          'Please fill in your business details to build your digital storefront and start listing products.',
+                          l10n.setupShopSubtitle,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
@@ -629,7 +629,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 200),
                       slideOffset: 10,
                       child: Text(
-                        'Upload Shop Logo',
+                        l10n.uploadShopLogo,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w600,
@@ -645,10 +645,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 250),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Business / Shop Name',
+                        label: l10n.businessShopName,
                         controller: _nameController,
                         prefixIcon: Icons.business_outlined,
-                        validator: (val) => val == null || val.isEmpty ? 'Please enter business name' : null,
+                        validator: (val) => val == null || val.isEmpty ? l10n.enterBusinessName : null,
                       ),
                     ),
                     AppSpacing.verticalMd,
@@ -657,10 +657,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 300),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Shop Description',
+                        label: l10n.shopDescription,
                         controller: _descController,
                         prefixIcon: Icons.description_outlined,
-                        validator: (val) => val == null || val.isEmpty ? 'Please describe your shop' : null,
+                        validator: (val) => val == null || val.isEmpty ? l10n.describeYourShop : null,
                       ),
                     ),
                     AppSpacing.verticalMd,
@@ -669,14 +669,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 350),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Contact Phone Number',
+                        label: l10n.contactPhoneNumber,
                         controller: _phoneController,
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return 'Please enter phone number';
+                          if (val == null || val.isEmpty) return l10n.enterPhoneNumber;
                           if (val.replaceAll(RegExp(r'\D'), '').length < 10) {
-                            return 'Enter a valid 10-digit number';
+                            return l10n.enterValid10DigitNumber;
                           }
                           return null;
                         },
@@ -705,7 +705,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                 AppSpacing.horizontalSm,
                                 Expanded(
                                   child: Text(
-                                    'Shop Timings',
+                                    l10n.shopTimings,
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -715,7 +715,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             ),
                             AppSpacing.verticalXs,
                             Text(
-                              'Let customers know when your shop is open.',
+                              l10n.shopTimingsSubtitle,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
@@ -728,7 +728,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     onTap: () => _pickTime(isOpening: true),
                                     child: InputDecorator(
                                       decoration: InputDecoration(
-                                        labelText: 'Opens At',
+                                        labelText: l10n.opensAt,
                                         prefixIcon: const Icon(Icons.wb_sunny_outlined),
                                         border: OutlineInputBorder(
                                           borderRadius: AppRadius.borderMd,
@@ -744,7 +744,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     onTap: () => _pickTime(isOpening: false),
                                     child: InputDecorator(
                                       decoration: InputDecoration(
-                                        labelText: 'Closes At',
+                                        labelText: l10n.closesAt,
                                         prefixIcon: const Icon(Icons.nights_stay_outlined),
                                         border: OutlineInputBorder(
                                           borderRadius: AppRadius.borderMd,
@@ -783,7 +783,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                 AppSpacing.horizontalSm,
                                 Expanded(
                                   child: Text(
-                                    'Geolocational Storefront',
+                                    l10n.geolocationalStorefront,
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -793,7 +793,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             ),
                             AppSpacing.verticalXs,
                             Text(
-                              'Accurate GPS coordinates help nearby shoppers find your store on their maps.',
+                              l10n.gpsSubtitle,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
@@ -803,21 +803,21 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                               children: [
                                 Expanded(
                                   child: CustomTextField(
-                                    label: 'Latitude',
+                                    label: l10n.latitude,
                                     controller: _latController,
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                     readOnly: true,
-                                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                                    validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                                   ),
                                 ),
                                 AppSpacing.horizontalSm,
                                 Expanded(
                                   child: CustomTextField(
-                                    label: 'Longitude',
+                                    label: l10n.longitude,
                                     controller: _lngController,
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                     readOnly: true,
-                                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                                    validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                                   ),
                                 ),
                               ],
@@ -833,7 +833,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                       )
                                     : const Icon(Icons.my_location_rounded, size: 18),
-                                label: const Text('Detect Current Location'),
+                                label: Text(l10n.detectCurrentLocation),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.accent,
                                   minimumSize: const Size.fromHeight(48),
@@ -850,10 +850,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       delay: const Duration(milliseconds: 475),
                       slideOffset: 16,
                       child: CustomTextField(
-                        label: 'Shop Address',
+                        label: l10n.shopAddress,
                         controller: _addressController,
                         prefixIcon: Icons.location_on_outlined,
-                        validator: (val) => val == null || val.isEmpty ? 'Please enter complete address' : null,
+                        validator: (val) => val == null || val.isEmpty ? l10n.enterCompleteAddress : null,
                       ),
                     ),
                     AppSpacing.verticalXl,
@@ -865,7 +865,7 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       slideOffset: 16,
                       child: ScaleOnTap(
                         child: PrimaryButton(
-                          text: isEditing ? 'Save Changes' : 'Create Storefront',
+                          text: isEditing ? l10n.saveChanges : l10n.createStorefront,
                           isLoading: _isSaving,
                           onPressed: _submitShop,
                         ),
@@ -884,9 +884,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             await ref.read(authProvider.notifier).logout();
                           },
                           icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                          label: const Text(
-                            'Sign Out',
-                            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+                          label: Text(
+                            l10n.signOutButton,
+                            style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),

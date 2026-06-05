@@ -9,6 +9,8 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
+import '../../common/error_dialog.dart';
+import '../../../l10n/app_localizations.dart';
 
 class CreateOfferScreen extends ConsumerStatefulWidget {
   final OfferModel? existingOffer;
@@ -78,6 +80,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   }
 
   void _submitOffer() async {
+    final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
@@ -96,7 +99,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
         await ref.read(offersProvider.notifier).updateOffer(newOffer);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Offer updated!'), backgroundColor: AppColors.success),
+            SnackBar(content: Text(l10n.offerUpdated), backgroundColor: AppColors.success),
           );
           Navigator.pop(context);
         }
@@ -104,15 +107,18 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
         await ref.read(offersProvider.notifier).addOffer(newOffer);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Offer created!'), backgroundColor: AppColors.success),
+            SnackBar(content: Text(l10n.offerCreated), backgroundColor: AppColors.success),
           );
           Navigator.pop(context);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        AppErrorDialog.fromError(
+          context: context,
+          error: e,
+          stackTrace: st,
+          title: l10n.couldNotSaveOffer,
         );
       }
     } finally {
@@ -122,9 +128,10 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingOffer != null ? 'Edit Flash Sale' : 'Create Flash Sale'),
+        title: Text(widget.existingOffer != null ? l10n.editFlashSale : l10n.createFlashSale),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -141,22 +148,32 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     CustomTextField(
-                      label: 'Offer Title (e.g. Weekend Flash Sale)',
+                      label: l10n.offerTitleLabel,
                       controller: _titleController,
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     CustomTextField(
-                      label: 'Discount %',
+                      label: l10n.discountPercent,
                       controller: _discountController,
                       keyboardType: TextInputType.number,
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return l10n.required;
+                        }
+                        final discount = double.tryParse(val.trim());
+                        if (discount == null) return l10n.invalid;
+                        if (discount <= 0 || discount > 100) {
+                          return l10n.discountRange;
+                        }
+                        return null;
+                      },
                     ),
                     AppSpacing.verticalMd,
                     CustomTextField(
-                      label: 'Description',
+                      label: l10n.descriptionLabel,
                       controller: _descController,
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     Container(
@@ -177,7 +194,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Starts At',
+                                      l10n.startsAt,
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
@@ -193,7 +210,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   final dt = await _pickDateTime(_startDate);
                                   if (dt != null) setState(() => _startDate = dt);
                                 },
-                                child: const Text('Change'),
+                                child: Text(l10n.change),
                               ),
                             ],
                           ),
@@ -207,7 +224,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Ends At',
+                                      l10n.endsAt,
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
@@ -223,7 +240,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   final dt = await _pickDateTime(_endDate);
                                   if (dt != null) setState(() => _endDate = dt);
                                 },
-                                child: const Text('Change'),
+                                child: Text(l10n.change),
                               ),
                             ],
                           ),
@@ -232,7 +249,7 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                     ),
                     AppSpacing.verticalXl,
                     PrimaryButton(
-                      text: widget.existingOffer != null ? 'Update Offer' : 'Launch Offer',
+                      text: widget.existingOffer != null ? l10n.updateOffer : l10n.launchOffer,
                       isLoading: _isLoading,
                       onPressed: _submitOffer,
                       color: AppColors.warning,

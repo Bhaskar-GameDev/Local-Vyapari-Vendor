@@ -12,7 +12,9 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/cloudinary_service.dart';
 import '../../common/custom_text_field.dart';
 import '../../common/primary_button.dart';
+import '../../common/error_dialog.dart';
 import '../reviews/product_reviews_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final ProductModel? existingProduct;
@@ -91,10 +93,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Future<void> _pickImages() async {
+    final l10n = AppLocalizations.of(context);
     if (_images.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You can add up to 5 images only', style: TextStyle(color: Colors.white)),
+        SnackBar(
+          content: Text(l10n.max5Images, style: const TextStyle(color: Colors.white)),
           backgroundColor: AppColors.error,
         ),
       );
@@ -111,32 +114,33 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           _images.addAll(imagesToAdd);
           if (pickedFiles.length > remainingSlots) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Only up to 5 images can be added', style: TextStyle(color: Colors.white)),
+              SnackBar(
+                content: Text(l10n.only5Images, style: const TextStyle(color: Colors.white)),
                 backgroundColor: AppColors.warning,
               ),
             );
           }
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking images: $e', style: const TextStyle(color: Colors.white)),
-            backgroundColor: AppColors.error,
-          ),
+        AppErrorDialog.fromError(
+          context: context,
+          error: e,
+          stackTrace: st,
+          title: l10n.couldNotPickImages,
         );
       }
     }
   }
 
   void _submitProduct() async {
+    final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (_images.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least 1 image', style: TextStyle(color: Colors.white)),
+        SnackBar(
+          content: Text(l10n.selectAtLeast1Image, style: const TextStyle(color: Colors.white)),
           backgroundColor: AppColors.error,
         ),
       );
@@ -178,19 +182,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.existingProduct != null ? 'Product updated successfully!' : 'Product added successfully!'),
+            content: Text(widget.existingProduct != null ? l10n.productUpdated : l10n.productAdded),
             backgroundColor: AppColors.success,
           ),
         );
         Navigator.pop(context);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error adding product: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        AppErrorDialog.fromError(
+          context: context,
+          error: e,
+          stackTrace: st,
+          title: l10n.couldNotSaveProduct,
         );
       }
     } finally {
@@ -199,15 +203,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${widget.existingProduct!.name}"? This action cannot be undone.'),
+        title: Text(l10n.deleteProduct),
+        content: Text(l10n.confirmDeleteProduct(widget.existingProduct!.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -215,7 +220,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -227,20 +232,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         await ref.read(productsProvider.notifier).deleteProduct(widget.existingProduct!.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Product deleted successfully'),
+            SnackBar(
+              content: Text(l10n.productDeleted),
               backgroundColor: AppColors.success,
             ),
           );
           Navigator.pop(context);
         }
-      } catch (e) {
+      } catch (e, st) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting product: $e'),
-              backgroundColor: AppColors.error,
-            ),
+          AppErrorDialog.fromError(
+            context: context,
+            error: e,
+            stackTrace: st,
+            title: l10n.couldNotDeleteProduct,
           );
         }
       } finally {
@@ -251,9 +256,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingProduct != null ? 'Edit Product' : 'Add New Product'),
+        title: Text(widget.existingProduct != null ? l10n.editProduct : l10n.addNewProduct),
         actions: widget.existingProduct != null
             ? [
                 IconButton(
@@ -280,9 +286,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     _buildImageUploader(),
                     AppSpacing.verticalLg,
                     CustomTextField(
-                      label: 'Product Name',
+                      label: l10n.productName,
                       controller: _nameController,
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     Autocomplete<String>(
@@ -302,14 +308,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           controller: controller,
                           focusNode: focusNode,
                           decoration: InputDecoration(
-                            labelText: 'Category',
+                            labelText: l10n.category,
                             filled: true,
                             fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
                             suffixIcon: const Icon(Icons.arrow_drop_down),
                           ),
                           validator: (val) =>
-                              val == null || val.trim().isEmpty ? 'Required' : null,
+                              val == null || val.trim().isEmpty ? l10n.required : null,
                           onChanged: (val) => _selectedCategory = val,
                         );
                       },
@@ -344,12 +350,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       children: [
                         Expanded(
                           child: CustomTextField(
-                            label: 'Actual Price (₹)',
+                            label: l10n.actualPrice,
                             controller: _priceController,
                             keyboardType: TextInputType.number,
                             validator: (val) {
-                              if (val == null || val.isEmpty) return 'Required';
-                              if (double.tryParse(val) == null) return 'Invalid';
+                              if (val == null || val.isEmpty) return l10n.required;
+                              if (double.tryParse(val) == null) return l10n.invalid;
                               return null;
                             },
                           ),
@@ -357,11 +363,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         AppSpacing.horizontalMd,
                         Expanded(
                           child: CustomTextField(
-                            label: 'Offer Price (₹)',
+                            label: l10n.offerPrice,
                             controller: _offerPriceController,
                             keyboardType: TextInputType.number,
                             validator: (val) {
-                              if (val != null && val.isNotEmpty && double.tryParse(val) == null) return 'Invalid';
+                              if (val != null && val.isNotEmpty && double.tryParse(val) == null) return l10n.invalid;
                               return null;
                             },
                           ),
@@ -370,26 +376,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                     AppSpacing.verticalMd,
                     CustomTextField(
-                      label: 'Stock Qty',
+                      label: l10n.stockQty,
                       controller: _stockController,
                       keyboardType: TextInputType.number,
                       validator: (val) {
-                        if (val == null || val.isEmpty) return 'Required';
-                        if (int.tryParse(val) == null) return 'Invalid';
+                        if (val == null || val.isEmpty) return l10n.required;
+                        if (int.tryParse(val) == null) return l10n.invalid;
                         return null;
                       },
                     ),
                      AppSpacing.verticalMd,
                     CustomTextField(
-                      label: 'Description',
+                      label: l10n.descriptionLabel,
                       controller: _descController,
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
                     ),
                     if (widget.existingProduct != null) ...[
                       AppSpacing.verticalLg,
                       OutlinedButton.icon(
                         icon: const Icon(Icons.star_outline_rounded),
-                        label: const Text('View Product Reviews'),
+                        label: Text(l10n.viewProductReviews),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -408,7 +414,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ],
                     AppSpacing.verticalXl,
                     PrimaryButton(
-                      text: 'Publish Product',
+                      text: l10n.publishProduct,
                       isLoading: _isLoading,
                       onPressed: _submitProduct,
                     ),
@@ -423,6 +429,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildImageUploader() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -430,7 +437,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Product Images (${_images.length}/5)',
+              l10n.productImages(_images.length),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -438,7 +445,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ),
             Text(
-              'Min 1, Max 5',
+              l10n.min1Max5,
               style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -481,14 +488,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             width: 1.5,
           ),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
+            const Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
             AppSpacing.verticalXs,
             Text(
-              'Add Image',
-              style: TextStyle(
+              AppLocalizations.of(context).addImage,
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: AppColors.primary,

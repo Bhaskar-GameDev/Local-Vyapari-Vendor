@@ -2,8 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/utils/app_image_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
-import '../../../core/exceptions/error_handler.dart';
 import '../../../domain/providers/product_provider.dart';
 import '../../../domain/providers/review_provider.dart';
 import '../../../data/models/product_model.dart';
@@ -13,26 +11,29 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/responsive.dart';
 import '../../common/app_animations.dart';
-import '../../common/custom_snack_bar.dart';
+import '../../common/error_dialog.dart';
 import '../../common/error_view.dart';
+import '../../common/incremental_list.dart';
+import '../../common/skeleton.dart';
 import 'add_product_screen.dart';
 import '../reviews/product_reviews_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ProductsListScreen extends ConsumerWidget {
   const ProductsListScreen({super.key});
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
       String productId, String productName) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text(
-            'Are you sure you want to delete "$productName"? This action cannot be undone.'),
+        title: Text(l10n.deleteProduct),
+        content: Text(l10n.confirmDeleteProduct(productName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -40,7 +41,7 @@ class ProductsListScreen extends ConsumerWidget {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -51,17 +52,19 @@ class ProductsListScreen extends ConsumerWidget {
         await ref.read(productsProvider.notifier).deleteProduct(productId);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Product deleted successfully'),
+            SnackBar(
+              content: Text(l10n.productDeleted),
               backgroundColor: AppColors.success,
             ),
           );
         }
-      } catch (e) {
+      } catch (e, st) {
         if (context.mounted) {
-          CustomSnackBar.showError(
+          AppErrorDialog.fromError(
             context: context,
-            message: ErrorHandler.getMessage(e),
+            error: e,
+            stackTrace: st,
+            title: l10n.deleteFailed,
           );
         }
       }
@@ -70,6 +73,7 @@ class ProductsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final productsState = ref.watch(productsProvider);
     // Single batch query replaces N per-product Firestore streams.
     final ratingsMap = ref.watch(vendorProductRatingsProvider).value ?? {};
@@ -79,7 +83,7 @@ class ProductsListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Products'),
+        title: Text(l10n.myProducts),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -94,7 +98,7 @@ class ProductsListScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
-                        'No products found. Add one!',
+                        l10n.noProducts,
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium
@@ -105,37 +109,43 @@ class ProductsListScreen extends ConsumerWidget {
                 }
                 return RefreshIndicator(
                   onRefresh: () async => ref.invalidate(productsProvider),
-                  child: isTablet
-                      ? GridView.builder(
-                          padding: EdgeInsets.all(hPad),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: cols,
-                            mainAxisSpacing: AppSpacing.md,
-                            crossAxisSpacing: AppSpacing.md,
-                            childAspectRatio: 0.85,
+                  child: IncrementalList(
+                    itemCount: products.length,
+                    builder: (context, controller, visibleCount) => isTablet
+                        ? GridView.builder(
+                            controller: controller,
+                            padding: EdgeInsets.all(hPad),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: cols,
+                              mainAxisSpacing: AppSpacing.md,
+                              crossAxisSpacing: AppSpacing.md,
+                              childAspectRatio: 0.85,
+                            ),
+                            itemCount: visibleCount,
+                            itemBuilder: (context, index) {
+                              final product = products[index];
+                              return _buildProductGridCard(
+                                  context, ref, product, index, ratingsMap);
+                            },
+                          )
+                        : ListView.builder(
+                            controller: controller,
+                            padding: EdgeInsets.all(hPad),
+                            itemCount: visibleCount,
+                            itemBuilder: (context, index) {
+                              final product = products[index];
+                              return _buildProductListCard(
+                                  context, ref, product, index, ratingsMap);
+                            },
                           ),
-                          itemCount: products.length,
-                          itemBuilder: (context, index) {
-                            final product = products[index];
-                            return _buildProductGridCard(
-                                context, ref, product, index, ratingsMap);
-                          },
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.all(hPad),
-                          itemCount: products.length,
-                          itemBuilder: (context, index) {
-                            final product = products[index];
-                            return _buildProductListCard(
-                                context, ref, product, index, ratingsMap);
-                          },
-                        ),
+                  ),
                 );
               },
               loading: () => _buildShimmerLoading(isTablet, cols),
               error: (error, stack) => ErrorView(
                 error: error,
-                title: 'Failed to load products',
+                title: l10n.failedToLoadProducts,
                 onRetry: () => ref.invalidate(productsProvider),
               ),
             ),
@@ -151,13 +161,18 @@ class ProductsListScreen extends ConsumerWidget {
           );
         },
         icon: const Icon(Icons.add),
-        label: const Text('Add Product'),
+        label: Text(l10n.addProduct),
       ),
     );
   }
 
-  Widget _buildProductListCard(BuildContext context, WidgetRef ref,
-      ProductModel product, int index, Map<String, RatingDistribution> ratingsMap) {
+  Widget _buildProductListCard(
+      BuildContext context,
+      WidgetRef ref,
+      ProductModel product,
+      int index,
+      Map<String, RatingDistribution> ratingsMap) {
+    final l10n = AppLocalizations.of(context);
     final hasImage = product.images.isNotEmpty;
     final ratingDist = ratingsMap[product.id];
     final rating = ratingDist?.averageRating ?? 0.0;
@@ -188,14 +203,17 @@ class ProductsListScreen extends ConsumerWidget {
                   child: Container(
                     width: 70,
                     height: 70,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: hasImage
                         ? CachedNetworkImage(
                             imageUrl: product.images.first,
                             cacheManager: AppImageCacheManager.instance,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => ColoredBox(
-                                color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest),
                             errorWidget: (_, __, ___) => const Icon(
                                 Icons.inventory_2_outlined,
                                 color: AppColors.primary),
@@ -228,7 +246,10 @@ class ProductsListScreen extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant),
                             ),
                           ),
                           AppSpacing.horizontalSm,
@@ -265,13 +286,15 @@ class ProductsListScreen extends ConsumerWidget {
                                 Text(
                                   totalRatings > 0
                                       ? '${rating.toStringAsFixed(1)} ($totalRatings)'
-                                      : 'No ratings',
+                                      : l10n.noRatings,
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: totalRatings > 0
                                         ? AppColors.primary
-                                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                     decoration: totalRatings > 0
                                         ? TextDecoration.underline
                                         : TextDecoration.none,
@@ -345,8 +368,13 @@ class ProductsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductGridCard(BuildContext context, WidgetRef ref,
-      ProductModel product, int index, Map<String, RatingDistribution> ratingsMap) {
+  Widget _buildProductGridCard(
+      BuildContext context,
+      WidgetRef ref,
+      ProductModel product,
+      int index,
+      Map<String, RatingDistribution> ratingsMap) {
+    final l10n = AppLocalizations.of(context);
     final hasImage = product.images.isNotEmpty;
     final ratingDist = ratingsMap[product.id];
     final rating = ratingDist?.averageRating ?? 0.0;
@@ -395,8 +423,10 @@ class ProductsListScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.9),
                           borderRadius: AppRadius.borderXs,
                         ),
                         child: Text(
@@ -404,7 +434,9 @@ class ProductsListScreen extends ConsumerWidget {
                           style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                         ),
                       ),
                     ),
@@ -443,7 +475,7 @@ class ProductsListScreen extends ConsumerWidget {
                               Text(
                                 totalRatings > 0
                                     ? '${rating.toStringAsFixed(1)} ($totalRatings)'
-                                    : 'No ratings',
+                                    : l10n.noRatings,
                                 style: const TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
@@ -499,7 +531,8 @@ class ProductsListScreen extends ConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       decoration: TextDecoration.lineThrough,
-                                      color: Theme.of(context).colorScheme.outline,
+                                      color:
+                                          Theme.of(context).colorScheme.outline,
                                       fontSize: 10,
                                     ),
                                   ),
@@ -510,12 +543,14 @@ class ProductsListScreen extends ConsumerWidget {
                         ),
                         AppSpacing.horizontalXs,
                         Text(
-                          'Stock: ${product.stockQuantity}',
+                          l10n.stockLabel(product.stockQuantity),
                           style: TextStyle(
                             fontSize: 11,
                             color: product.stockQuantity < 5
                                 ? AppColors.error
-                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                             fontWeight: product.stockQuantity < 5
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -530,10 +565,12 @@ class ProductsListScreen extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Text('Active',
+                            Text(l10n.active,
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
                             Transform.scale(
                               scale: 0.75,
                               child: Switch(
@@ -582,10 +619,9 @@ class ProductsListScreen extends ConsumerWidget {
           ),
           itemCount: cols * 2,
           itemBuilder: (context, index) {
-            return Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Card(child: Container(color: Colors.white)),
+            return const Skeleton(
+              child:
+                  Card(child: SkeletonBox(height: double.infinity, radius: 0)),
             );
           },
         ),
@@ -597,12 +633,10 @@ class ProductsListScreen extends ConsumerWidget {
         padding: EdgeInsets.all(Responsive.horizontalPadding(context)),
         itemCount: 6,
         itemBuilder: (context, index) {
-          return Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
+          return const Skeleton(
             child: Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Container(height: 86, color: Colors.white),
+              margin: EdgeInsets.only(bottom: AppSpacing.sm),
+              child: SkeletonBox(height: 86, radius: 0),
             ),
           );
         },

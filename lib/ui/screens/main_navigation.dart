@@ -12,6 +12,7 @@ import '../../core/utils/responsive.dart';
 import '../common/app_animations.dart';
 import '../../core/providers/navigation_provider.dart';
 import '../../domain/providers/chat_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class MainNavigation extends ConsumerWidget {
   const MainNavigation({super.key});
@@ -26,6 +27,7 @@ class MainNavigation extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     ref.watch(shopAutoOpenProvider); // keeps auto-open timer alive
     final shopState = ref.watch(shopProvider);
     final currentIndex = ref.watch(navigationIndexProvider);
@@ -74,7 +76,7 @@ class MainNavigation extends ConsumerWidget {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              Text('Loading storefront…', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+              Text(l10n.loadingStorefront, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -89,7 +91,7 @@ class MainNavigation extends ConsumerWidget {
                 children: [
                   const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
                   const SizedBox(height: 16),
-                  Text('Failed to load shop details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+                  Text(l10n.failedToLoadShop, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -107,13 +109,13 @@ class MainNavigation extends ConsumerWidget {
                       ElevatedButton.icon(
                         onPressed: () => ref.invalidate(shopProvider),
                         icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Retry'),
+                        label: Text(l10n.commonRetry),
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
                         onPressed: () async => ref.read(authProvider.notifier).logout(),
                         icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                        label: const Text('Logout', style: TextStyle(color: AppColors.error)),
+                        label: Text(l10n.logout, style: const TextStyle(color: AppColors.error)),
                         style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
                       ),
                     ],
@@ -146,6 +148,7 @@ class _SideNavRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     return NavigationRail(
       selectedIndex: currentIndex,
@@ -174,20 +177,20 @@ class _SideNavRail extends StatelessWidget {
       minWidth: 72,
       minExtendedWidth: 200,
       destinations: [
-        const NavigationRailDestination(
-          icon: Icon(Icons.grid_view_outlined),
-          selectedIcon: Icon(Icons.grid_view_rounded),
-          label: Text('Home'),
+        NavigationRailDestination(
+          icon: const Icon(Icons.grid_view_outlined),
+          selectedIcon: const Icon(Icons.grid_view_rounded),
+          label: Text(l10n.navHome),
         ),
-        const NavigationRailDestination(
-          icon: Icon(Icons.inventory_2_outlined),
-          selectedIcon: Icon(Icons.inventory_2_rounded),
-          label: Text('Products'),
+        NavigationRailDestination(
+          icon: const Icon(Icons.inventory_2_outlined),
+          selectedIcon: const Icon(Icons.inventory_2_rounded),
+          label: Text(l10n.navProducts),
         ),
-        const NavigationRailDestination(
-          icon: Icon(Icons.local_offer_outlined),
-          selectedIcon: Icon(Icons.local_offer_rounded),
-          label: Text('Offers'),
+        NavigationRailDestination(
+          icon: const Icon(Icons.local_offer_outlined),
+          selectedIcon: const Icon(Icons.local_offer_rounded),
+          label: Text(l10n.navOffers),
         ),
         NavigationRailDestination(
           icon: Badge(
@@ -196,12 +199,12 @@ class _SideNavRail extends StatelessWidget {
             child: const Icon(Icons.chat_bubble_outline_rounded),
           ),
           selectedIcon: const Icon(Icons.chat_bubble_rounded),
-          label: const Text('Chats'),
+          label: Text(l10n.navChats),
         ),
-        const NavigationRailDestination(
-          icon: Icon(Icons.person_outline_rounded),
-          selectedIcon: Icon(Icons.person_rounded),
-          label: Text('Profile'),
+        NavigationRailDestination(
+          icon: const Icon(Icons.person_outline_rounded),
+          selectedIcon: const Icon(Icons.person_rounded),
+          label: Text(l10n.navProfile),
         ),
       ],
     );
@@ -224,6 +227,7 @@ class _FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
     final navBg = isDark ? const Color(0xFF1A1A2E) : Colors.white;
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
     final bottomPad = MediaQuery.of(context).padding.bottom;
@@ -251,11 +255,11 @@ class _FloatingNavBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _NavTab(index: 0, active: Icons.grid_view_rounded, inactive: Icons.grid_view_outlined, label: 'Home', ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 1, active: Icons.inventory_2_rounded, inactive: Icons.inventory_2_outlined, label: 'Products', ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 2, active: Icons.local_offer_rounded, inactive: Icons.local_offer_outlined, label: 'Offers', ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 3, active: Icons.chat_bubble_rounded, inactive: Icons.chat_bubble_outline_rounded, label: 'Chats', ci: currentIndex, onTap: onSelect, badge: hasUnread),
-            _NavTab(index: 4, active: Icons.person_rounded, inactive: Icons.person_outline_rounded, label: 'Profile', ci: currentIndex, onTap: onSelect),
+            _NavTab(index: 0, active: Icons.grid_view_rounded, inactive: Icons.grid_view_outlined, label: l10n.navHome, ci: currentIndex, onTap: onSelect),
+            _NavTab(index: 1, active: Icons.inventory_2_rounded, inactive: Icons.inventory_2_outlined, label: l10n.navProducts, ci: currentIndex, onTap: onSelect),
+            _NavTab(index: 2, active: Icons.local_offer_rounded, inactive: Icons.local_offer_outlined, label: l10n.navOffers, ci: currentIndex, onTap: onSelect),
+            _NavTab(index: 3, active: Icons.chat_bubble_rounded, inactive: Icons.chat_bubble_outline_rounded, label: l10n.navChats, ci: currentIndex, onTap: onSelect, badge: hasUnread),
+            _NavTab(index: 4, active: Icons.person_rounded, inactive: Icons.person_outline_rounded, label: l10n.navProfile, ci: currentIndex, onTap: onSelect),
           ],
         ),
       ),

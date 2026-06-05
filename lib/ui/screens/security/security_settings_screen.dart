@@ -1,14 +1,15 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/security/account_security_service.dart';
-import '../../../core/security/mfa_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../common/responsive_center.dart';
-import 'mfa_enroll_screen.dart';
+import '../../common/error_dialog.dart';
 
-/// Central account-security hub: biometric app-lock, two-factor auth,
-/// signed-in devices, and "sign out everywhere".
+/// Central account-security hub: the devices signed in to this account and a
+/// "sign out everywhere" control.
 class SecuritySettingsScreen extends ConsumerStatefulWidget {
   const SecuritySettingsScreen({super.key});
 
@@ -19,85 +20,20 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
 
 class _SecuritySettingsScreenState
     extends ConsumerState<SecuritySettingsScreen> {
-  List<MultiFactorInfo> _factors = const [];
-  bool _loadingFactors = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFactors();
-  }
-
-  Future<void> _loadFactors() async {
-    setState(() => _loadingFactors = true);
-    try {
-      final factors = await ref.read(mfaServiceProvider).enrolledFactors();
-      if (mounted) setState(() => _factors = factors);
-    } catch (_) {
-      // ignore — likely offline; section just shows "not enabled".
-    } finally {
-      if (mounted) setState(() => _loadingFactors = false);
-    }
-  }
-
-  Future<void> _enrollMfa() async {
-    final done = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const MfaEnrollScreen()),
-    );
-    if (done == true) _loadFactors();
-  }
-
-  Future<void> _unenroll(MultiFactorInfo factor) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Disable two-factor auth?'),
-        content: const Text(
-            'You may be asked to sign in again. Your account will be less protected.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Disable')),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-    try {
-      await ref.read(mfaServiceProvider).unenroll(factor.uid);
-      await _loadFactors();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Two-factor authentication disabled.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Could not disable. You may need to sign in again first.')),
-        );
-      }
-    }
-  }
-
   Future<void> _signOutEverywhere() async {
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out everywhere?'),
-        content: const Text(
-            'This signs out all other devices. You will stay signed in here.'),
+        title: Text(l10n.signOutEverywhereTitle),
+        content: Text(l10n.signOutEverywhereBody),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(l10n.commonCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Sign out all')),
+              child: Text(l10n.signOutAll)),
         ],
       ),
     );
@@ -107,13 +43,15 @@ class _SecuritySettingsScreenState
       ref.invalidate(accountDevicesProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Signed out of all other devices.')),
+          SnackBar(content: Text(l10n.signedOutOtherDevices)),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not complete. Try again.')),
+        AppErrorDialog.show(
+          context: context,
+          message: l10n.couldNotComplete,
+          title: l10n.signOutFailed,
         );
       }
     }
@@ -121,91 +59,136 @@ class _SecuritySettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final devicesAsync = ref.watch(accountDevicesProvider);
-    final mfaEnabled = _factors.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Security')),
+      appBar: AppBar(title: Text(l10n.security)),
       body: ResponsiveCenter(
         child: ListView(
-        children: [
-          _sectionHeader(context, 'Two-factor authentication'),
-          if (_loadingFactors)
-            const ListTile(
-                leading: Icon(Icons.security),
-                title: Text('Checking status…'))
-          else if (mfaEnabled)
-            ..._factors.map(
-              (f) => ListTile(
-                leading: const Icon(Icons.verified_user, color: Colors.green),
-                title: Text(f.displayName ?? 'Authenticator app'),
-                subtitle: const Text('Enabled'),
-                trailing: TextButton(
-                  onPressed: () => _unenroll(f),
-                  child: const Text('Disable'),
-                ),
+          children: [
+            _sectionHeader(context, l10n.whereYouSignedIn),
+            devicesAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
               ),
-            )
-          else
+              error: (_, __) => ListTile(
+                leading: const Icon(Icons.error_outline),
+                title: Text(l10n.couldNotLoadDevices),
+              ),
+              data: (devices) {
+                if (devices.isEmpty) {
+                  return ListTile(
+                      title: Text(l10n.noOtherDevices));
+                }
+                return Column(
+                  children: [for (final d in devices) _deviceTile(context, d)],
+                );
+              },
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.logout),
+                label: Text(l10n.signOutAllOtherDevices),
+                onPressed: _signOutEverywhere,
+              ),
+            ),
+            const Divider(),
             ListTile(
-              leading: const Icon(Icons.security),
-              title: const Text('Authenticator app (TOTP)'),
-              subtitle: const Text('Add a second layer of protection'),
-              trailing: FilledButton(
-                  onPressed: _enrollMfa, child: const Text('Enable')),
+              leading: const Icon(Icons.feedback_outlined),
+              title: Text(l10n.sendFeedback),
+              subtitle: Text(l10n.feedbackMenuSubtitle),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/feedback'),
             ),
-          const Divider(),
-          _sectionHeader(context, 'Signed-in devices'),
-          devicesAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, __) => const ListTile(
-              leading: Icon(Icons.error_outline),
-              title: Text('Could not load devices'),
-            ),
-            data: (devices) {
-              if (devices.isEmpty) {
-                return const ListTile(title: Text('No other devices recorded.'));
-              }
-              return Column(
-                children: [
-                  for (final d in devices)
-                    ListTile(
-                      leading: const Icon(Icons.devices),
-                      title: Text(d.userAgent ?? 'Unknown device'),
-                      subtitle: Text(d.lastSeen != null
-                          ? 'Last active: ${d.lastSeen}'
-                          : ''),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: 'Remove',
-                        onPressed: () async {
-                          await ref
-                              .read(accountSecurityServiceProvider)
-                              .revokeDevice(d.id);
-                          ref.invalidate(accountDevicesProvider);
-                        },
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign out of all other devices'),
-              onPressed: _signOutEverywhere,
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _deviceTile(BuildContext context, AccountDevice d) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final location = (d.location != null && d.location!.isNotEmpty)
+        ? d.location!
+        : (d.ip != null && d.ip!.isNotEmpty ? d.ip! : l10n.locationUnavailable);
+
+    return ListTile(
+      isThreeLine: true,
+      leading: const Icon(Icons.smartphone),
+      title: Text(_friendlyDeviceName(d.userAgent, l10n)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  size: 14, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Expanded(child: Text(location)),
+            ],
+          ),
+          if (d.lastSeen != null)
+            Text(
+              l10n.lastActive(
+                  DateFormat('MMM d, yyyy • h:mm a').format(d.lastSeen!)),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+        ],
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline),
+        tooltip: l10n.remove,
+        onPressed: () async {
+          await ref.read(accountSecurityServiceProvider).revokeDevice(d.id);
+          ref.invalidate(accountDevicesProvider);
+        },
+      ),
+    );
+  }
+
+  /// Turns a raw HTTP user-agent into a friendly device label, the way consumer
+  /// apps do (e.g. "LE2111 · Android 14") instead of showing the verbose
+  /// "Dalvik/2.1.0 (Linux; U; Android 14; LE2111 Build/...)" string.
+  String _friendlyDeviceName(String? ua, AppLocalizations l10n) {
+    if (ua == null || ua.trim().isEmpty) return l10n.unknownDevice;
+
+    // Android (Dalvik/OkHttp): "...; Android 14; LE2111 Build/UKQ..."
+    final android = RegExp(r'Android\s+([\d.]+)').firstMatch(ua);
+    if (android != null) {
+      final version = android.group(1);
+      final model = RegExp(r'Android\s+[\d.]+;\s*([^;)/]+?)\s+Build/')
+          .firstMatch(ua)
+          ?.group(1)
+          ?.trim();
+      if (model != null && model.isNotEmpty) {
+        return '$model · Android $version';
+      }
+      return 'Android $version';
+    }
+
+    // Apple (CFNetwork/Darwin) — the UA rarely carries a marketing name.
+    if (ua.contains('iPhone')) return 'iPhone';
+    if (ua.contains('iPad')) return 'iPad';
+    if (ua.contains('Darwin') ||
+        ua.contains('CFNetwork') ||
+        ua.contains('Mac OS')) {
+      return 'Apple device';
+    }
+
+    // Desktop browsers / other clients.
+    if (ua.contains('Windows')) return 'Windows device';
+    if (ua.contains('Linux')) return 'Linux device';
+
+    // Last resort: the leading product token (e.g. "Dalvik/2.1.0").
+    final firstToken = ua.split(RegExp(r'[\s(]')).first.trim();
+    return firstToken.isNotEmpty ? firstToken : l10n.unknownDevice;
   }
 
   Widget _sectionHeader(BuildContext context, String text) => Padding(

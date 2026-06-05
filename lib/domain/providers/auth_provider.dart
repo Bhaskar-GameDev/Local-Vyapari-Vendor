@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -35,20 +35,6 @@ class AuthRepository {
       email: email.trim(),
       password: password.trim(),
     );
-  }
-
-  /// Resolves a sign-in that was interrupted by a TOTP MFA challenge.
-  Future<UserCredential> resolveMfaSignIn(
-      MultiFactorResolver resolver, String code) async {
-    final hint = resolver.hints.firstWhere(
-      (h) => h.factorId == 'totp',
-      orElse: () => resolver.hints.first,
-    );
-    final assertion = await TotpMultiFactorGenerator.getAssertionForSignIn(
-      hint.uid,
-      code.trim(),
-    );
-    return resolver.resolveSignIn(assertion);
   }
 
   Future<UserCredential> register(String email, String password, String role,
@@ -170,8 +156,7 @@ class AuthRepository {
   // --- Native Firebase Phone Auth Support ---
 
   Future<bool> isPhoneRegistered(String phone) async {
-    final snapshot =
-        await _db.ref('phones').child(phone).get();
+    final snapshot = await _db.ref('phones').child(phone).get();
     return snapshot.exists && snapshot.value != null;
   }
 
@@ -201,17 +186,11 @@ class AuthRepository {
           if (user != null) {
             await user.linkWithCredential(credential);
             // Update database records
-            await _db
-                .ref('users')
-                .child(user.uid)
-                .update({
+            await _db.ref('users').child(user.uid).update({
               'phone': phone,
               'verified': true,
             });
-            await _db
-                .ref('phones')
-                .child(phone)
-                .set(user.uid);
+            await _db.ref('phones').child(phone).set(user.uid);
           } else {
             await _auth.signInWithCredential(credential);
           }
@@ -279,15 +258,51 @@ class AuthRepository {
 
   // --- Bind Email & Phone Support ---
 
+  /// Links an email/password credential to the currently signed-in account so a
+  /// social (Google/Apple) vendor can later sign in with a password — including
+  /// the phone + password flow, which resolves the account's email behind the
+  /// scenes. Uses the email already on the account; when the provider hid it
+  /// (e.g. Apple private relay) it derives a stable address from the verified
+  /// phone so phone + password login still resolves. If the account already has
+  /// a password credential, the password is updated instead.
+  Future<void> setAccountPassword(String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    final phone = user.phoneNumber ?? '';
+    final email = (user.email != null && user.email!.isNotEmpty)
+        ? user.email!.trim()
+        : '${phone.replaceAll('+', '')}@localvyapari.com';
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password.trim(),
+    );
+
+    try {
+      await user.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      // An email/password credential is already attached to this account — the
+      // user is changing their password rather than setting one for the first
+      // time, so update it in place instead of failing.
+      if (e.code == 'provider-already-linked' ||
+          e.code == 'email-already-in-use') {
+        await user.updatePassword(password.trim());
+      } else {
+        rethrow;
+      }
+    }
+
+    // Keep the stored email in sync with the credential we just linked (matters
+    // when we had to derive one above).
+    await _db.ref('users').child(user.uid).child('email').set(email);
+  }
+
   Future<void> bindEmail(String email) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not logged in');
 
-    await _db
-        .ref('users')
-        .child(uid)
-        .child('email')
-        .set(email.trim());
+    await _db.ref('users').child(uid).child('email').set(email.trim());
 
     try {
       await _auth.currentUser?.verifyBeforeUpdateEmail(email.trim());
@@ -316,11 +331,7 @@ class AuthNotifierState {
   final bool isLoading;
   final String? error;
 
-  /// Set when a sign-in is interrupted by an MFA challenge. The login screen
-  /// watches this and routes to the MFA challenge screen.
-  final MultiFactorResolver? mfaResolver;
-
-  const AuthNotifierState({this.isLoading = false, this.error, this.mfaResolver});
+  const AuthNotifierState({this.isLoading = false, this.error});
 
   AuthNotifierState copyWith({bool? isLoading, String? error}) =>
       AuthNotifierState(isLoading: isLoading ?? this.isLoading, error: error);
@@ -379,11 +390,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
 
       return true;
-    } on FirebaseAuthMultiFactorException catch (e) {
-      // A second factor (TOTP) is required to finish signing in. Hand the
-      // resolver to the UI, which routes to the MFA challenge screen.
-      state = AuthNotifierState(isLoading: false, mfaResolver: e.resolver);
-      return false;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
@@ -394,9 +400,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString());
       return false;
     } finally {
-      // Preserve any mfaResolver set by the MFA catch above.
-      state = AuthNotifierState(
-          isLoading: false, error: state.error, mfaResolver: state.mfaResolver);
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
@@ -471,11 +475,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       }
 
       return true;
-    } on FirebaseAuthMultiFactorException catch (e) {
-      // A second factor (TOTP) is required to finish signing in. Hand the
-      // resolver to the UI, which routes to the MFA challenge screen.
-      state = AuthNotifierState(isLoading: false, mfaResolver: e.resolver);
-      return false;
     } on FirebaseAuthException catch (e) {
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
@@ -486,9 +485,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       state = AuthNotifierState(error: e.toString());
       return false;
     } finally {
-      // Preserve any mfaResolver set by the MFA catch above.
-      state = AuthNotifierState(
-          isLoading: false, error: state.error, mfaResolver: state.mfaResolver);
+      state = AuthNotifierState(isLoading: false, error: state.error);
     }
   }
 
@@ -692,6 +689,32 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     }
   }
 
+  /// Verifies the phone OTP, links the number, then sets an account password.
+  /// Used when a social (Google/Apple) vendor links their phone for the first
+  /// time so they leave the screen able to sign in with phone + password too.
+  Future<bool> verifyBindPhoneAndSetPassword(
+    String verificationId,
+    String code,
+    String password,
+  ) async {
+    state = const AuthNotifierState(isLoading: true, error: null);
+    try {
+      await _repository.verifyAndLinkPhone(verificationId, code);
+      await _repository.setAccountPassword(password);
+      state = const AuthNotifierState();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
+      return false;
+    } catch (e) {
+      state = AuthNotifierState(
+          error: e.toString().replaceFirst('Exception: ', ''));
+      return false;
+    } finally {
+      state = AuthNotifierState(isLoading: false, error: state.error);
+    }
+  }
+
   Future<bool> resetPasswordWithPhoneOtp({
     required String verificationId,
     required String code,
@@ -772,97 +795,67 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       if (user == null) {
         throw Exception('Failed to authenticate user via phone OTP');
       }
+      // Whether the phone credential just created this account or signed into an
+      // existing one. We only hard-delete on rollback when we created it, so a
+      // failed re-registration never destroys a pre-existing account.
+      final isNewAccount = credential.additionalUserInfo?.isNewUser ?? false;
 
-      final emailCred = EmailAuthProvider.credential(
-        email: email.trim(),
-        password: password.trim(),
-      );
-      await user.linkWithCredential(emailCred);
+      try {
+        final emailCred = EmailAuthProvider.credential(
+          email: email.trim(),
+          password: password.trim(),
+        );
+        await user.linkWithCredential(emailCred);
 
-      final uid = user.uid;
-      final updates = {
-        'email': email.trim(),
-        'phone': phone.trim(),
-        'verified': true,
-        'createdAt': ServerValue.timestamp,
-      };
-      await FirebaseDatabase.instance.ref('users').child(uid).update(updates);
-      await FirebaseDatabase.instance
-          .ref('phones')
-          .child(phone.trim())
-          .set(uid);
-
-      if (role == 'merchant') {
-        await FirebaseDatabase.instance.ref('shop').child(uid).set({
-          'name': shopName ?? 'My Shop',
-          'description': 'Welcome to our shop!',
-          'address': '',
+        final uid = user.uid;
+        final updates = {
+          'email': email.trim(),
           'phone': phone.trim(),
-          'isOpen': true,
-          'isVerified': false,
-        });
+          'verified': true,
+          'createdAt': ServerValue.timestamp,
+        };
+        await FirebaseDatabase.instance.ref('users').child(uid).update(updates);
+        await FirebaseDatabase.instance
+            .ref('phones')
+            .child(phone.trim())
+            .set(uid);
+
+        if (role == 'merchant') {
+          await FirebaseDatabase.instance.ref('shop').child(uid).set({
+            'name': shopName ?? 'My Shop',
+            'description': 'Welcome to our shop!',
+            'address': '',
+            'phone': phone.trim(),
+            'isOpen': true,
+            'isVerified': false,
+          });
+        }
+      } catch (_) {
+        // The email link or a profile write failed. Roll back so we never strand
+        // a phone-authed login with no users/{uid} record — which later reads as
+        // a misleading "account suspended" on the next sign-in. Delete the
+        // freshly-created account; for a pre-existing one just sign out.
+        if (isNewAccount) {
+          try {
+            await user.delete();
+          } catch (_) {/* leave cleanup to a server reaper if delete fails */}
+        } else {
+          await _repository.logout();
+        }
+        rethrow;
       }
 
       state = const AuthNotifierState();
       return true;
     } on FirebaseAuthException catch (e) {
-      await _repository.logout();
       state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } catch (e) {
-      await _repository.logout();
-      state = AuthNotifierState(error: e.toString());
+      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
       return false;
     } finally {
       state = AuthNotifierState(isLoading: false, error: state.error);
     }
-  }
-
-  /// Completes a sign-in that required a TOTP second factor.
-  Future<bool> completeMfaChallenge(
-      MultiFactorResolver resolver, String code) async {
-    state = const AuthNotifierState(isLoading: true, error: null);
-    try {
-      final credential = await _repository.resolveMfaSignIn(resolver, code);
-      final user = credential.user;
-      if (user == null) {
-        state = const AuthNotifierState(error: 'User not found.');
-        return false;
-      }
-
-      final dbRoles = await _roleService.getRolesFromDatabase(user.uid);
-      final targetRole = dbRoles['merchant'] == true ? 'merchant' : 'customer';
-
-      final isValid = await _repository.validateUserSession(user, targetRole);
-      if (!isValid) {
-        await _repository.logout();
-        state = const AuthNotifierState(
-          error: 'Access Denied: Invalid account role or suspended.',
-        );
-        return false;
-      }
-
-      final roles = await _roleService.getRoles(forceRefresh: true);
-      if (roles['customer'] != true && roles['merchant'] != true) {
-        await _repository.logout();
-        state = const AuthNotifierState(error: 'Access Denied: Invalid account role.');
-        return false;
-      }
-      return true;
-    } on FirebaseAuthException catch (e) {
-      state = AuthNotifierState(error: ErrorHandler.getMessage(e));
-      return false;
-    } catch (e) {
-      state = AuthNotifierState(error: e.toString());
-      return false;
-    } finally {
-      state = AuthNotifierState(isLoading: false, error: state.error);
-    }
-  }
-
-  /// Clears a pending MFA challenge (e.g. when the user cancels).
-  void clearMfa() {
-    state = AuthNotifierState(isLoading: false, error: state.error);
   }
 
   Future<void> logout() async {

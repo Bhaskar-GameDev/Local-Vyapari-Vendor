@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/connectivity_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Wraps [child] and overlays an animated banner at the top of the screen
 /// whenever the device loses or regains internet connectivity.
@@ -107,6 +108,7 @@ class _BannerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isOnlineBanner = isBackOnline;
     final color = isOnlineBanner
         ? const Color(0xFF16A34A) // green-600
@@ -128,7 +130,7 @@ class _BannerContent extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isOnlineBanner ? 'Back online' : 'No internet connection',
+                isOnlineBanner ? l10n.backOnline : l10n.noInternet,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -138,9 +140,9 @@ class _BannerContent extends StatelessWidget {
               ),
               if (!isOnlineBanner) ...[
                 const SizedBox(width: 6),
-                const Text(
-                  '· Offline mode',
-                  style: TextStyle(
+                Text(
+                  l10n.offlineMode,
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                   ),

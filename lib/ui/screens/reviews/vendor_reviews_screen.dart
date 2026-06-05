@@ -7,19 +7,21 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../data/models/shop_review.dart';
 import '../../../domain/providers/review_provider.dart';
 import '../../common/app_animations.dart';
+import '../../../l10n/app_localizations.dart';
 
 class VendorReviewsScreen extends ConsumerWidget {
   const VendorReviewsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final reviewsAsync = ref.watch(vendorShopReviewsProvider);
     final distribution = ref.watch(vendorRatingDistributionProvider);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Store Ratings & Reviews'),
+        title: Text(l10n.storeRatingsReviews),
         elevation: 0,
         centerTitle: true,
       ),
@@ -52,7 +54,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                             ),
                             AppSpacing.verticalLg,
                             Text(
-                              'No Reviews Yet',
+                              l10n.noReviewsYet,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -61,7 +63,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                             ),
                             AppSpacing.verticalSm,
                             Text(
-                              'Customer feedback and ratings will appear here once submitted.',
+                              l10n.vendorReviewsEmpty,
                               textAlign: TextAlign.center,
                               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
                             ),
@@ -89,7 +91,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                         delay: const Duration(milliseconds: 200),
                         slideOffset: 10,
                         child: Text(
-                          'Customer Comments (${reviews.length})',
+                          l10n.customerComments(reviews.length),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: cs.onSurface,
@@ -124,7 +126,7 @@ class VendorReviewsScreen extends ConsumerWidget {
                       const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                       AppSpacing.verticalMd,
                       Text(
-                        'Error loading reviews: $err',
+                        l10n.errorLoadingReviews('$err'),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: cs.onSurfaceVariant),
                       ),
@@ -146,6 +148,7 @@ class RatingBreakdownWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
@@ -188,7 +191,7 @@ class RatingBreakdownWidget extends StatelessWidget {
                   ),
                   AppSpacing.verticalXs,
                   Text(
-                    '${distribution.totalCount} ratings',
+                    l10n.nRatings(distribution.totalCount),
                     style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                   ),
                 ],
@@ -252,6 +255,7 @@ class ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final formattedDate = '${review.createdAt.day.toString().padLeft(2, '0')}/${review.createdAt.month.toString().padLeft(2, '0')}/${review.createdAt.year}';
     return Container(
@@ -278,7 +282,7 @@ class ReviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    review.userDisplayName.isNotEmpty ? review.userDisplayName : 'Anonymous User',
+                    review.userDisplayName.isNotEmpty ? review.userDisplayName : l10n.anonymousUser,
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: cs.onSurface),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -305,7 +309,7 @@ class ReviewCard extends StatelessWidget {
             ),
             AppSpacing.verticalSm,
             Text(
-              review.comment.isNotEmpty ? review.comment : 'No comment left.',
+              review.comment.isNotEmpty ? review.comment : l10n.noCommentLeft,
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13, height: 1.4),
             ),
             AppSpacing.verticalSm,

@@ -7,30 +7,43 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/providers/shop_provider.dart';
 import '../../../domain/providers/auth_provider.dart';
-import '../../../core/services/role_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../common/primary_button.dart';
 import '../../common/custom_text_field.dart';
+import '../../common/error_dialog.dart';
 import '../../common/resend_otp_timer.dart';
 import '../../../data/models/shop_model.dart';
 import '../shop/setup_shop_screen.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  String _themeModeName(AppLocalizations l10n, ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return l10n.themeSystem;
+      case ThemeMode.dark:
+        return l10n.themeDark;
+      case ThemeMode.light:
+        return l10n.themeLight;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final shopState = ref.watch(shopProvider);
     final profileState = ref.watch(userProfileProvider);
     final themeMode = ref.watch(themeProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Shop Profile'),
+        title: Text(l10n.myShopProfile),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -41,13 +54,14 @@ class ProfileScreen extends ConsumerWidget {
                       ? Icons.dark_mode_outlined
                       : Icons.light_mode_outlined,
             ),
-            tooltip: 'Toggle Theme',
+            tooltip: l10n.toggleTheme,
             onPressed: () {
               ref.read(themeProvider.notifier).toggleTheme();
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Theme mode: ${ref.read(themeProvider) == ThemeMode.system ? "System Default" : ref.read(themeProvider) == ThemeMode.dark ? "Dark Theme" : "Light Theme"}'),
+                  content: Text(l10n.themeModeSnack(
+                      _themeModeName(l10n, ref.read(themeProvider)))),
                   duration: const Duration(seconds: 1),
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -59,14 +73,15 @@ class ProfileScreen extends ConsumerWidget {
       body: SafeArea(
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
             child: shopState.when(
               data: (shop) {
                 final lat = shop?.latitude;
                 final lng = shop?.longitude;
                 final coordinatesText = (lat != null && lng != null)
                     ? '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'
-                    : 'Not Set (Required for discovery)';
+                    : l10n.notSetRequiredDiscovery;
 
                 return ListView(
                   padding: const EdgeInsets.symmetric(
@@ -83,63 +98,91 @@ class ProfileScreen extends ConsumerWidget {
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: SwitchListTile(
                         value: shop?.isOpen ?? false,
-                        onChanged: shop == null ? null : (value) async {
-                          final updatedShop = shop.copyWith(isOpen: value);
-                          try {
-                            await ref.read(shopRepositoryProvider).updateShopProfile(updatedShop);
-                            // Track manual close date so the auto-open timer won't
-                            // reopen the shop on the same day the vendor closed it.
-                            final uid = FirebaseAuth.instance.currentUser?.uid;
-                            if (uid != null) {
-                              final today = DateTime.now().toIso8601String().split('T')[0];
-                              await FirebaseDatabase.instance.ref('shop/$uid').update({
-                                'manuallyClosedAt': value ? null : today,
-                              });
-                            }
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(value ? 'Shop marked as Open' : 'Shop marked as Closed'),
-                                  backgroundColor: value ? AppColors.success : AppColors.warning,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to update status: $e'), backgroundColor: AppColors.error),
-                              );
-                            }
-                          }
-                        },
-                        title: const Text('Shop is Open', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(shop?.isOpen == true ? 'Customers can see you as open' : 'Customers will see your shop as closed'),
+                        onChanged: shop == null
+                            ? null
+                            : (value) async {
+                                final updatedShop =
+                                    shop.copyWith(isOpen: value);
+                                try {
+                                  await ref
+                                      .read(shopRepositoryProvider)
+                                      .updateShopProfile(updatedShop);
+                                  // Track manual close date so the auto-open timer won't
+                                  // reopen the shop on the same day the vendor closed it.
+                                  final uid =
+                                      FirebaseAuth.instance.currentUser?.uid;
+                                  if (uid != null) {
+                                    final today = DateTime.now()
+                                        .toIso8601String()
+                                        .split('T')[0];
+                                    await FirebaseDatabase.instance
+                                        .ref('shop/$uid')
+                                        .update({
+                                      'manuallyClosedAt': value ? null : today,
+                                    });
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(value
+                                            ? l10n.shopMarkedOpen
+                                            : l10n.shopMarkedClosed),
+                                        backgroundColor: value
+                                            ? AppColors.success
+                                            : AppColors.warning,
+                                      ),
+                                    );
+                                  }
+                                } catch (e, st) {
+                                  if (context.mounted) {
+                                    AppErrorDialog.fromError(
+                                      context: context,
+                                      error: e,
+                                      stackTrace: st,
+                                      title: l10n.updateFailed,
+                                    );
+                                  }
+                                }
+                              },
+                        title: Text(l10n.shopIsOpen,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(shop?.isOpen == true
+                            ? l10n.customersSeeOpen
+                            : l10n.customersSeeClosed),
                         activeThumbColor: AppColors.success,
                         secondary: Icon(
-                          shop?.isOpen == true ? Icons.storefront : Icons.storefront_outlined,
-                          color: shop?.isOpen == true ? AppColors.success : Theme.of(context).colorScheme.onSurfaceVariant,
+                          shop?.isOpen == true
+                              ? Icons.storefront
+                              : Icons.storefront_outlined,
+                          color: shop?.isOpen == true
+                              ? AppColors.success
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
 
                     // ── Shop Details section ─────────────────────────────
                     AppSpacing.verticalMd,
-                    const _SectionLabel(label: 'Shop Details'),
+                    _SectionLabel(label: l10n.shopDetails),
                     AppSpacing.verticalSm,
-                    _buildListTile(context, 'Shop Name', shop?.name ?? 'Not Set', Icons.business),
-                    _buildListTile(context, 'Description', shop?.description ?? 'Not Set', Icons.description),
-                    _buildListTile(context, 'Address', shop?.address ?? 'Not Set', Icons.location_on),
+                    _buildListTile(context, l10n.shopNameLabel,
+                        shop?.name ?? l10n.notSet, Icons.business),
+                    _buildListTile(context, l10n.descriptionLabel,
+                        shop?.description ?? l10n.notSet, Icons.description),
+                    _buildListTile(context, l10n.addressLabel,
+                        shop?.address ?? l10n.notSet, Icons.location_on),
                     _buildListTile(
                       context,
-                      'Storefront GPS Coordinates',
+                      l10n.gpsCoordinates,
                       coordinatesText,
                       Icons.map_outlined,
                     ),
-                    _buildListTile(context, 'Phone', shop?.phone ?? 'Not Set', Icons.phone),
+                    _buildListTile(context, l10n.phoneLabel, shop?.phone ?? l10n.notSet,
+                        Icons.phone),
 
                     // ── App Preferences section ──────────────────────────
                     AppSpacing.verticalLg,
-                    const _SectionLabel(label: 'App Preferences'),
+                    _SectionLabel(label: l10n.appPreferences),
                     AppSpacing.verticalSm,
                     Card(
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -159,16 +202,17 @@ class ProfileScreen extends ConsumerWidget {
                             color: AppColors.primary,
                           ),
                         ),
-                        title: const Text('App Theme'),
+                        title: Text(l10n.appTheme),
                         subtitle: Text(
                           themeMode == ThemeMode.system
-                              ? 'System Default (follows device)'
+                              ? l10n.themeSystemFollowsDevice
                               : themeMode == ThemeMode.dark
-                                  ? 'Dark Theme'
-                                  : 'Light Theme',
+                                  ? l10n.themeDark
+                                  : l10n.themeLight,
                         ),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _showThemeSelectionSheet(context, ref, themeMode),
+                        onTap: () =>
+                            _showThemeSelectionSheet(context, ref, themeMode),
                       ),
                     ),
                     Card(
@@ -183,17 +227,34 @@ class ProfileScreen extends ConsumerWidget {
                           child: const Icon(Icons.shield_outlined,
                               color: AppColors.primary),
                         ),
-                        title: const Text('Security'),
-                        subtitle: const Text(
-                            'App lock, two-factor auth, signed-in devices'),
+                        title: Text(l10n.security),
+                        subtitle: Text(l10n.securitySubtitle),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/security'),
+                      ),
+                    ),
+                    Card(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.feedback_outlined,
+                              color: AppColors.primary),
+                        ),
+                        title: Text(l10n.sendFeedback),
+                        subtitle: Text(l10n.feedbackMenuSubtitle),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/feedback'),
                       ),
                     ),
 
                     // ── Security & Linked Accounts section ───────────────
                     AppSpacing.verticalLg,
-                    const _SectionLabel(label: 'Security & Linked Accounts'),
+                    _SectionLabel(label: l10n.securityLinkedAccounts),
                     AppSpacing.verticalSm,
 
                     profileState.when(
@@ -204,22 +265,29 @@ class ProfileScreen extends ConsumerWidget {
                         return Column(
                           children: [
                             Card(
-                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              margin:
+                                  const EdgeInsets.only(bottom: AppSpacing.sm),
                               child: ListTile(
-                                leading: const Icon(Icons.email_outlined, color: AppColors.primary),
-                                title: const Text('Bound Email Address'),
-                                subtitle: Text(email != null && email.isNotEmpty ? email : 'Not Bound'),
+                                leading: const Icon(Icons.email_outlined,
+                                    color: AppColors.primary),
+                                title: Text(l10n.boundEmail),
+                                subtitle: Text(email != null && email.isNotEmpty
+                                    ? email
+                                    : l10n.notBound),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.edit_outlined),
                                   onPressed: () async {
                                     final updated = await showDialog<bool>(
                                       context: context,
-                                      builder: (_) => _BindEmailDialog(initialEmail: email, ref: ref),
+                                      builder: (_) => _BindEmailDialog(
+                                          initialEmail: email, ref: ref),
                                     );
                                     if (updated == true && context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Email bound successfully!'),
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text(l10n.emailBoundSuccess),
                                           backgroundColor: AppColors.success,
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -230,22 +298,30 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                             Card(
-                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              margin:
+                                  const EdgeInsets.only(bottom: AppSpacing.sm),
                               child: ListTile(
-                                leading: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
-                                title: const Text('Bound Phone Number'),
-                                subtitle: Text(phone != null && phone.isNotEmpty ? phone : 'Not Bound'),
+                                leading: const Icon(
+                                    Icons.phone_android_outlined,
+                                    color: AppColors.primary),
+                                title: Text(l10n.boundPhone),
+                                subtitle: Text(phone != null && phone.isNotEmpty
+                                    ? phone
+                                    : l10n.notBound),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.edit_outlined),
                                   onPressed: () async {
                                     final updated = await showDialog<bool>(
                                       context: context,
-                                      builder: (_) => _BindPhoneDialog(ref: ref),
+                                      builder: (_) =>
+                                          _BindPhoneDialog(ref: ref),
                                     );
                                     if (updated == true && context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Phone number bound successfully!'),
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              l10n.phoneBoundSuccess),
                                           backgroundColor: AppColors.success,
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -258,8 +334,11 @@ class ProfileScreen extends ConsumerWidget {
                           ],
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => Center(child: Text('Error loading accounts: $e', style: const TextStyle(color: AppColors.error))),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => Center(
+                          child: Text(l10n.errorLoadingAccounts('$e'),
+                              style: const TextStyle(color: AppColors.error))),
                     ),
 
                     AppSpacing.verticalXl,
@@ -282,7 +361,8 @@ class ProfileScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(AppSpacing.sm),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -297,18 +377,22 @@ class ProfileScreen extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Share Local Vyapari',
+                                      l10n.shareLocalVyapari,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
-                                        color: Theme.of(context).colorScheme.onSurface,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                       ),
                                     ),
                                     Text(
-                                      'Invite other vyaparis or customers',
+                                      l10n.inviteOthers,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                     ),
                                   ],
@@ -316,94 +400,9 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               Icon(
                                 Icons.chevron_right,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    AppSpacing.verticalMd,
-                    Card(
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.borderLg,
-                        side: BorderSide(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          width: 1,
-                        ),
-                      ),
-                      child: InkWell(
-                        borderRadius: AppRadius.borderLg,
-                        onTap: () async {
-                          try {
-                            showDialog<void>(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-
-                            await RoleService.instance.switchRoleAndLaunchApp('customer');
-
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Failed to switch: $e'),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppSpacing.sm),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.people_outline,
-                                  color: AppColors.primary,
-                                  size: 24,
-                                ),
-                              ),
-                              AppSpacing.horizontalMd,
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Switch to Customer App',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Browse and buy from local vyaparis',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.chevron_right,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                             ],
                           ),
@@ -412,12 +411,13 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     AppSpacing.verticalLg,
                     PrimaryButton(
-                      text: 'Edit Profile',
+                      text: l10n.editProfile,
                       onPressed: () {
                         if (shop != null) {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
-                              builder: (_) => SetupShopScreen(existingShop: shop),
+                              builder: (_) =>
+                                  SetupShopScreen(existingShop: shop),
                             ),
                           );
                         }
@@ -432,15 +432,18 @@ class ProfileScreen extends ConsumerWidget {
                         foregroundColor: AppColors.error,
                         side: const BorderSide(color: AppColors.error),
                         minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMedium),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.borderMedium),
                       ),
-                      child: const Text('Logout'),
+                      child: Text(l10n.logout),
                     ),
                   ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                  child: Text(l10n.errorGeneric('$e'),
+                      style: const TextStyle(color: AppColors.error))),
             ),
           ),
         ),
@@ -448,19 +451,27 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildListTile(BuildContext context, String title, String subtitle, IconData icon) {
+  Widget _buildListTile(
+      BuildContext context, String title, String subtitle, IconData icon) {
     final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: Icon(icon, color: cs.onSurfaceVariant),
-        title: Text(title, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 15, color: cs.onSurface, fontWeight: FontWeight.w600)),
+        title: Text(title,
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        subtitle: Text(subtitle,
+            style: TextStyle(
+                fontSize: 15,
+                color: cs.onSurface,
+                fontWeight: FontWeight.w600)),
       ),
     );
   }
 
-  void _showThemeSelectionSheet(BuildContext context, WidgetRef ref, ThemeMode currentMode) {
+  void _showThemeSelectionSheet(
+      BuildContext context, WidgetRef ref, ThemeMode currentMode) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -480,7 +491,7 @@ class ProfileScreen extends ConsumerWidget {
                     vertical: AppSpacing.sm,
                   ),
                   child: Text(
-                    'Select App Theme',
+                    l10n.selectAppTheme,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -489,37 +500,46 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.brightness_auto_outlined),
-                  title: const Text('System Default'),
-                  subtitle: const Text('Follows device settings'),
+                  title: Text(l10n.themeSystem),
+                  subtitle: Text(l10n.followsDeviceSettings),
                   trailing: currentMode == ThemeMode.system
-                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      ? Icon(Icons.check_circle,
+                          color: Theme.of(context).colorScheme.primary)
                       : null,
                   onTap: () {
-                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.system);
+                    ref
+                        .read(themeProvider.notifier)
+                        .setThemeMode(ThemeMode.system);
                     Navigator.pop(context);
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.light_mode_outlined),
-                  title: const Text('Light Theme'),
-                  subtitle: const Text('Light background with dark text'),
+                  title: Text(l10n.themeLight),
+                  subtitle: Text(l10n.lightThemeSubtitle),
                   trailing: currentMode == ThemeMode.light
-                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      ? Icon(Icons.check_circle,
+                          color: Theme.of(context).colorScheme.primary)
                       : null,
                   onTap: () {
-                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.light);
+                    ref
+                        .read(themeProvider.notifier)
+                        .setThemeMode(ThemeMode.light);
                     Navigator.pop(context);
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.dark_mode_outlined),
-                  title: const Text('Dark Theme'),
-                  subtitle: const Text('Dark background with light text'),
+                  title: Text(l10n.themeDark),
+                  subtitle: Text(l10n.darkThemeSubtitle),
                   trailing: currentMode == ThemeMode.dark
-                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                      ? Icon(Icons.check_circle,
+                          color: Theme.of(context).colorScheme.primary)
                       : null,
                   onTap: () {
-                    ref.read(themeProvider.notifier).setThemeMode(ThemeMode.dark);
+                    ref
+                        .read(themeProvider.notifier)
+                        .setThemeMode(ThemeMode.dark);
                     Navigator.pop(context);
                   },
                 ),
@@ -532,6 +552,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showShareAppSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -544,22 +565,25 @@ class ProfileScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Share Local Vyapari',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                l10n.shareLocalVyapari,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               ListTile(
-                leading: const Icon(Icons.copy_outlined, color: AppColors.primary),
-                title: const Text('Copy download link'),
+                leading:
+                    const Icon(Icons.copy_outlined, color: AppColors.primary),
+                title: Text(l10n.copyDownloadLink),
                 onTap: () async {
-                  await Clipboard.setData(const ClipboardData(
-                    text: 'Check out Local Vyapari App! Discover nearby retail shops and get exclusive local offers: https://localvyapari.com/download'
-                  ));
+                  await Clipboard.setData(
+                      ClipboardData(text: l10n.shareAppMessage));
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('App link copied to your clipboard.'),
+                      SnackBar(
+                        content: Text(l10n.linkCopied),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -570,22 +594,18 @@ class ProfileScreen extends ConsumerWidget {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.share_outlined, color: Colors.green),
-                title: const Text('Share via WhatsApp'),
+                title: Text(l10n.shareViaWhatsApp),
                 onTap: () async {
-                  final message = Uri.encodeComponent(
-                    'Check out Local Vyapari App! Discover nearby retail shops and get exclusive local offers: https://localvyapari.com/download'
-                  );
+                  final message = Uri.encodeComponent(l10n.shareAppMessage);
                   final url = Uri.parse('https://wa.me/?text=$message');
                   if (await canLaunchUrl(url)) {
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                   } else {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Could not open WhatsApp.'),
-                          backgroundColor: AppColors.error,
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      AppErrorDialog.show(
+                        context: context,
+                        message: l10n.couldNotOpenWhatsApp,
+                        title: l10n.unableToShare,
                       );
                     }
                   }
@@ -632,7 +652,8 @@ class _ProfileHeroHeader extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white.withValues(alpha: 0.18),
-            backgroundImage: shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
+            backgroundImage:
+                shop?.logoUrl != null ? NetworkImage(shop!.logoUrl!) : null,
             child: shop?.logoUrl == null
                 ? const Icon(Icons.storefront, size: 34, color: Colors.white)
                 : null,
@@ -644,7 +665,7 @@ class _ProfileHeroHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  shop?.name ?? 'Your Store',
+                  shop?.name ?? AppLocalizations.of(context).yourStore,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -659,14 +680,18 @@ class _ProfileHeroHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_rounded, color: Colors.white.withValues(alpha: 0.55), size: 11),
+                      Icon(Icons.location_on_rounded,
+                          color: Colors.white.withValues(alpha: 0.55),
+                          size: 11),
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text(
                           shop!.address,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 12),
                         ),
                       ),
                     ],
@@ -677,7 +702,8 @@ class _ProfileHeroHeader extends StatelessWidget {
                   children: [
                     // Open/closed pill
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(32),
@@ -686,16 +712,23 @@ class _ProfileHeroHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 6, height: 6,
+                            width: 6,
+                            height: 6,
                             decoration: BoxDecoration(
-                              color: isOpen ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                              color: isOpen
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFFFCA5A5),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            isOpen ? 'Open' : 'Closed',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                            isOpen ? AppLocalizations.of(context).open : AppLocalizations.of(context).closed,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Poppins'),
                           ),
                         ],
                       ),
@@ -703,7 +736,8 @@ class _ProfileHeroHeader extends StatelessWidget {
                     if (shop?.rating != null && (shop?.rating ?? 0) > 0) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(32),
@@ -711,11 +745,16 @@ class _ProfileHeroHeader extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 12),
+                            const Icon(Icons.star_rounded,
+                                color: Color(0xFFFBBF24), size: 12),
                             const SizedBox(width: 3),
                             Text(
                               shop!.rating!.toStringAsFixed(1),
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Poppins'),
                             ),
                           ],
                         ),
@@ -742,7 +781,10 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      style: Theme.of(context)
+          .textTheme
+          .titleMedium
+          ?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
@@ -777,21 +819,22 @@ class _BindEmailDialogState extends State<_BindEmailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Bind Email Address'),
+      title: Text(l10n.bindEmailTitle),
       content: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CustomTextField(
-              label: 'Email Address',
+              label: l10n.emailAddress,
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               prefixIcon: Icons.email_outlined,
               validator: (val) {
-                if (val == null || val.isEmpty) return 'Email is required';
-                if (!val.contains('@')) return 'Enter a valid email';
+                if (val == null || val.isEmpty) return l10n.emailRequired;
+                if (!val.contains('@')) return l10n.enterValidEmail;
                 return null;
               },
             ),
@@ -801,33 +844,39 @@ class _BindEmailDialogState extends State<_BindEmailDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         ElevatedButton(
-          onPressed: _isLoading ? null : () async {
-            if (!_formKey.currentState!.validate()) return;
-            setState(() => _isLoading = true);
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  if (!_formKey.currentState!.validate()) return;
+                  setState(() => _isLoading = true);
 
-            final success = await widget.ref.read(authProvider.notifier).bindEmail(_emailController.text.trim());
+                  final success = await widget.ref
+                      .read(authProvider.notifier)
+                      .bindEmail(_emailController.text.trim());
 
-            if (context.mounted) {
-              setState(() => _isLoading = false);
-              if (success) {
-                Navigator.pop(context, true);
-              } else {
-                final error = widget.ref.read(authProvider).error;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(error ?? 'Binding failed'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              }
-            }
-          },
+                  if (context.mounted) {
+                    setState(() => _isLoading = false);
+                    if (success) {
+                      Navigator.pop(context, true);
+                    } else {
+                      final error = widget.ref.read(authProvider).error;
+                      AppErrorDialog.show(
+                        context: context,
+                        message: error ?? l10n.bindingFailed,
+                        title: l10n.bindingFailedTitle,
+                      );
+                    }
+                  }
+                },
           child: _isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Bind'),
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(l10n.bind),
         ),
       ],
     );
@@ -861,13 +910,13 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
   }
 
   void _sendOtp() async {
+    final l10n = AppLocalizations.of(context);
     final phone = _phoneController.text.trim();
     if (phone.length != 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid 10-digit number'),
-          backgroundColor: AppColors.error,
-        ),
+      AppErrorDialog.show(
+        context: context,
+        message: l10n.enterValid10DigitNumberDot,
+        title: l10n.invalidNumber,
       );
       return;
     }
@@ -885,10 +934,10 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
             _verificationId = verificationId;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('OTP sent. Please check your SMS messages.'),
+            SnackBar(
+              content: Text(l10n.otpSentCheckSms),
               backgroundColor: AppColors.primary,
-              duration: Duration(seconds: 10),
+              duration: const Duration(seconds: 10),
             ),
           );
         }
@@ -896,11 +945,10 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
       onFailed: (error) {
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: AppColors.error,
-            ),
+          AppErrorDialog.show(
+            context: context,
+            message: error,
+            title: l10n.otpRequestFailed,
           );
         }
       },
@@ -910,12 +958,15 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
   void _verifyOtp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_verificationId == null) return;
+    final l10n = AppLocalizations.of(context);
 
     setState(() => _isLoading = true);
 
     final code = _otpController.text.trim();
 
-    final success = await widget.ref.read(authProvider.notifier).verifyAndBindPhone(_verificationId!, code);
+    final success = await widget.ref
+        .read(authProvider.notifier)
+        .verifyAndBindPhone(_verificationId!, code);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -923,11 +974,10 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
         Navigator.pop(context, true);
       } else {
         final error = widget.ref.read(authProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error ?? 'Verification failed'),
-            backgroundColor: AppColors.error,
-          ),
+        AppErrorDialog.show(
+          context: context,
+          message: error ?? l10n.verificationFailedMsg,
+          title: l10n.verificationFailed,
         );
       }
     }
@@ -935,8 +985,9 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Bind Phone Number'),
+      title: Text(l10n.bindPhoneTitle),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -944,28 +995,32 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CustomTextField(
-                label: 'Phone Number',
+                label: l10n.phoneNumber,
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icons.phone_android,
                 prefixText: '+91 ',
                 readOnly: _otpSent,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Phone number is required';
-                  if (val.length != 10) return 'Enter a valid 10-digit number';
+                  if (val == null || val.isEmpty) {
+                    return l10n.phoneRequired;
+                  }
+                  if (val.length != 10) return l10n.enterValid10DigitNumber;
                   return null;
                 },
               ),
               if (_otpSent) ...[
                 AppSpacing.verticalMd,
                 CustomTextField(
-                  label: 'Enter 6-Digit OTP',
+                  label: l10n.enter6DigitOtp,
                   controller: _otpController,
                   keyboardType: TextInputType.number,
                   prefixIcon: Icons.lock_outline,
                   validator: (val) {
-                    if (val == null || val.isEmpty) return 'OTP code is required';
-                    if (val.length != 6) return 'OTP must be 6 digits';
+                    if (val == null || val.isEmpty) {
+                      return l10n.otpRequired;
+                    }
+                    if (val.length != 6) return l10n.otpMust6Digits;
                     return null;
                   },
                 ),
@@ -981,13 +1036,16 @@ class _BindPhoneDialogState extends State<_BindPhoneDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : (_otpSent ? _verifyOtp : _sendOtp),
           child: _isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(_otpSent ? 'Verify & Link' : 'Send OTP'),
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(_otpSent ? l10n.verifyAndLink : l10n.sendOtp),
         ),
       ],
     );

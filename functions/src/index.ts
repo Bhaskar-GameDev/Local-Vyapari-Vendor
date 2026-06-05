@@ -317,6 +317,95 @@ function deviceFingerprint(ipAddress?: string, userAgent?: string): string {
     .substring(0, 16);
 }
 
+// True for loopback / private / link-local ranges that have no useful geo.
+function isPrivateIp(ip: string): boolean {
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+    ip.startsWith("fe80:") ||
+    ip.startsWith("fc") ||
+    ip.startsWith("fd")
+  );
+}
+
+// Extracts the real client IP from an HTTPS request. Behind Google's frontend
+// the client address is the first hop in `x-forwarded-for`; fall back to req.ip.
+function clientIpFromRequest(
+  req: { headers?: Record<string, unknown>; ip?: string } | undefined
+): string | null {
+  if (!req) return null;
+  const xff = req.headers ? req.headers["x-forwarded-for"] : undefined;
+  const rawXff = Array.isArray(xff) ? xff[0] : xff;
+  if (typeof rawXff === "string" && rawXff.length > 0) {
+    const first = rawXff.split(",")[0].trim();
+    if (first) return first;
+  }
+  if (typeof req.ip === "string" && req.ip.length > 0) return req.ip;
+  return null;
+}
+
+// Joins place parts the way consumer apps do ("City, Region, Country"),
+// dropping blanks and consecutive duplicates (e.g. when city === region).
+function formatPlace(parts: Array<string | undefined | null>): string | null {
+  const out: string[] = [];
+  for (const p of parts) {
+    const s = (p || "").toString().trim();
+    if (s && out[out.length - 1] !== s) out.push(s);
+  }
+  return out.length ? out.join(", ") : null;
+}
+
+// Resolves an approximate human-readable location ("City, Region, Country") for
+// an IP using free, keyless geo-IP services. Falls back to a second provider if
+// the first fails. Returns null for private/loopback IPs or on total failure —
+// best-effort, never throws.
+async function geoLocateIp(ip?: string | null): Promise<string | null> {
+  if (!ip || isPrivateIp(ip)) return null;
+  return (await geoViaIpWhoIs(ip)) || (await geoViaGeoJs(ip));
+}
+
+async function geoViaIpWhoIs(ip: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as {
+      success?: boolean;
+      city?: string;
+      region?: string;
+      country?: string;
+    };
+    if (!d || d.success === false) return null;
+    return formatPlace([d.city, d.region, d.country]);
+  } catch (e) {
+    console.error("geoViaIpWhoIs failed (non-fatal):", e);
+    return null;
+  }
+}
+
+async function geoViaGeoJs(ip: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://get.geojs.io/v1/ip/geo/${encodeURIComponent(ip)}.json`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!res.ok) return null;
+    const d = (await res.json()) as {
+      city?: string;
+      region?: string;
+      country?: string;
+    };
+    return formatPlace([d.city, d.region, d.country]);
+  } catch (e) {
+    console.error("geoViaGeoJs failed (non-fatal):", e);
+    return null;
+  }
+}
+
 // Records the signing-in device and sends a one-time alert the first time a
 // device is seen. Best-effort: never blocks sign-in on failure.
 async function recordDeviceAndMaybeAlert(
@@ -335,8 +424,16 @@ async function recordDeviceAndMaybeAlert(
       return;
     }
 
-    // New device.
-    await ref.set({ firstSeen: now, lastSeen: now, userAgent: userAgent || null, ip: ipAddress || null });
+    // New device. Geo-locate the IP so the security screen can show where the
+    // sign-in happened (best-effort; null when unavailable).
+    const location = await geoLocateIp(ipAddress);
+    await ref.set({
+      firstSeen: now,
+      lastSeen: now,
+      userAgent: userAgent || null,
+      ip: ipAddress || null,
+      location: location,
+    });
 
     // Alert the user on their existing devices (skip the very first device ever,
     // which is this account's initial login).
@@ -671,7 +768,6 @@ export const validateSession = functions.https.onCall(async (data, context) => {
 
   const uid = context.auth.uid;
   const targetRole = data.targetRole || "customer";
-  const deviceInfo = data.deviceInfo || {};
 
   // 1. Fetch user data from Realtime Database
   const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
@@ -709,17 +805,16 @@ export const validateSession = functions.https.onCall(async (data, context) => {
     }
   }
 
-  // 4. Create Active Session Record in Firestore
-  const sessionRef = db.collection("sessions").doc();
-  await sessionRef.set({
-    sessionId: sessionRef.id,
-    uid: uid,
-    deviceInfo: deviceInfo,
-    lastActive: admin.firestore.FieldValue.serverTimestamp(),
-    status: "active"
-  });
+  // NOTE: No Firestore "sessions" record is written here on purpose. Firebase
+  // Auth owns the session lifecycle (token issue/refresh/revoke), device
+  // visibility and "sign out everywhere" are handled via RTDB /known_devices +
+  // revokeRefreshTokens, and refresh tokens are per-user (not per-session) so a
+  // sessions collection can't even support per-session logout. A previous
+  // write-only "sessions" collection was unread, never cleaned up, and grew
+  // unbounded — do not reintroduce it without a real audit/compliance need
+  // (and then key it by device with a TTL).
 
-  // 5. Ensure Claims are In-Sync with database roles
+  // 4. Ensure Claims are In-Sync with database roles
   const userRecord = await admin.auth().getUser(uid);
   const existingClaims = userRecord.customClaims || {};
   const currentRoles = {
@@ -735,7 +830,7 @@ export const validateSession = functions.https.onCall(async (data, context) => {
     merchant: currentRoles.merchant
   });
 
-  return { success: true, sessionId: sessionRef.id };
+  return { success: true };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -750,18 +845,70 @@ export const listMyDevices = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
   }
-  const snap = await admin.database().ref(`/known_devices/${context.auth.uid}`).once("value");
-  const devices: Array<Record<string, unknown>> = [];
+  const uid = context.auth.uid;
+  const snap = await admin.database().ref(`/known_devices/${uid}`).once("value");
+
+  // Collect raw records first so missing locations can be backfilled in parallel.
+  const raw: Array<{ id: string; v: Record<string, unknown> }> = [];
   snap.forEach((child) => {
-    const v = child.val() || {};
-    devices.push({
-      id: child.key,
-      firstSeen: v.firstSeen || null,
-      lastSeen: v.lastSeen || null,
-      userAgent: v.userAgent || null,
-    });
+    raw.push({ id: child.key as string, v: (child.val() || {}) as Record<string, unknown> });
     return false;
   });
+
+  // The device making this request has a known-good public IP even when the
+  // sign-in blocking function failed to capture one. Identify that record (the
+  // most-recently-active one still missing an IP — almost certainly this
+  // device) so we can stamp its live IP and resolve a location for it.
+  const requestIp = clientIpFromRequest(context.rawRequest);
+  let currentDeviceId: string | null = null;
+  if (requestIp) {
+    let newestLastSeen = -1;
+    for (const { id, v } of raw) {
+      const hasIp = typeof v.ip === "string" && (v.ip as string).length > 0;
+      const lastSeen = Number(v.lastSeen || 0);
+      if (!hasIp && lastSeen > newestLastSeen) {
+        newestLastSeen = lastSeen;
+        currentDeviceId = id;
+      }
+    }
+  }
+
+  const devices = await Promise.all(
+    raw.map(async ({ id, v }) => {
+      let ip = typeof v.ip === "string" && (v.ip as string).length > 0
+        ? (v.ip as string)
+        : null;
+      // Backfill this device's IP from the live request when sign-in missed it.
+      if (!ip && id === currentDeviceId && requestIp) {
+        ip = requestIp;
+      }
+
+      let location = (v.location as string | null) || null;
+      // Backfill location for devices that have an IP but no resolved place
+      // (recorded before geo-lookup existed, or whose lookup previously failed).
+      if (!location && ip) {
+        location = await geoLocateIp(ip);
+      }
+
+      // Persist any newly-derived IP/location so subsequent reads are instant.
+      const updates: Record<string, unknown> = {};
+      if (ip && ip !== v.ip) updates.ip = ip;
+      if (location && location !== v.location) updates.location = location;
+      if (Object.keys(updates).length > 0) {
+        await admin.database().ref(`/known_devices/${uid}/${id}`).update(updates);
+      }
+
+      return {
+        id,
+        firstSeen: v.firstSeen || null,
+        lastSeen: v.lastSeen || null,
+        userAgent: v.userAgent || null,
+        ip: ip,
+        location: location,
+      };
+    })
+  );
+
   // Most recently active first.
   devices.sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
   return { devices };

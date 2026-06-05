@@ -10,12 +10,21 @@ class AccountDevice {
     required this.userAgent,
     required this.firstSeen,
     required this.lastSeen,
+    this.ip,
+    this.location,
   });
 
   final String id;
   final String? userAgent;
   final DateTime? firstSeen;
   final DateTime? lastSeen;
+
+  /// IP the device last signed in from (recorded server-side).
+  final String? ip;
+
+  /// Human-readable place derived from [ip] server-side, e.g.
+  /// "Mumbai, Maharashtra, India". Null when geo-lookup hasn't run or failed.
+  final String? location;
 
   static DateTime? _ts(dynamic v) =>
       v is num ? DateTime.fromMillisecondsSinceEpoch(v.toInt()) : null;
@@ -25,6 +34,8 @@ class AccountDevice {
         userAgent: m['userAgent']?.toString(),
         firstSeen: _ts(m['firstSeen']),
         lastSeen: _ts(m['lastSeen']),
+        ip: m['ip']?.toString(),
+        location: m['location']?.toString(),
       );
 }
 

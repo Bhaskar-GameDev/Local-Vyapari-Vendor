@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../domain/providers/chat_provider.dart';
 import '../../../domain/providers/shop_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -80,21 +81,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _confirmDeleteChat(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Chat'),
-        content: const Text(
-            'Are you sure you want to delete this entire conversation? This action cannot be undone.'),
+        title: Text(l10n.deleteChat),
+        content: Text(l10n.confirmDeleteEntireChat),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -126,17 +127,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
 
+    final l10n = AppLocalizations.of(context);
     final messagesAsync = ref.watch(chatMessagesProvider(widget.userId));
     final currentUserId = ref.watch(vendorIdProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.userName.isNotEmpty ? widget.userName : 'Customer'),
+        title: Text(widget.userName.isNotEmpty ? widget.userName : l10n.customer),
         elevation: 0.5,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Delete Chat',
+            tooltip: l10n.deleteChat,
             onPressed: () => _confirmDeleteChat(context),
           ),
         ],
@@ -167,7 +169,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                           AppSpacing.verticalMd,
                           Text(
-                            'Start a conversation',
+                            l10n.startConversation,
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -178,7 +180,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                           AppSpacing.verticalXs,
                           Text(
-                            'Send a friendly message to begin the chat.',
+                            l10n.startConversationBody,
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -263,7 +265,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(
                 child: Text(
-                  'Error loading messages: $err',
+                  l10n.errorLoadingMessages('$err'),
                   style: const TextStyle(color: AppColors.error),
                 ),
               ),
@@ -300,13 +302,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: TextField(
                       controller: _messageController,
                       focusNode: _focusNode,
-                      decoration: const InputDecoration(
-                        hintText: 'Type your message...',
+                      decoration: InputDecoration(
+                        hintText: l10n.typeYourMessage,
                         border: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
