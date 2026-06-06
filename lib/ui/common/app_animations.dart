@@ -22,7 +22,8 @@ class FadeInSlide extends StatefulWidget {
   State<FadeInSlide> createState() => _FadeInSlideState();
 }
 
-class _FadeInSlideState extends State<FadeInSlide> with SingleTickerProviderStateMixin {
+class _FadeInSlideState extends State<FadeInSlide>
+    with SingleTickerProviderStateMixin {
   static final Set<Key> _animatedKeys = {};
   late final AnimationController _controller;
   late final Animation<double> _opacity;
@@ -102,7 +103,8 @@ class ScaleOnTap extends StatefulWidget {
   State<ScaleOnTap> createState() => _ScaleOnTapState();
 }
 
-class _ScaleOnTapState extends State<ScaleOnTap> with SingleTickerProviderStateMixin {
+class _ScaleOnTapState extends State<ScaleOnTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -113,7 +115,8 @@ class _ScaleOnTapState extends State<ScaleOnTap> with SingleTickerProviderStateM
       vsync: this,
       duration: widget.duration,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
+    _scaleAnimation =
+        Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
   }
@@ -163,7 +166,8 @@ class FadeIndexedStack extends StatefulWidget {
   State<FadeIndexedStack> createState() => _FadeIndexedStackState();
 }
 
-class _FadeIndexedStackState extends State<FadeIndexedStack> with SingleTickerProviderStateMixin {
+class _FadeIndexedStackState extends State<FadeIndexedStack>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<double> _scale;
@@ -173,8 +177,8 @@ class _FadeIndexedStackState extends State<FadeIndexedStack> with SingleTickerPr
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.duration);
     _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _scale = Tween<double>(begin: 0.97, end: 1.0)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _scale = Tween<double>(begin: 0.97, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
   }
 
@@ -218,14 +222,15 @@ class AppPageRoute {
       transitionDuration: const Duration(milliseconds: 350),
       reverseTransitionDuration: const Duration(milliseconds: 250),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-        final enterScale = Tween<double>(begin: 0.94, end: 1.0)
-            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+        final enterFade =
+            CurvedAnimation(parent: animation, curve: Curves.easeOut);
+        final enterScale = Tween<double>(begin: 0.94, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
 
-        final exitFade = Tween<double>(begin: 1.0, end: 0.85)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
-        final exitScale = Tween<double>(begin: 1.0, end: 0.96)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        final exitFade = Tween<double>(begin: 1.0, end: 0.85).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        final exitScale = Tween<double>(begin: 1.0, end: 0.96).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
         return FadeTransition(
           opacity: exitFade,
@@ -261,12 +266,13 @@ class AppPageRoute {
           curve: Curves.easeOutQuart,
           reverseCurve: Curves.easeInQuint,
         ));
-        final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+        final enterFade =
+            CurvedAnimation(parent: animation, curve: Curves.easeOut);
 
-        final secScale = Tween<double>(begin: 1.0, end: 0.94)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
-        final secDim = Tween<double>(begin: 1.0, end: 0.78)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        final secScale = Tween<double>(begin: 1.0, end: 0.94).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        final secDim = Tween<double>(begin: 1.0, end: 0.78).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
         return ScaleTransition(
           scale: secScale,
@@ -308,9 +314,10 @@ class AppPageRoute {
         final exitSlide = Tween<Offset>(
           begin: Offset.zero,
           end: const Offset(-0.3, 0.0),
-        ).animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOut));
-        final exitDim = Tween<double>(begin: 1.0, end: 0.85)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        ).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOut));
+        final exitDim = Tween<double>(begin: 1.0, end: 0.85).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
         return SlideTransition(
           position: exitSlide,
@@ -356,10 +363,11 @@ class AppPageRoute {
           reverseCurve: Curves.easeInQuint,
         ));
 
-        final secScale = Tween<double>(begin: 1.0, end: 0.92)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInOut));
-        final secDim = Tween<double>(begin: 1.0, end: 0.70)
-            .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+        final secScale = Tween<double>(begin: 1.0, end: 0.92).animate(
+            CurvedAnimation(
+                parent: secondaryAnimation, curve: Curves.easeInOut));
+        final secDim = Tween<double>(begin: 1.0, end: 0.70).animate(
+            CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
         return ScaleTransition(
           scale: secScale,

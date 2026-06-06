@@ -10,7 +10,8 @@ class ApiClient {
   ));
 
   static void initialize() {
-    _dio.options.baseUrl = 'https://us-central1-local-vyapari-437e0.cloudfunctions.net/';
+    _dio.options.baseUrl =
+        'https://us-central1-local-vyapari-437e0.cloudfunctions.net/';
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final user = FirebaseAuth.instance.currentUser;

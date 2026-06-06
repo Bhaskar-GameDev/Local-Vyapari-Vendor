@@ -17,5 +17,6 @@ class OfferModel with _$OfferModel {
     @Default(false) bool isFeatured,
   }) = _OfferModel;
 
-  factory OfferModel.fromJson(Map<String, dynamic> json) => _$OfferModelFromJson(json);
+  factory OfferModel.fromJson(Map<String, dynamic> json) =>
+      _$OfferModelFromJson(json);
 }

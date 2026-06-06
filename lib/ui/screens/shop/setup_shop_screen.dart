@@ -61,19 +61,28 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     _state = widget.existingShop?.state;
     _pincode = widget.existingShop?.pincode;
 
-    _nameController = TextEditingController(text: widget.existingShop?.name ?? '');
-    _descController = TextEditingController(text: widget.existingShop?.description ?? '');
-    _addressController = TextEditingController(text: widget.existingShop?.address ?? '');
-    
+    _nameController =
+        TextEditingController(text: widget.existingShop?.name ?? '');
+    _descController =
+        TextEditingController(text: widget.existingShop?.description ?? '');
+    _addressController =
+        TextEditingController(text: widget.existingShop?.address ?? '');
+
     final user = FirebaseAuth.instance.currentUser;
-    final initialPhone = widget.existingShop?.phone ?? user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '') ?? '';
+    final initialPhone = widget.existingShop?.phone ??
+        user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '') ??
+        '';
     _phoneController = TextEditingController(text: initialPhone);
-    
+
     _latController = TextEditingController(
-      text: widget.existingShop?.latitude != null ? widget.existingShop!.latitude.toString() : '',
+      text: widget.existingShop?.latitude != null
+          ? widget.existingShop!.latitude.toString()
+          : '',
     );
     _lngController = TextEditingController(
-      text: widget.existingShop?.longitude != null ? widget.existingShop!.longitude.toString() : '',
+      text: widget.existingShop?.longitude != null
+          ? widget.existingShop!.longitude.toString()
+          : '',
     );
     if (widget.existingShop?.openingTime != null) {
       _parseTime(widget.existingShop!.openingTime!, isOpening: true);
@@ -89,7 +98,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
   Future<void> _prefillFromDatabase(String uid) async {
     try {
-      final snapshot = await FirebaseDatabase.instance.ref('shop').child(uid).get();
+      final snapshot =
+          await FirebaseDatabase.instance.ref('shop').child(uid).get();
       if (snapshot.exists && snapshot.value != null) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
         if (mounted) {
@@ -101,7 +111,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
               _descController.text = data['description'].toString();
             }
             if (_phoneController.text.isEmpty && data['phone'] != null) {
-              _phoneController.text = data['phone'].toString().replaceAll('+91', '').replaceAll(' ', '');
+              _phoneController.text = data['phone']
+                  .toString()
+                  .replaceAll('+91', '')
+                  .replaceAll(' ', '');
             }
             if (_addressController.text.isEmpty && data['address'] != null) {
               _addressController.text = data['address'].toString();
@@ -128,7 +141,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
     try {
       final parts = timeString.split(':');
       if (parts.length >= 2) {
-        final time = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1].split(' ')[0]));
+        final time = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1].split(' ')[0]));
         if (isOpening) {
           _openingTime = time;
         } else {
@@ -151,7 +166,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
   Future<void> _pickLogo() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (pickedFile != null) {
       setState(() => _logoFile = File(pickedFile.path));
     }
@@ -160,8 +176,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   Future<void> _pickTime({required bool isOpening}) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: isOpening 
-          ? (_openingTime ?? const TimeOfDay(hour: 9, minute: 0)) 
+      initialTime: isOpening
+          ? (_openingTime ?? const TimeOfDay(hour: 9, minute: 0))
           : (_closingTime ?? const TimeOfDay(hour: 21, minute: 0)),
     );
     if (picked != null) {
@@ -189,15 +205,20 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
 
       String addressStr = _addressController.text;
       try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+            position.latitude, position.longitude);
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
           _city = place.locality ?? place.subAdministrativeArea;
           _state = place.administrativeArea;
           _pincode = place.postalCode;
-          final parts = [place.street, place.subLocality, place.locality, place.postalCode, place.country]
-              .where((p) => p != null && p.isNotEmpty)
-              .toList();
+          final parts = [
+            place.street,
+            place.subLocality,
+            place.locality,
+            place.postalCode,
+            place.country
+          ].where((p) => p != null && p.isNotEmpty).toList();
           if (parts.isNotEmpty) {
             addressStr = parts.join(', ');
           }
@@ -321,25 +342,34 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                   ),
                   actions: [
                     TextButton(
-                      onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
+                      onPressed: isVerifying
+                          ? null
+                          : () => Navigator.pop(dialogContext, false),
                       child: Text(l10n.commonCancel),
                     ),
                     ElevatedButton(
-                      onPressed: isVerifying ? null : () async {
-                        final code = codeController.text.trim();
-                        if (code.length != 6) return;
+                      onPressed: isVerifying
+                          ? null
+                          : () async {
+                              final code = codeController.text.trim();
+                              if (code.length != 6) return;
 
-                        setState(() => isVerifying = true);
+                              setState(() => isVerifying = true);
 
-                        final success = await authNotifier.verifyAndBindPhone(currentVerificationId, code);
+                              final success =
+                                  await authNotifier.verifyAndBindPhone(
+                                      currentVerificationId, code);
 
-                        if (context.mounted) {
-                          setState(() => isVerifying = false);
-                          Navigator.pop(dialogContext, success);
-                        }
-                      },
+                              if (context.mounted) {
+                                setState(() => isVerifying = false);
+                                Navigator.pop(dialogContext, success);
+                              }
+                            },
                       child: isVerifying
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
                           : Text(l10n.verify),
                     ),
                   ],
@@ -370,27 +400,42 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   Future<void> _submitShop() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final isEditing = widget.existingShop != null && 
-                      widget.existingShop!.address.isNotEmpty;
+    final isEditing =
+        widget.existingShop != null && widget.existingShop!.address.isNotEmpty;
 
     bool needVerification = !isEditing;
     if (needVerification) {
       final user = FirebaseAuth.instance.currentUser;
-      final userPhone = user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '').trim();
-      final inputPhone = _phoneController.text.trim().replaceAll('+91', '').replaceAll(' ', '').trim();
-      
-      if (userPhone != null && userPhone.isNotEmpty && userPhone == inputPhone) {
+      final userPhone =
+          user?.phoneNumber?.replaceAll('+91', '').replaceAll(' ', '').trim();
+      final inputPhone = _phoneController.text
+          .trim()
+          .replaceAll('+91', '')
+          .replaceAll(' ', '')
+          .trim();
+
+      if (userPhone != null &&
+          userPhone.isNotEmpty &&
+          userPhone == inputPhone) {
         needVerification = false;
       } else {
         final uid = user?.uid;
         if (uid != null) {
           try {
-            final snapshot = await FirebaseDatabase.instance.ref('users').child(uid).get();
+            final snapshot =
+                await FirebaseDatabase.instance.ref('users').child(uid).get();
             if (snapshot.exists && snapshot.value != null) {
               final userData = Map<String, dynamic>.from(snapshot.value as Map);
-              final dbPhone = userData['phone']?.toString().replaceAll('+91', '').replaceAll(' ', '').trim();
+              final dbPhone = userData['phone']
+                  ?.toString()
+                  .replaceAll('+91', '')
+                  .replaceAll(' ', '')
+                  .trim();
               final isVerified = userData['verified'] == true;
-              if (isVerified && dbPhone != null && dbPhone.isNotEmpty && dbPhone == inputPhone) {
+              if (isVerified &&
+                  dbPhone != null &&
+                  dbPhone.isNotEmpty &&
+                  dbPhone == inputPhone) {
                 needVerification = false;
               }
             }
@@ -410,12 +455,15 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
       String? logoUrl = widget.existingShop?.logoUrl;
 
       if (_logoFile != null) {
-        final uploadedUrl = await CloudinaryService.uploadImage(_logoFile!.path);
+        final uploadedUrl =
+            await CloudinaryService.uploadImage(_logoFile!.path);
         if (uploadedUrl == null) throw Exception('Logo upload failed');
         logoUrl = uploadedUrl;
       }
 
-      final uid = widget.existingShop?.id ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+      final uid = widget.existingShop?.id ??
+          FirebaseAuth.instance.currentUser?.uid ??
+          '';
       final lat = double.tryParse(_latController.text);
       final lng = double.tryParse(_lngController.text);
 
@@ -427,7 +475,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         // Fallback geocoding resolution if city/state/pincode are missing
         if (_city == null || _state == null || _pincode == null) {
           try {
-            List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+            List<Placemark> placemarks =
+                await placemarkFromCoordinates(lat, lng);
             if (placemarks.isNotEmpty) {
               final place = placemarks.first;
               _city ??= place.locality ?? place.subAdministrativeArea;
@@ -451,11 +500,16 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         isOpen: widget.existingShop?.isOpen ?? true,
         rating: widget.existingShop?.rating,
         totalReviews: widget.existingShop?.totalReviews,
-        openingTime: _openingTime != null ? '${_openingTime!.hour.toString().padLeft(2, '0')}:${_openingTime!.minute.toString().padLeft(2, '0')}' : null,
-        closingTime: _closingTime != null ? '${_closingTime!.hour.toString().padLeft(2, '0')}:${_closingTime!.minute.toString().padLeft(2, '0')}' : null,
+        openingTime: _openingTime != null
+            ? '${_openingTime!.hour.toString().padLeft(2, '0')}:${_openingTime!.minute.toString().padLeft(2, '0')}'
+            : null,
+        closingTime: _closingTime != null
+            ? '${_closingTime!.hour.toString().padLeft(2, '0')}:${_closingTime!.minute.toString().padLeft(2, '0')}'
+            : null,
         ownerId: uid,
         bannerUrl: widget.existingShop?.bannerUrl ?? '',
-        createdAt: widget.existingShop?.createdAt ?? DateTime.now().millisecondsSinceEpoch,
+        createdAt: widget.existingShop?.createdAt ??
+            DateTime.now().millisecondsSinceEpoch,
         geohash: geohash,
         city: _city ?? '',
         state: _state ?? '',
@@ -466,10 +520,11 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
       await ref.read(shopRepositoryProvider).updateShopProfile(shop);
 
       // Securely upgrade user to merchant via Cloud Functions on initial setup
-      final isEditing = widget.existingShop != null && 
-                        widget.existingShop!.address.isNotEmpty;
+      final isEditing = widget.existingShop != null &&
+          widget.existingShop!.address.isNotEmpty;
       if (!isEditing) {
-        final callable = FirebaseFunctions.instance.httpsCallable('assignMerchantRole');
+        final callable =
+            FirebaseFunctions.instance.httpsCallable('assignMerchantRole');
         await callable.call<dynamic>();
         await FirebaseAuth.instance.currentUser?.getIdToken(true);
       }
@@ -507,8 +562,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isEditing = widget.existingShop != null &&
-                      widget.existingShop!.address.isNotEmpty &&
-                      widget.existingShop!.latitude != null;
+        widget.existingShop!.address.isNotEmpty &&
+        widget.existingShop!.latitude != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -529,58 +584,64 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
               vertical: AppSpacing.md,
             ),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              constraints:
+                  const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!isEditing) Consumer(
-                      builder: (context, ref, child) {
-                        final profileState = ref.watch(userProfileProvider);
-                        final profile = profileState.value;
-                        final roles = profile?['roles'] as Map?;
-                        final isMerchant = roles?['merchant'] == true;
+                    if (!isEditing)
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final profileState = ref.watch(userProfileProvider);
+                          final profile = profileState.value;
+                          final roles = profile?['roles'] as Map?;
+                          final isMerchant = roles?['merchant'] == true;
 
-                        if (profileState.hasValue && !isMerchant) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: Container(
-                              padding: const EdgeInsets.all(AppSpacing.md),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.08),
-                                borderRadius: AppRadius.borderLg,
-                                border: Border.all(
-                                  color: AppColors.warning.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: AppColors.warning,
-                                    size: 24,
+                          if (profileState.hasValue && !isMerchant) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: AppSpacing.md),
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.warning.withValues(alpha: 0.08),
+                                  borderRadius: AppRadius.borderLg,
+                                  border: Border.all(
+                                    color: AppColors.warning
+                                        .withValues(alpha: 0.3),
+                                    width: 1.5,
                                   ),
-                                  AppSpacing.horizontalSm,
-                                  Expanded(
-                                    child: Text(
-                                      l10n.merchantProfilePending,
-                                      style: TextStyle(
-                                        color: AppColors.warning.withValues(alpha: 0.9),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      color: AppColors.warning,
+                                      size: 24,
+                                    ),
+                                    AppSpacing.horizontalSm,
+                                    Expanded(
+                                      child: Text(
+                                        l10n.merchantProfilePending,
+                                        style: TextStyle(
+                                          color: AppColors.warning
+                                              .withValues(alpha: 0.9),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     if (!isEditing) ...[
                       AppSpacing.verticalXs,
                       FadeInSlide(
@@ -588,7 +649,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         slideOffset: 20,
                         child: Text(
                           l10n.welcomeToLocalVyapari,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
@@ -602,15 +666,18 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         slideOffset: 16,
                         child: Text(
                           l10n.setupShopSubtitle,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                     ],
                     AppSpacing.verticalLg,
-                    
+
                     // --- Logo Picker ---
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
@@ -624,10 +691,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 4),
+                                  border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.2),
+                                      width: 4),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.08),
                                       blurRadius: 16,
                                       offset: const Offset(0, 4),
                                     ),
@@ -635,14 +706,19 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                 ),
                                 child: CircleAvatar(
                                   radius: 56,
-                                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
                                   backgroundImage: _logoFile != null
                                       ? FileImage(_logoFile!)
                                       : (widget.existingShop?.logoUrl != null
-                                          ? NetworkImage(widget.existingShop!.logoUrl!)
+                                          ? NetworkImage(
+                                              widget.existingShop!.logoUrl!)
                                           : null) as ImageProvider?,
-                                  child: _logoFile == null && widget.existingShop?.logoUrl == null
-                                      ? const Icon(Icons.storefront_rounded, size: 48, color: AppColors.primary)
+                                  child: _logoFile == null &&
+                                          widget.existingShop?.logoUrl == null
+                                      ? const Icon(Icons.storefront_rounded,
+                                          size: 48, color: AppColors.primary)
                                       : null,
                                 ),
                               ),
@@ -675,7 +751,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       child: Text(
                         l10n.uploadShopLogo,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontWeight: FontWeight.w600,
                             ),
                         textAlign: TextAlign.center,
@@ -692,7 +770,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         label: l10n.businessShopName,
                         controller: _nameController,
                         prefixIcon: Icons.business_outlined,
-                        validator: (val) => val == null || val.isEmpty ? l10n.enterBusinessName : null,
+                        validator: (val) => val == null || val.isEmpty
+                            ? l10n.enterBusinessName
+                            : null,
                       ),
                     ),
                     AppSpacing.verticalMd,
@@ -704,7 +784,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         label: l10n.shopDescription,
                         controller: _descController,
                         prefixIcon: Icons.description_outlined,
-                        validator: (val) => val == null || val.isEmpty ? l10n.describeYourShop : null,
+                        validator: (val) => val == null || val.isEmpty
+                            ? l10n.describeYourShop
+                            : null,
                       ),
                     ),
                     AppSpacing.verticalMd,
@@ -718,7 +800,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.enterPhoneNumber;
+                          if (val == null || val.isEmpty)
+                            return l10n.enterPhoneNumber;
                           if (val.replaceAll(RegExp(r'\D'), '').length < 10) {
                             return l10n.enterValid10DigitNumber;
                           }
@@ -738,19 +821,25 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: AppRadius.borderLg,
-                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                          border: Border.all(
+                              color:
+                                  Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 24),
+                                const Icon(Icons.access_time_rounded,
+                                    color: AppColors.primary, size: 24),
                                 AppSpacing.horizontalSm,
                                 Expanded(
                                   child: Text(
                                     l10n.shopTimings,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                   ),
@@ -760,8 +849,13 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             AppSpacing.verticalXs,
                             Text(
                               l10n.shopTimingsSubtitle,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                   ),
                             ),
                             AppSpacing.verticalMd,
@@ -773,7 +867,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     child: InputDecorator(
                                       decoration: InputDecoration(
                                         labelText: l10n.opensAt,
-                                        prefixIcon: const Icon(Icons.wb_sunny_outlined),
+                                        prefixIcon:
+                                            const Icon(Icons.wb_sunny_outlined),
                                         border: OutlineInputBorder(
                                           borderRadius: AppRadius.borderMd,
                                         ),
@@ -789,7 +884,8 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                     child: InputDecorator(
                                       decoration: InputDecoration(
                                         labelText: l10n.closesAt,
-                                        prefixIcon: const Icon(Icons.nights_stay_outlined),
+                                        prefixIcon: const Icon(
+                                            Icons.nights_stay_outlined),
                                         border: OutlineInputBorder(
                                           borderRadius: AppRadius.borderMd,
                                         ),
@@ -816,19 +912,25 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: AppRadius.borderLg,
-                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                          border: Border.all(
+                              color:
+                                  Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.map_outlined, color: AppColors.primary, size: 24),
+                                const Icon(Icons.map_outlined,
+                                    color: AppColors.primary, size: 24),
                                 AppSpacing.horizontalSm,
                                 Expanded(
                                   child: Text(
                                     l10n.geolocationalStorefront,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                   ),
@@ -838,8 +940,13 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             AppSpacing.verticalXs,
                             Text(
                               l10n.gpsSubtitle,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                   ),
                             ),
                             AppSpacing.verticalMd,
@@ -849,9 +956,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                   child: CustomTextField(
                                     label: l10n.latitude,
                                     controller: _latController,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
                                     readOnly: true,
-                                    validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                                    validator: (val) =>
+                                        val == null || val.isEmpty
+                                            ? l10n.required
+                                            : null,
                                   ),
                                 ),
                                 AppSpacing.horizontalSm,
@@ -859,9 +971,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                                   child: CustomTextField(
                                     label: l10n.longitude,
                                     controller: _lngController,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
                                     readOnly: true,
-                                    validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                                    validator: (val) =>
+                                        val == null || val.isEmpty
+                                            ? l10n.required
+                                            : null,
                                   ),
                                 ),
                               ],
@@ -869,14 +986,18 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                             AppSpacing.verticalMd,
                             ScaleOnTap(
                               child: ElevatedButton.icon(
-                                onPressed: _isLocating ? null : _getCurrentLocation,
+                                onPressed:
+                                    _isLocating ? null : _getCurrentLocation,
                                 icon: _isLocating
                                     ? const SizedBox(
                                         height: 18,
                                         width: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white),
                                       )
-                                    : const Icon(Icons.my_location_rounded, size: 18),
+                                    : const Icon(Icons.my_location_rounded,
+                                        size: 18),
                                 label: Text(l10n.detectCurrentLocation),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.accent,
@@ -897,7 +1018,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                         label: l10n.shopAddress,
                         controller: _addressController,
                         prefixIcon: Icons.location_on_outlined,
-                        validator: (val) => val == null || val.isEmpty ? l10n.enterCompleteAddress : null,
+                        validator: (val) => val == null || val.isEmpty
+                            ? l10n.enterCompleteAddress
+                            : null,
                       ),
                     ),
                     AppSpacing.verticalXl,
@@ -909,7 +1032,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                       slideOffset: 16,
                       child: ScaleOnTap(
                         child: PrimaryButton(
-                          text: isEditing ? l10n.saveChanges : l10n.createStorefront,
+                          text: isEditing
+                              ? l10n.saveChanges
+                              : l10n.createStorefront,
                           isLoading: _isSaving,
                           onPressed: _submitShop,
                         ),
@@ -927,10 +1052,13 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
                           onPressed: () async {
                             await ref.read(authProvider.notifier).logout();
                           },
-                          icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                          icon: const Icon(Icons.logout_rounded,
+                              color: AppColors.error),
                           label: Text(
                             l10n.signOutButton,
-                            style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),

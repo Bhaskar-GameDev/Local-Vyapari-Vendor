@@ -95,13 +95,12 @@ class _LinkPhoneScreenState extends ConsumerState<LinkPhoneScreen> {
     final l10n = AppLocalizations.of(context);
 
     setState(() => _isLoading = true);
-    final success = await ref
-        .read(authProvider.notifier)
-        .verifyBindPhoneAndSetPassword(
-          verificationId,
-          _otpController.text.trim(),
-          _passwordController.text.trim(),
-        );
+    final success =
+        await ref.read(authProvider.notifier).verifyBindPhoneAndSetPassword(
+              verificationId,
+              _otpController.text.trim(),
+              _passwordController.text.trim(),
+            );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -212,7 +211,8 @@ class _LinkPhoneScreenState extends ConsumerState<LinkPhoneScreen> {
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.lock_outline,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.otpRequired;
+                          if (val == null || val.isEmpty)
+                            return l10n.otpRequired;
                           if (val.length != 6) return l10n.otpMust6Digits;
                           return null;
                         },

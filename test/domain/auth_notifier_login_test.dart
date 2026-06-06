@@ -12,14 +12,18 @@ import 'package:mocktail/mocktail.dart';
 // be faked without a live Firebase app.
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
+
 class _MockRoleService extends Mock implements RoleService {}
+
 class _MockUser extends Mock implements User {}
+
 class _MockCredential extends Mock implements UserCredential {}
 
 // A throwable FirebaseFunctionsException — the subclass may legitimately call
 // the protected super constructor, which a test cannot do directly.
 class _FnException extends FirebaseFunctionsException {
-  _FnException(String code, String message) : super(code: code, message: message);
+  _FnException(String code, String message)
+      : super(code: code, message: message);
 }
 
 void main() {
@@ -128,12 +132,13 @@ void main() {
 
     test('reports a friendly error when the rollback path rethrows', () async {
       when(() => repo.completePhoneSignupProfile(
-            user: any(named: 'user'),
-            email: any(named: 'email'),
-            phone: any(named: 'phone'),
-            shopName: any(named: 'shopName'),
-          )).thenThrow(
-          FirebaseException(plugin: 'database', code: 'unavailable'));
+                user: any(named: 'user'),
+                email: any(named: 'email'),
+                phone: any(named: 'phone'),
+                shopName: any(named: 'shopName'),
+              ))
+          .thenThrow(
+              FirebaseException(plugin: 'database', code: 'unavailable'));
 
       final ok = await notifier.verifyAndSubmit(
         verificationId: 'vid',

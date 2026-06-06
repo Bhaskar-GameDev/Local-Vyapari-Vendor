@@ -30,7 +30,8 @@ class ProductReviewsScreen extends ConsumerWidget {
       body: SafeArea(
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
+            constraints:
+                const BoxConstraints(maxWidth: AppDimensions.maxContentWidth),
             child: reviewsAsync.when(
               data: (reviews) {
                 if (reviews.isEmpty) {
@@ -45,7 +46,8 @@ class ProductReviewsScreen extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.05),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.05),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -57,13 +59,17 @@ class ProductReviewsScreen extends ConsumerWidget {
                             AppSpacing.verticalLg,
                             Text(
                               l10n.noReviewsYet,
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.onSurface),
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: cs.onSurface),
                             ),
                             AppSpacing.verticalSm,
                             Text(
                               l10n.productReviewsEmpty,
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                              style: TextStyle(
+                                  color: cs.onSurfaceVariant, fontSize: 14),
                             ),
                           ],
                         ),
@@ -81,7 +87,8 @@ class ProductReviewsScreen extends ConsumerWidget {
                         duration: const Duration(milliseconds: 500),
                         delay: const Duration(milliseconds: 100),
                         slideOffset: 10,
-                        child: _ProductRatingBreakdownWidget(distribution: distribution),
+                        child: _ProductRatingBreakdownWidget(
+                            distribution: distribution),
                       ),
                       AppSpacing.verticalLg,
                       FadeInSlide(
@@ -90,10 +97,11 @@ class ProductReviewsScreen extends ConsumerWidget {
                         slideOffset: 10,
                         child: Text(
                           l10n.customerFeedback(reviews.length),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.onSurface,
+                                  ),
                         ),
                       ),
                       AppSpacing.verticalSm,
@@ -114,14 +122,16 @@ class ProductReviewsScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary)),
               error: (err, stack) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: AppColors.error),
                       AppSpacing.verticalMd,
                       Text(
                         l10n.errorLoadingReviews('$err'),
@@ -172,7 +182,10 @@ class _ProductRatingBreakdownWidget extends StatelessWidget {
                 children: [
                   Text(
                     distribution.averageRating.toString(),
-                    style: TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: cs.onSurface),
+                    style: TextStyle(
+                        fontSize: 44,
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -210,9 +223,12 @@ class _ProductRatingBreakdownWidget extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: Row(
                       children: [
-                        Text('$starVal', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                        Text('$starVal',
+                            style: TextStyle(
+                                fontSize: 12, color: cs.onSurfaceVariant)),
                         AppSpacing.horizontalXs,
-                        const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                        const Icon(Icons.star_rounded,
+                            size: 14, color: AppColors.warning),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: ClipRRect(
@@ -230,7 +246,8 @@ class _ProductRatingBreakdownWidget extends StatelessWidget {
                           width: 20,
                           child: Text(
                             '$count',
-                            style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                            style: TextStyle(
+                                fontSize: 10, color: cs.onSurfaceVariant),
                             textAlign: TextAlign.end,
                           ),
                         ),
@@ -255,7 +272,8 @@ class _ProductReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
-    final formattedDate = '${review.createdAt.day.toString().padLeft(2, '0')}/${review.createdAt.month.toString().padLeft(2, '0')}/${review.createdAt.year}';
+    final formattedDate =
+        '${review.createdAt.day.toString().padLeft(2, '0')}/${review.createdAt.month.toString().padLeft(2, '0')}/${review.createdAt.year}';
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       decoration: BoxDecoration(
@@ -280,14 +298,20 @@ class _ProductReviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    review.userDisplayName.isNotEmpty ? review.userDisplayName : l10n.anonymousUser,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: cs.onSurface),
+                    review.userDisplayName.isNotEmpty
+                        ? review.userDisplayName
+                        : l10n.anonymousUser,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: cs.onSurface),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.accent.withValues(alpha: 0.1),
                     borderRadius: AppRadius.borderXs,
@@ -296,10 +320,14 @@ class _ProductReviewCard extends StatelessWidget {
                     children: [
                       Text(
                         review.rating.toString(),
-                        style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 12),
+                        style: const TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
                       ),
                       AppSpacing.horizontalXs,
-                      const Icon(Icons.star_rounded, size: 14, color: AppColors.accent),
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: AppColors.accent),
                     ],
                   ),
                 ),
@@ -308,13 +336,15 @@ class _ProductReviewCard extends StatelessWidget {
             AppSpacing.verticalSm,
             Text(
               review.comment.isNotEmpty ? review.comment : l10n.noCommentLeft,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13, height: 1.4),
+              style: TextStyle(
+                  color: cs.onSurfaceVariant, fontSize: 13, height: 1.4),
             ),
             AppSpacing.verticalSm,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(formattedDate, style: TextStyle(color: cs.outline, fontSize: 11)),
+                Text(formattedDate,
+                    style: TextStyle(color: cs.outline, fontSize: 11)),
                 Icon(Icons.verified_user_outlined, size: 14, color: cs.outline),
               ],
             ),

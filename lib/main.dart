@@ -27,15 +27,15 @@ void main() async {
   // App Check: attests that requests come from a genuine, untampered build.
   // Debug provider in debug builds; Play Integrity / DeviceCheck in release.
   await FirebaseAppCheck.instance.activate(
-    androidProvider: kReleaseMode
-        ? AndroidProvider.playIntegrity
-        : AndroidProvider.debug,
+    androidProvider:
+        kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
     appleProvider:
         kReleaseMode ? AppleProvider.deviceCheck : AppleProvider.debug,
   );
 
   // Crashlytics: collect only in release builds (keeps debug noise out of the console).
-  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+  await FirebaseCrashlytics.instance
+      .setCrashlyticsCollectionEnabled(!kDebugMode);
 
   // Route uncaught Flutter framework errors (widget build failures, etc.) to Crashlytics.
   FlutterError.onError = (details) {

@@ -1,7 +1,8 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final connectivityStreamProvider = StreamProvider<List<ConnectivityResult>>((ref) {
+final connectivityStreamProvider =
+    StreamProvider<List<ConnectivityResult>>((ref) {
   return Connectivity().onConnectivityChanged;
 });
 
@@ -9,7 +10,7 @@ final connectivityStreamProvider = StreamProvider<List<ConnectivityResult>>((ref
 /// Defaults to `true` (optimistic) until the first stream event arrives.
 final isOnlineProvider = Provider<bool>((ref) {
   return ref.watch(connectivityStreamProvider).maybeWhen(
-    data: (results) => results.any((r) => r != ConnectivityResult.none),
-    orElse: () => true,
-  );
+        data: (results) => results.any((r) => r != ConnectivityResult.none),
+        orElse: () => true,
+      );
 });

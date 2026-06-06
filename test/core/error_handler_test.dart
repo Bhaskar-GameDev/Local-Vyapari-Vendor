@@ -79,7 +79,8 @@ void main() {
           final msg = ErrorHandler.getMessage(
             DioException(requestOptions: req, type: type),
           );
-          expect(msg, 'Request timed out. Please check your connection and try again.');
+          expect(msg,
+              'Request timed out. Please check your connection and try again.');
         }
       });
 

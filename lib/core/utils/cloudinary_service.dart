@@ -25,7 +25,8 @@ class CloudinaryService {
             'Invalid Cloudinary signature response from getCloudinarySignature');
       }
 
-      final uploadUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+      final uploadUrl =
+          'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
 
       if (kDebugMode) {
         debugPrint(

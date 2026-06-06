@@ -5,7 +5,8 @@ import '../../data/models/shop_model.dart';
 import '../../data/repositories/shop_repository.dart';
 import 'auth_provider.dart';
 
-final shopRepositoryProvider = Provider<ShopRepository>((ref) => ShopRepository());
+final shopRepositoryProvider =
+    Provider<ShopRepository>((ref) => ShopRepository());
 
 final shopProvider = StreamProvider<ShopModel?>((ref) {
   final user = ref.watch(authStateProvider).value;
@@ -32,11 +33,14 @@ Duration? _delayUntilAutoOpen(String? openingTime, String? closingTime) {
       if (closingTime != null) {
         final closeParts = closingTime.split(':');
         if (closeParts.length >= 2) {
-          final closeMins = int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
-          if (nowMins < closeMins) return Duration.zero; // currently within hours
+          final closeMins =
+              int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
+          if (nowMins < closeMins)
+            return Duration.zero; // currently within hours
         }
       } else {
-        return Duration.zero; // no closing time — treat as open once past open time
+        return Duration
+            .zero; // no closing time — treat as open once past open time
       }
       // Past closing time today → schedule for tomorrow's opening
       return DateTime(now.year, now.month, now.day, openH, openM)
@@ -53,7 +57,8 @@ Duration? _delayUntilAutoOpen(String? openingTime, String? closingTime) {
 // Writes isOpen=true unless the vendor manually closed the shop today.
 Future<void> _tryAutoOpen(String uid, ShopModel shop) async {
   try {
-    final snap = await FirebaseDatabase.instance.ref('shop/$uid/manuallyClosedAt').get();
+    final snap =
+        await FirebaseDatabase.instance.ref('shop/$uid/manuallyClosedAt').get();
     final manuallyClosedAt = snap.value as String?;
     final today = DateTime.now().toIso8601String().split('T')[0];
     if (manuallyClosedAt == today) return; // respect explicit close

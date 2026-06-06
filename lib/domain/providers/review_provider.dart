@@ -20,9 +20,8 @@ final vendorShopReviewsProvider = StreamProvider<List<ShopReview>>((ref) {
       .where('shopId', isEqualTo: shopId)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => ShopReview.fromFirestore(doc))
-          .toList());
+      .map((snapshot) =>
+          snapshot.docs.map((doc) => ShopReview.fromFirestore(doc)).toList());
 });
 
 class RatingDistribution {
@@ -44,18 +43,18 @@ final vendorRatingDistributionProvider = Provider<RatingDistribution>((ref) {
     data: (reviews) {
       final Map<int, int> dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
       double sum = 0;
-      
+
       for (var r in reviews) {
         int rRounded = r.rating.round().clamp(1, 5);
         dist[rRounded] = (dist[rRounded] ?? 0) + 1;
         sum += r.rating;
       }
-      
+
       return RatingDistribution(
         totalCount: reviews.length,
         distribution: dist,
-        averageRating: reviews.isEmpty 
-            ? 0.0 
+        averageRating: reviews.isEmpty
+            ? 0.0
             : double.parse((sum / reviews.length).toStringAsFixed(1)),
       );
     },
@@ -68,7 +67,8 @@ final vendorRatingDistributionProvider = Provider<RatingDistribution>((ref) {
 });
 
 // Stream product reviews for a specific productId
-final productReviewsProvider = StreamProvider.family<List<ProductReview>, String>((ref, productId) {
+final productReviewsProvider =
+    StreamProvider.family<List<ProductReview>, String>((ref, productId) {
   return FirebaseFirestore.instance
       .collection('product_reviews')
       .where('productId', isEqualTo: productId)
@@ -81,7 +81,8 @@ final productReviewsProvider = StreamProvider.family<List<ProductReview>, String
 
 /// Single batched Firestore query for all product ratings in the vendor's catalog.
 /// Replaces N individual per-product streams with one whereIn query (up to 30 products).
-final vendorProductRatingsProvider = StreamProvider.autoDispose<Map<String, RatingDistribution>>((ref) {
+final vendorProductRatingsProvider =
+    StreamProvider.autoDispose<Map<String, RatingDistribution>>((ref) {
   final products = ref.watch(productsProvider).value ?? [];
   if (products.isEmpty) return Stream.value({});
 
@@ -92,20 +93,26 @@ final vendorProductRatingsProvider = StreamProvider.autoDispose<Map<String, Rati
       .where('productId', whereIn: productIds)
       .snapshots()
       .map((snapshot) {
-        final Map<String, List<double>> ratingsByProduct = {};
-        for (final doc in snapshot.docs) {
-          final data = doc.data();
-          final pid = (data['productId'] as String?) ?? '';
-          final r = ((data['rating'] as num?) ?? 0.0).toDouble();
-          if (pid.isNotEmpty) ratingsByProduct.putIfAbsent(pid, () => []).add(r);
-        }
-        return {for (final id in productIds) id: _computeDistribution(ratingsByProduct[id] ?? [])};
-      });
+    final Map<String, List<double>> ratingsByProduct = {};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final pid = (data['productId'] as String?) ?? '';
+      final r = ((data['rating'] as num?) ?? 0.0).toDouble();
+      if (pid.isNotEmpty) ratingsByProduct.putIfAbsent(pid, () => []).add(r);
+    }
+    return {
+      for (final id in productIds)
+        id: _computeDistribution(ratingsByProduct[id] ?? [])
+    };
+  });
 });
 
 RatingDistribution _computeDistribution(List<double> ratings) {
   if (ratings.isEmpty) {
-    return RatingDistribution(totalCount: 0, distribution: {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}, averageRating: 0.0);
+    return RatingDistribution(
+        totalCount: 0,
+        distribution: {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+        averageRating: 0.0);
   }
   final dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
   double sum = 0;
@@ -122,24 +129,25 @@ RatingDistribution _computeDistribution(List<double> ratings) {
 }
 
 // Calculate product average rating and total counts on the fly
-final productRatingProvider = Provider.family<RatingDistribution, String>((ref, productId) {
+final productRatingProvider =
+    Provider.family<RatingDistribution, String>((ref, productId) {
   final reviewsAsync = ref.watch(productReviewsProvider(productId));
   return reviewsAsync.maybeWhen(
     data: (reviews) {
       final Map<int, int> dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
       double sum = 0;
-      
+
       for (var r in reviews) {
         int rRounded = r.rating.round().clamp(1, 5);
         dist[rRounded] = (dist[rRounded] ?? 0) + 1;
         sum += r.rating;
       }
-      
+
       return RatingDistribution(
         totalCount: reviews.length,
         distribution: dist,
-        averageRating: reviews.isEmpty 
-            ? 0.0 
+        averageRating: reviews.isEmpty
+            ? 0.0
             : double.parse((sum / reviews.length).toStringAsFixed(1)),
       );
     },
@@ -150,4 +158,3 @@ final productRatingProvider = Provider.family<RatingDistribution, String>((ref, 
     ),
   );
 });
-

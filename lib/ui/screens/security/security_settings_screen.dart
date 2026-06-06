@@ -79,8 +79,7 @@ class _SecuritySettingsScreenState
               ),
               data: (devices) {
                 if (devices.isEmpty) {
-                  return ListTile(
-                      title: Text(l10n.noOtherDevices));
+                  return ListTile(title: Text(l10n.noOtherDevices));
                 }
                 return Column(
                   children: [for (final d in devices) _deviceTile(context, d)],

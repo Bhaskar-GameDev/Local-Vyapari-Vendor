@@ -33,7 +33,8 @@ final notificationServiceProvider = Provider((ref) {
 class NotificationService {
   final Ref _ref;
   bool _initialized = false;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   // Notification that launched the app from a terminated state. We can't act on
   // it immediately because the app still has to boot through the splash and
@@ -70,7 +71,8 @@ class NotificationService {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
     );
 
@@ -93,7 +95,7 @@ class NotificationService {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
           _localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
-              
+
       if (androidImplementation != null) {
         await androidImplementation.requestNotificationsPermission();
         await _createNotificationChannels(androidImplementation);
@@ -200,7 +202,8 @@ class NotificationService {
         final body = notification.body ?? 'Check the app for details';
         final isChatMessage = message.data['type'] == 'chat';
         final payload = json.encode(message.data);
-        _showNativeNotification(title, body, payload: payload, isChatMessage: isChatMessage);
+        _showNativeNotification(title, body,
+            payload: payload, isChatMessage: isChatMessage);
       }
     });
 
@@ -217,7 +220,8 @@ class NotificationService {
     // mounted (see consumePendingNotification).
     messaging.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
-        debugPrint('FCM message opened from terminated state: ${message.messageId}');
+        debugPrint(
+            'FCM message opened from terminated state: ${message.messageId}');
         _pendingMessage = message;
         _pendingMessageAt = DateTime.now();
       }
@@ -262,13 +266,13 @@ class NotificationService {
   /// through here so navigation behaves identically regardless of how the app
   /// was opened. The backend always stamps a string `type` discriminator (and
   /// any IDs the client needs) on the data payload; see functions/src/index.ts.
-  void _routeNotification(Map<String, dynamic> data, {String? fallbackUserName}) {
+  void _routeNotification(Map<String, dynamic> data,
+      {String? fallbackUserName}) {
     switch (data['type']?.toString()) {
       case 'chat':
         _navigateToChat(
-          userId: data['userId']?.toString() ??
-              data['senderId']?.toString() ??
-              '',
+          userId:
+              data['userId']?.toString() ?? data['senderId']?.toString() ?? '',
           userName:
               data['userName']?.toString() ?? fallbackUserName ?? 'Customer',
         );
@@ -302,7 +306,8 @@ class NotificationService {
         final ctx = rootNavigatorKey.currentContext;
         if (ctx != null) {
           // ignore: use_build_context_synchronously
-          GoRouter.of(ctx).push('/chat', extra: {'userId': userId, 'userName': userName});
+          GoRouter.of(ctx)
+              .push('/chat', extra: {'userId': userId, 'userName': userName});
         }
       });
     }
@@ -316,7 +321,8 @@ class NotificationService {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) return;
 
-      final dbRef = FirebaseDatabase.instance.ref('users_devices/${user.uid}/merchant');
+      final dbRef =
+          FirebaseDatabase.instance.ref('users_devices/${user.uid}/merchant');
 
       final Map<String, dynamic> data = {
         'fcmToken': token,
@@ -324,7 +330,8 @@ class NotificationService {
       };
 
       await dbRef.update(data);
-      debugPrint('Device registration synced to RTDB for user: ${user.uid} (merchant)');
+      debugPrint(
+          'Device registration synced to RTDB for user: ${user.uid} (merchant)');
     } catch (e) {
       debugPrint('Error syncing device registration: $e');
     }

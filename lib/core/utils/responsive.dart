@@ -55,7 +55,8 @@ class Responsive {
   }
 
   /// Columns for the offers grid (1 = list, 2 = grid).
-  static int offerGridColumns(BuildContext context) => isTablet(context) ? 2 : 1;
+  static int offerGridColumns(BuildContext context) =>
+      isTablet(context) ? 2 : 1;
 
   // ── Dashboard ────────────────────────────────────────────────────────────
 

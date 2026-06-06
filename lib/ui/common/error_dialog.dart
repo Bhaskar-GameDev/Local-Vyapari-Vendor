@@ -74,7 +74,8 @@ class _ErrorDialogBody extends StatelessWidget {
               color: AppColors.error.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.error_outline, color: AppColors.error, size: 24),
+            child: const Icon(Icons.error_outline,
+                color: AppColors.error, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -91,7 +92,8 @@ class _ErrorDialogBody extends StatelessWidget {
       ),
       content: Text(
         message,
-        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+        style: const TextStyle(
+            fontSize: 14, color: AppColors.textSecondary, height: 1.4),
       ),
       actionsPadding: const EdgeInsets.only(right: 16, bottom: 12, left: 16),
       actions: [

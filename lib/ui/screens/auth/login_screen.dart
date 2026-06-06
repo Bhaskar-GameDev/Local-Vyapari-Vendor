@@ -421,8 +421,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   if (resetSuccess == true && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                            l10n.passwordResetSuccess),
+                                        content:
+                                            Text(l10n.passwordResetSuccess),
                                         backgroundColor: AppColors.success,
                                         behavior: SnackBarBehavior.floating,
                                       ),

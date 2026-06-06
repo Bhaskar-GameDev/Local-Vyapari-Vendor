@@ -123,7 +123,8 @@ class ChatsListScreen extends ConsumerWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: Text(l10n.deleteChat),
-                              content: Text(l10n.confirmDeleteChat(chat.userName)),
+                              content:
+                                  Text(l10n.confirmDeleteChat(chat.userName)),
                               actions: [
                                 TextButton(
                                   onPressed: () =>

@@ -115,8 +115,12 @@ class OffersListScreen extends ConsumerWidget {
                             padding: const EdgeInsets.only(top: AppSpacing.xs),
                             child: Text(
                               isExpired
-                                  ? l10n.expiredOn(DateFormat('MMM dd, hh:mm a').format(endDate))
-                                  : l10n.offerSubtitle(offer.discountPercentage.toInt(), DateFormat('MMM dd, hh:mm a').format(endDate)),
+                                  ? l10n.expiredOn(DateFormat('MMM dd, hh:mm a')
+                                      .format(endDate))
+                                  : l10n.offerSubtitle(
+                                      offer.discountPercentage.toInt(),
+                                      DateFormat('MMM dd, hh:mm a')
+                                          .format(endDate)),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isExpired

@@ -25,7 +25,8 @@ void main() {
   });
 
   group('checkPhone', () {
-    test('returns true and clears loading when the number is registered', () async {
+    test('returns true and clears loading when the number is registered',
+        () async {
       when(() => repo.isPhoneRegistered('+919000000001'))
           .thenAnswer((_) async => true);
 
@@ -43,7 +44,8 @@ void main() {
       expect(notifier.state.isLoading, isFalse);
     });
 
-    test('surfaces an error and stops loading when the lookup throws', () async {
+    test('surfaces an error and stops loading when the lookup throws',
+        () async {
       when(() => repo.isPhoneRegistered(any()))
           .thenThrow(Exception('rtdb offline'));
 
@@ -59,7 +61,10 @@ void main() {
           .thenAnswer((_) async => true);
 
       final ok = await notifier.register(
-        'a@b.com', 'pw123456', 'merchant', 'My Shop',
+        'a@b.com',
+        'pw123456',
+        'merchant',
+        'My Shop',
         phone: '+919000000001',
       );
 
@@ -77,7 +82,10 @@ void main() {
           .thenAnswer((_) async => _FakeUserCredential());
 
       final ok = await notifier.register(
-        'a@b.com', 'pw123456', 'merchant', 'My Shop',
+        'a@b.com',
+        'pw123456',
+        'merchant',
+        'My Shop',
         phone: '+919000000002',
       );
 
@@ -101,7 +109,8 @@ void main() {
   });
 
   group('requestPasswordResetOtp guard', () {
-    test('fails fast for an unregistered number without sending an OTP', () async {
+    test('fails fast for an unregistered number without sending an OTP',
+        () async {
       when(() => repo.isPhoneRegistered(any())).thenAnswer((_) async => false);
 
       String? reportedError;

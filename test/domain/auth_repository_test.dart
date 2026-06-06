@@ -15,11 +15,17 @@ import 'package:mocktail/mocktail.dart';
 // FirebaseAuth / FirebaseDatabase via the constructor.
 
 class _MockAuth extends Mock implements FirebaseAuth {}
+
 class _MockDb extends Mock implements FirebaseDatabase {}
+
 class _MockFunctions extends Mock implements FirebaseFunctions {}
+
 class _MockRef extends Mock implements DatabaseReference {}
+
 class _MockCredential extends Mock implements UserCredential {}
+
 class _MockUser extends Mock implements User {}
+
 class _FakeAuthCredential extends Mock implements PhoneAuthCredential {}
 
 void main() {
@@ -37,7 +43,8 @@ void main() {
     auth = _MockAuth();
     db = _MockDb();
     user = _MockUser();
-    repo = AuthRepository(auth: auth, database: db, functions: _MockFunctions());
+    repo =
+        AuthRepository(auth: auth, database: db, functions: _MockFunctions());
 
     final credential = _MockCredential();
     when(() => credential.user).thenReturn(user);
@@ -48,14 +55,15 @@ void main() {
         )).thenAnswer((_) async => credential);
   });
 
-  test('rolls back the auth account when the first profile write fails', () async {
+  test('rolls back the auth account when the first profile write fails',
+      () async {
     final usersRef = _MockRef();
     final childRef = _MockRef();
     when(() => db.ref('users')).thenReturn(usersRef);
     when(() => usersRef.child('uid123')).thenReturn(childRef);
     // Simulate the users/{uid} write failing (rules / network).
-    when(() => childRef.update(any()))
-        .thenThrow(FirebaseException(plugin: 'database', code: 'permission-denied'));
+    when(() => childRef.update(any())).thenThrow(
+        FirebaseException(plugin: 'database', code: 'permission-denied'));
     when(() => user.delete()).thenAnswer((_) async {});
 
     // register must surface the original failure...
@@ -81,7 +89,8 @@ void main() {
     when(() => phoneChildRef.set(any())).thenAnswer((_) async {});
     when(() => user.delete()).thenAnswer((_) async {});
 
-    await repo.register('a@b.com', 'pw123456', 'customer', phone: '+919000000001');
+    await repo.register('a@b.com', 'pw123456', 'customer',
+        phone: '+919000000001');
 
     verifyNever(() => user.delete());
   });
@@ -92,8 +101,8 @@ void main() {
       final childRef = _MockRef();
       when(() => db.ref('users')).thenReturn(usersRef);
       when(() => usersRef.child('uid123')).thenReturn(childRef);
-      when(() => childRef.update(any()))
-          .thenThrow(FirebaseException(plugin: 'database', code: 'unavailable'));
+      when(() => childRef.update(any())).thenThrow(
+          FirebaseException(plugin: 'database', code: 'unavailable'));
       when(() => user.delete()).thenAnswer((_) async {});
 
       await expectLater(

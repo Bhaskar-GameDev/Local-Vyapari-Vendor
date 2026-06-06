@@ -52,9 +52,8 @@ class SocialAuthService {
         .join();
   }
 
-  String _sha256(String input) =>
-      sha256.convert(utf8.encode(input)).toString();
+  String _sha256(String input) => sha256.convert(utf8.encode(input)).toString();
 }
 
-final socialAuthServiceProvider =
-    Provider<SocialAuthService>((ref) => SocialAuthService(FirebaseAuth.instance));
+final socialAuthServiceProvider = Provider<SocialAuthService>(
+    (ref) => SocialAuthService(FirebaseAuth.instance));

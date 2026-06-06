@@ -56,7 +56,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
 
     return shopState.when(
       data: (shop) {
-        void onSelect(int i) => ref.read(navigationIndexProvider.notifier).setIndex(i);
+        void onSelect(int i) =>
+            ref.read(navigationIndexProvider.notifier).setIndex(i);
 
         if (Responsive.useNavRail(context)) {
           return Scaffold(
@@ -70,7 +71,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                 ),
                 const VerticalDivider(width: 1, thickness: 1),
                 Expanded(
-                  child: FadeIndexedStack(index: currentIndex, children: _screens),
+                  child:
+                      FadeIndexedStack(index: currentIndex, children: _screens),
                 ),
               ],
             ),
@@ -93,7 +95,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              Text(l10n.loadingStorefront, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+              Text(l10n.loadingStorefront,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -106,18 +111,31 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
+                  const Icon(Icons.error_outline_rounded,
+                      size: 56, color: AppColors.error),
                   const SizedBox(height: 16),
-                  Text(l10n.failedToLoadShop, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+                  Text(l10n.failedToLoadShop,
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
+                      border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.15)),
                     ),
-                    child: Text(error.toString(), textAlign: TextAlign.center, style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    child: Text(error.toString(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -130,10 +148,14 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: () async => ref.read(authProvider.notifier).logout(),
-                        icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                        label: Text(l10n.logout, style: const TextStyle(color: AppColors.error)),
-                        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
+                        onPressed: () async =>
+                            ref.read(authProvider.notifier).logout(),
+                        icon: const Icon(Icons.logout_rounded,
+                            color: AppColors.error),
+                        label: Text(l10n.logout,
+                            style: const TextStyle(color: AppColors.error)),
+                        style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.error)),
                       ),
                     ],
                   ),
@@ -190,7 +212,8 @@ class _SideNavRail extends StatelessWidget {
         color: isDark ? Colors.white38 : AppColors.textHint,
       ),
       indicatorColor: AppColors.primary,
-      indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      indicatorShape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       minWidth: 72,
       minExtendedWidth: 200,
       destinations: [
@@ -251,7 +274,8 @@ class _FloatingNavBar extends StatelessWidget {
 
     return Container(
       color: scaffoldBg,
-      padding: EdgeInsets.fromLTRB(16, 6, 16, bottomPad > 0 ? bottomPad + 4 : 14),
+      padding:
+          EdgeInsets.fromLTRB(16, 6, 16, bottomPad > 0 ? bottomPad + 4 : 14),
       child: Container(
         height: 62,
         decoration: BoxDecoration(
@@ -272,11 +296,42 @@ class _FloatingNavBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _NavTab(index: 0, active: Icons.grid_view_rounded, inactive: Icons.grid_view_outlined, label: l10n.navHome, ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 1, active: Icons.inventory_2_rounded, inactive: Icons.inventory_2_outlined, label: l10n.navProducts, ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 2, active: Icons.local_offer_rounded, inactive: Icons.local_offer_outlined, label: l10n.navOffers, ci: currentIndex, onTap: onSelect),
-            _NavTab(index: 3, active: Icons.chat_bubble_rounded, inactive: Icons.chat_bubble_outline_rounded, label: l10n.navChats, ci: currentIndex, onTap: onSelect, badge: hasUnread),
-            _NavTab(index: 4, active: Icons.person_rounded, inactive: Icons.person_outline_rounded, label: l10n.navProfile, ci: currentIndex, onTap: onSelect),
+            _NavTab(
+                index: 0,
+                active: Icons.grid_view_rounded,
+                inactive: Icons.grid_view_outlined,
+                label: l10n.navHome,
+                ci: currentIndex,
+                onTap: onSelect),
+            _NavTab(
+                index: 1,
+                active: Icons.inventory_2_rounded,
+                inactive: Icons.inventory_2_outlined,
+                label: l10n.navProducts,
+                ci: currentIndex,
+                onTap: onSelect),
+            _NavTab(
+                index: 2,
+                active: Icons.local_offer_rounded,
+                inactive: Icons.local_offer_outlined,
+                label: l10n.navOffers,
+                ci: currentIndex,
+                onTap: onSelect),
+            _NavTab(
+                index: 3,
+                active: Icons.chat_bubble_rounded,
+                inactive: Icons.chat_bubble_outline_rounded,
+                label: l10n.navChats,
+                ci: currentIndex,
+                onTap: onSelect,
+                badge: hasUnread),
+            _NavTab(
+                index: 4,
+                active: Icons.person_rounded,
+                inactive: Icons.person_outline_rounded,
+                label: l10n.navProfile,
+                ci: currentIndex,
+                onTap: onSelect),
           ],
         ),
       ),

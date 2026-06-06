@@ -35,7 +35,8 @@ class FeedbackService {
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty || trimmed.length > kFeedbackMaxLength) {
-      throw ArgumentError('Feedback message must be 1–$kFeedbackMaxLength characters.');
+      throw ArgumentError(
+          'Feedback message must be 1–$kFeedbackMaxLength characters.');
     }
 
     await _firestore.collection('feedback').add({

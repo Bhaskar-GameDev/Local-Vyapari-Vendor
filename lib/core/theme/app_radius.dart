@@ -12,7 +12,8 @@ class AppRadius {
   // BorderRadius Helpers
   static final BorderRadius borderXs = BorderRadius.circular(xs);
   static final BorderRadius borderSm = BorderRadius.circular(sm);
-  static final BorderRadius borderMedium = BorderRadius.circular(md); // Requested name: borderMedium
+  static final BorderRadius borderMedium =
+      BorderRadius.circular(md); // Requested name: borderMedium
   static final BorderRadius borderMd = BorderRadius.circular(md);
   static final BorderRadius borderLg = BorderRadius.circular(lg);
   static final BorderRadius borderXl = BorderRadius.circular(xl);

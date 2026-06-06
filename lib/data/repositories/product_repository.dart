@@ -12,7 +12,7 @@ class ProductRepository {
   /// Realtime stream — pushes updates the instant Firebase changes for this shop ID
   Stream<List<ProductModel>> watchProductsForShop(String shopId) {
     _dbRef.child(shopId).keepSynced(true);
-    
+
     return _dbRef.child(shopId).onValue.map((event) {
       final data = event.snapshot.value;
       if (data is! Map) return <ProductModel>[];
@@ -58,14 +58,14 @@ class ProductRepository {
   Future<void> deleteProduct(String productId) async {
     final shopId = _currentShopId;
     if (shopId == null) throw Exception('User not authenticated');
-    
+
     await _dbRef.child(shopId).child(productId).remove();
   }
 
   Future<void> updateProductStatus(String productId, bool isActive) async {
     final shopId = _currentShopId;
     if (shopId == null) throw Exception('User not authenticated');
-    
+
     await _dbRef.child(shopId).child(productId).update({'isActive': isActive});
   }
 }

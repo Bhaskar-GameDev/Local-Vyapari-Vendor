@@ -145,7 +145,8 @@ class ProfileScreen extends ConsumerWidget {
                                 }
                               },
                         title: Text(l10n.shopIsOpen,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(shop?.isOpen == true
                             ? l10n.customersSeeOpen
                             : l10n.customersSeeClosed),
@@ -177,8 +178,8 @@ class ProfileScreen extends ConsumerWidget {
                       coordinatesText,
                       Icons.map_outlined,
                     ),
-                    _buildListTile(context, l10n.phoneLabel, shop?.phone ?? l10n.notSet,
-                        Icons.phone),
+                    _buildListTile(context, l10n.phoneLabel,
+                        shop?.phone ?? l10n.notSet, Icons.phone),
 
                     // ── App Preferences section ──────────────────────────
                     AppSpacing.verticalLg,
@@ -286,8 +287,7 @@ class ProfileScreen extends ConsumerWidget {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
-                                          content:
-                                              Text(l10n.emailBoundSuccess),
+                                          content: Text(l10n.emailBoundSuccess),
                                           backgroundColor: AppColors.success,
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -320,8 +320,7 @@ class ProfileScreen extends ConsumerWidget {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                              l10n.phoneBoundSuccess),
+                                          content: Text(l10n.phoneBoundSuccess),
                                           backgroundColor: AppColors.success,
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -723,7 +722,9 @@ class _ProfileHeroHeader extends StatelessWidget {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            isOpen ? AppLocalizations.of(context).open : AppLocalizations.of(context).closed,
+                            isOpen
+                                ? AppLocalizations.of(context).open
+                                : AppLocalizations.of(context).closed,
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,

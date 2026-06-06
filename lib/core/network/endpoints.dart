@@ -6,10 +6,10 @@ class Endpoints {
 
   // Shop
   static const String shopProfile = '/shop/profile';
-  
+
   // Products
   static const String products = '/products.json';
-  
+
   // Offers
   static const String offers = '/offers.json';
 }

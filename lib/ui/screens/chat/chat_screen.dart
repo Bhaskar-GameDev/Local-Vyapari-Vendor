@@ -133,7 +133,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.userName.isNotEmpty ? widget.userName : l10n.customer),
+        title:
+            Text(widget.userName.isNotEmpty ? widget.userName : l10n.customer),
         elevation: 0.5,
         actions: [
           IconButton(
@@ -175,7 +176,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 .titleMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                 ),
                           ),
                           AppSpacing.verticalXs,
@@ -185,7 +187,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                           ),
                         ],
@@ -221,7 +225,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         decoration: BoxDecoration(
                           color: isMe
                               ? AppColors.primary
-                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -240,8 +246,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             Text(
                               message.text,
                               style: TextStyle(
-                                color:
-                                    isMe ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                                color: isMe
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14.5,
                               ),
                             ),
@@ -251,7 +258,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               style: TextStyle(
                                 color: isMe
                                     ? Colors.white60
-                                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                 fontSize: 9.5,
                               ),
                             ),
@@ -295,7 +304,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -308,7 +318,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         focusedBorder: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
                       ),
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),

@@ -3,7 +3,8 @@ import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
 import 'fb_list_notifier.dart';
 
-final productRepositoryProvider = Provider<ProductRepository>((ref) => ProductRepository());
+final productRepositoryProvider =
+    Provider<ProductRepository>((ref) => ProductRepository());
 
 class ProductsNotifier extends FBListNotifier<ProductModel> {
   final ProductRepository _repository;
@@ -28,6 +29,7 @@ class ProductsNotifier extends FBListNotifier<ProductModel> {
 }
 
 final productsProvider =
-    StateNotifierProvider<ProductsNotifier, AsyncValue<List<ProductModel>>>((ref) {
+    StateNotifierProvider<ProductsNotifier, AsyncValue<List<ProductModel>>>(
+        (ref) {
   return ProductsNotifier(ref, ref.watch(productRepositoryProvider));
 });

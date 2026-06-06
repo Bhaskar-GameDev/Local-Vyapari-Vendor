@@ -3,7 +3,8 @@ import '../../data/models/offer_model.dart';
 import '../../data/repositories/offer_repository.dart';
 import 'fb_list_notifier.dart';
 
-final offerRepositoryProvider = Provider<OfferRepository>((ref) => OfferRepository());
+final offerRepositoryProvider =
+    Provider<OfferRepository>((ref) => OfferRepository());
 
 class OffersNotifier extends FBListNotifier<OfferModel> {
   final OfferRepository _repository;
@@ -14,14 +15,11 @@ class OffersNotifier extends FBListNotifier<OfferModel> {
   Stream<List<OfferModel>> watchForUser(String uid) =>
       _repository.watchOffersForShop(uid);
 
-  Future<void> addOffer(OfferModel offer) =>
-      _repository.addOffer(offer);
+  Future<void> addOffer(OfferModel offer) => _repository.addOffer(offer);
 
-  Future<void> updateOffer(OfferModel offer) =>
-      _repository.updateOffer(offer);
+  Future<void> updateOffer(OfferModel offer) => _repository.updateOffer(offer);
 
-  Future<void> deleteOffer(String offerId) =>
-      _repository.deleteOffer(offerId);
+  Future<void> deleteOffer(String offerId) => _repository.deleteOffer(offerId);
 
   Future<void> toggleOfferAvailability(String offerId, bool isActive) =>
       _repository.updateOfferStatus(offerId, isActive);

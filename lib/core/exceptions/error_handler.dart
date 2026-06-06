@@ -16,7 +16,8 @@ class ErrorHandler {
   static String getMessage(Object error) {
     if (error is AppException) return error.message;
     if (error is FirebaseAuthException) return _fromFirebaseAuth(error);
-    if (error is FirebaseFunctionsException) return _fromFirebaseFunctions(error);
+    if (error is FirebaseFunctionsException)
+      return _fromFirebaseFunctions(error);
     if (error is DioException) return _fromDio(error);
     if (error is FirebaseException) {
       return error.message ?? 'A Firebase error occurred. Please try again.';
@@ -85,7 +86,8 @@ class ErrorHandler {
       case 'unavailable':
         return e.message ?? 'Service unavailable. Please try again later.';
       case 'internal':
-        return e.message ?? 'An internal error occurred. Please try again later.';
+        return e.message ??
+            'An internal error occurred. Please try again later.';
       case 'permission-denied':
         return e.message ?? 'Access denied for this account.';
       default:
@@ -103,10 +105,12 @@ class ErrorHandler {
         return 'No internet connection. Please try again.';
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
-        if (status == 401) return 'Your session has expired. Please log in again.';
+        if (status == 401)
+          return 'Your session has expired. Please log in again.';
         if (status == 403) return 'Access denied.';
         if (status == 404) return 'The requested resource was not found.';
-        if (status != null && status >= 500) return 'Server error. Please try again later.';
+        if (status != null && status >= 500)
+          return 'Server error. Please try again later.';
         return 'Server returned an error (${status ?? 'unknown'}).';
       case DioExceptionType.cancel:
         return 'Request was cancelled.';

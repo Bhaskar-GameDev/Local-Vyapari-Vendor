@@ -26,13 +26,13 @@ class AddProductScreen extends ConsumerStatefulWidget {
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _offerPriceController = TextEditingController();
   final _stockController = TextEditingController();
-  
+
   String _selectedCategory = 'Groceries & Staples';
   final List<String> _categories = [
     'Groceries & Staples',
@@ -63,7 +63,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     'Office Supplies',
     'Other',
   ];
-  
+
   final List<dynamic> _images = [];
   bool _isLoading = false;
 
@@ -97,7 +97,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (_images.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.max5Images, style: const TextStyle(color: Colors.white)),
+          content: Text(l10n.max5Images,
+              style: const TextStyle(color: Colors.white)),
           backgroundColor: AppColors.error,
         ),
       );
@@ -110,12 +111,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (pickedFiles.isNotEmpty) {
         setState(() {
           final remainingSlots = 5 - _images.length;
-          final imagesToAdd = pickedFiles.take(remainingSlots).map((xFile) => File(xFile.path)).toList();
+          final imagesToAdd = pickedFiles
+              .take(remainingSlots)
+              .map((xFile) => File(xFile.path))
+              .toList();
           _images.addAll(imagesToAdd);
           if (pickedFiles.length > remainingSlots) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(l10n.only5Images, style: const TextStyle(color: Colors.white)),
+                content: Text(l10n.only5Images,
+                    style: const TextStyle(color: Colors.white)),
                 backgroundColor: AppColors.warning,
               ),
             );
@@ -140,7 +145,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (_images.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.selectAtLeast1Image, style: const TextStyle(color: Colors.white)),
+          content: Text(l10n.selectAtLeast1Image,
+              style: const TextStyle(color: Colors.white)),
           backgroundColor: AppColors.error,
         ),
       );
@@ -162,12 +168,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
 
       final newProduct = ProductModel(
-        id: widget.existingProduct?.id ?? '', 
+        id: widget.existingProduct?.id ?? '',
         name: _nameController.text.trim(),
         description: _descController.text.trim(),
         category: _selectedCategory,
         actualPrice: double.parse(_priceController.text.trim()),
-        offerPrice: _offerPriceController.text.trim().isNotEmpty ? double.parse(_offerPriceController.text.trim()) : null,
+        offerPrice: _offerPriceController.text.trim().isNotEmpty
+            ? double.parse(_offerPriceController.text.trim())
+            : null,
         stockQuantity: int.parse(_stockController.text.trim()),
         images: imageUrls,
         isActive: widget.existingProduct?.isActive ?? true,
@@ -178,11 +186,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       } else {
         await ref.read(productsProvider.notifier).addProduct(newProduct);
       }
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.existingProduct != null ? l10n.productUpdated : l10n.productAdded),
+            content: Text(widget.existingProduct != null
+                ? l10n.productUpdated
+                : l10n.productAdded),
             backgroundColor: AppColors.success,
           ),
         );
@@ -229,7 +239,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (confirmed == true) {
       setState(() => _isLoading = true);
       try {
-        await ref.read(productsProvider.notifier).deleteProduct(widget.existingProduct!.id);
+        await ref
+            .read(productsProvider.notifier)
+            .deleteProduct(widget.existingProduct!.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -259,11 +271,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingProduct != null ? l10n.editProduct : l10n.addNewProduct),
+        title: Text(widget.existingProduct != null
+            ? l10n.editProduct
+            : l10n.addNewProduct),
         actions: widget.existingProduct != null
             ? [
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppColors.error),
                   onPressed: () => _confirmDelete(context),
                 ),
               ]
@@ -277,7 +292,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
           child: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              constraints:
+                  const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -288,7 +304,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     CustomTextField(
                       label: l10n.productName,
                       controller: _nameController,
-                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                      validator: (val) =>
+                          val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     Autocomplete<String>(
@@ -303,7 +320,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       onSelected: (String selection) {
                         setState(() => _selectedCategory = selection);
                       },
-                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      fieldViewBuilder:
+                          (context, controller, focusNode, onFieldSubmitted) {
                         return TextFormField(
                           controller: controller,
                           focusNode: focusNode,
@@ -311,11 +329,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             labelText: l10n.category,
                             filled: true,
                             fillColor: Theme.of(context).colorScheme.surface,
-                            border: OutlineInputBorder(borderRadius: AppRadius.borderMedium),
+                            border: OutlineInputBorder(
+                                borderRadius: AppRadius.borderMedium),
                             suffixIcon: const Icon(Icons.arrow_drop_down),
                           ),
-                          validator: (val) =>
-                              val == null || val.trim().isEmpty ? l10n.required : null,
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? l10n.required
+                              : null,
                           onChanged: (val) => _selectedCategory = val,
                         );
                       },
@@ -354,8 +374,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             controller: _priceController,
                             keyboardType: TextInputType.number,
                             validator: (val) {
-                              if (val == null || val.isEmpty) return l10n.required;
-                              if (double.tryParse(val) == null) return l10n.invalid;
+                              if (val == null || val.isEmpty)
+                                return l10n.required;
+                              if (double.tryParse(val) == null)
+                                return l10n.invalid;
                               return null;
                             },
                           ),
@@ -367,7 +389,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             controller: _offerPriceController,
                             keyboardType: TextInputType.number,
                             validator: (val) {
-                              if (val != null && val.isNotEmpty && double.tryParse(val) == null) return l10n.invalid;
+                              if (val != null &&
+                                  val.isNotEmpty &&
+                                  double.tryParse(val) == null)
+                                return l10n.invalid;
                               return null;
                             },
                           ),
@@ -385,11 +410,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         return null;
                       },
                     ),
-                     AppSpacing.verticalMd,
+                    AppSpacing.verticalMd,
                     CustomTextField(
                       label: l10n.descriptionLabel,
                       controller: _descController,
-                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                      validator: (val) =>
+                          val == null || val.isEmpty ? l10n.required : null,
                     ),
                     if (widget.existingProduct != null) ...[
                       AppSpacing.verticalLg,
@@ -400,7 +426,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute<void>(
-                              builder: (context) => ProductReviewsScreen(product: widget.existingProduct!),
+                              builder: (context) => ProductReviewsScreen(
+                                  product: widget.existingProduct!),
                             ),
                           );
                         },
@@ -408,7 +435,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.primary),
                           foregroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMedium),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: AppRadius.borderMedium),
                         ),
                       ),
                     ],
@@ -463,7 +491,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               if (index == _images.length) {
                 return _buildAddImageCard();
               }
-              
+
               final image = _images[index];
               return _buildImageCard(image, index);
             },
@@ -491,7 +519,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.primary),
+            const Icon(Icons.add_photo_alternate_outlined,
+                size: 32, color: AppColors.primary),
             AppSpacing.verticalXs,
             Text(
               AppLocalizations.of(context).addImage,

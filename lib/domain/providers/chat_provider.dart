@@ -64,7 +64,8 @@ String? _stringValue(dynamic value) {
 
 String? _conversationVendorId(Map<dynamic, dynamic> conversation) {
   final lastMessage = conversation['lastMessage'];
-  final lastMessageMap = lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
+  final lastMessageMap =
+      lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
 
   return _stringValue(conversation['vendorId']) ??
       _stringValue(conversation['shopId']) ??
@@ -76,7 +77,8 @@ String? _conversationVendorId(Map<dynamic, dynamic> conversation) {
 
 String? _conversationCustomerId(Map<dynamic, dynamic> conversation) {
   final lastMessage = conversation['lastMessage'];
-  final lastMessageMap = lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
+  final lastMessageMap =
+      lastMessage is Map ? lastMessage : const <dynamic, dynamic>{};
 
   return _stringValue(conversation['customerId']) ??
       _stringValue(conversation['userId']) ??
@@ -98,7 +100,8 @@ bool _belongsToVendorConversation(
   return true;
 }
 
-final chatMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, userId) {
+final chatMessagesProvider =
+    StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, userId) {
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 
@@ -126,7 +129,8 @@ final chatMessagesProvider = StreamProvider.autoDispose.family<List<ChatMessage>
   });
 });
 
-final vendorChatsProvider = StreamProvider.autoDispose<List<ChatSummary>>((ref) {
+final vendorChatsProvider =
+    StreamProvider.autoDispose<List<ChatSummary>>((ref) {
   final vendorId = ref.watch(vendorIdProvider);
   if (vendorId == null) return Stream.value([]);
 

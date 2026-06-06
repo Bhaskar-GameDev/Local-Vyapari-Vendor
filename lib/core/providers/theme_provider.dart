@@ -16,7 +16,9 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     try {
       _prefs = await SharedPreferences.getInstance();
       final themeIndex = _prefs!.getInt(_themeKey);
-      if (themeIndex != null && themeIndex >= 0 && themeIndex < ThemeMode.values.length) {
+      if (themeIndex != null &&
+          themeIndex >= 0 &&
+          themeIndex < ThemeMode.values.length) {
         state = ThemeMode.values[themeIndex];
       }
     } catch (_) {
@@ -29,7 +31,8 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     ThemeMode nextMode;
 
     if (currentMode == ThemeMode.system) {
-      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      final brightness =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness;
       if (brightness == Brightness.dark) {
         nextMode = ThemeMode.light;
       } else {

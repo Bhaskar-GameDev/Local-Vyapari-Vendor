@@ -124,32 +124,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   actions: [
                     TextButton(
-                      onPressed: isVerifying ? null : () => Navigator.pop(dialogContext, false),
+                      onPressed: isVerifying
+                          ? null
+                          : () => Navigator.pop(dialogContext, false),
                       child: Text(l10n.commonCancel),
                     ),
                     ElevatedButton(
-                      onPressed: isVerifying ? null : () async {
-                        final code = codeController.text.trim();
-                        if (code.length != 6) return;
+                      onPressed: isVerifying
+                          ? null
+                          : () async {
+                              final code = codeController.text.trim();
+                              if (code.length != 6) return;
 
-                        setState(() => isVerifying = true);
+                              setState(() => isVerifying = true);
 
-                        final regSuccess = await authNotifier.registerWithPhoneOtp(
-                          verificationId: currentVerificationId,
-                          code: code,
-                          email: email,
-                          password: password,
-                          role: 'merchant',
-                          phone: phone,
-                        );
+                              final regSuccess =
+                                  await authNotifier.registerWithPhoneOtp(
+                                verificationId: currentVerificationId,
+                                code: code,
+                                email: email,
+                                password: password,
+                                role: 'merchant',
+                                phone: phone,
+                              );
 
-                        if (context.mounted) {
-                          setState(() => isVerifying = false);
-                          Navigator.pop(dialogContext, regSuccess);
-                        }
-                      },
+                              if (context.mounted) {
+                                setState(() => isVerifying = false);
+                                Navigator.pop(dialogContext, regSuccess);
+                              }
+                            },
                       child: isVerifying
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
                           : Text(l10n.verifyAndRegister),
                     ),
                   ],
@@ -203,7 +211,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               vertical: AppSpacing.lg,
             ),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              constraints:
+                  const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -221,7 +230,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.storefront, color: AppColors.primary, size: 28),
+                            const Icon(Icons.storefront,
+                                color: AppColors.primary, size: 28),
                             AppSpacing.horizontalMd,
                             Expanded(
                               child: Column(
@@ -229,7 +239,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 children: [
                                   Text(
                                     l10n.joinLocalVyapari,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
                                           color: AppColors.primary,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -237,7 +250,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   AppSpacing.verticalXs,
                                   Text(
                                     l10n.reachNearbyCustomers,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
                                           color: AppColors.textSecondary,
                                         ),
                                   ),
@@ -249,7 +265,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ),
                     AppSpacing.verticalXl,
-                    
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 100),
@@ -260,14 +275,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.emailRequired;
+                          if (val == null || val.isEmpty)
+                            return l10n.emailRequired;
                           if (!val.contains('@')) return l10n.enterValidEmail;
                           return null;
                         },
                       ),
                     ),
                     AppSpacing.verticalMd,
-
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 200),
@@ -279,14 +294,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         prefixIcon: Icons.phone_android,
                         prefixText: '+91 ',
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.phoneRequired;
-                          if (val.length != 10) return l10n.enterValid10DigitNumber;
+                          if (val == null || val.isEmpty)
+                            return l10n.phoneRequired;
+                          if (val.length != 10)
+                            return l10n.enterValid10DigitNumber;
                           return null;
                         },
                       ),
                     ),
                     AppSpacing.verticalMd,
-                    
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 300),
@@ -297,14 +313,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         obscureText: true,
                         prefixIcon: Icons.lock_outline,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.passwordRequired;
+                          if (val == null || val.isEmpty)
+                            return l10n.passwordRequired;
                           if (val.length < 6) return l10n.atLeast6Chars;
                           return null;
                         },
                       ),
                     ),
                     AppSpacing.verticalMd,
-                    
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 400),
@@ -315,14 +331,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         obscureText: true,
                         prefixIcon: Icons.lock_outline,
                         validator: (val) {
-                          if (val == null || val.isEmpty) return l10n.pleaseConfirmPassword;
-                          if (val != _passwordController.text) return l10n.passwordsDoNotMatch;
+                          if (val == null || val.isEmpty)
+                            return l10n.pleaseConfirmPassword;
+                          if (val != _passwordController.text)
+                            return l10n.passwordsDoNotMatch;
                           return null;
                         },
                       ),
                     ),
                     AppSpacing.verticalXl,
-                    
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 500),
@@ -336,7 +353,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ),
                     AppSpacing.verticalMd,
-                    
                     FadeInSlide(
                       duration: const Duration(milliseconds: 500),
                       delay: const Duration(milliseconds: 600),

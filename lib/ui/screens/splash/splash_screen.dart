@@ -24,9 +24,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   void _navigate() {
     if (!mounted) return;
-    
+
     final authState = ref.read(authStateProvider);
-    
+
     authState.when(
       data: (user) {
         if (!mounted) return;

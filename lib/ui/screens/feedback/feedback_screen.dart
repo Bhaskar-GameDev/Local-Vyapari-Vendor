@@ -112,9 +112,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                   AppSpacing.verticalSm,
                   _TypeSelector(
                     selected: _type,
-                    onChanged: _isSubmitting
-                        ? null
-                        : (t) => setState(() => _type = t),
+                    onChanged:
+                        _isSubmitting ? null : (t) => setState(() => _type = t),
                     l10n: l10n,
                   ),
                   AppSpacing.verticalLg,
@@ -174,11 +173,7 @@ class _TypeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = <(FeedbackType, String, IconData)>[
       (FeedbackType.bug, l10n.feedbackTypeBug, Icons.bug_report_outlined),
-      (
-        FeedbackType.feature,
-        l10n.feedbackTypeFeature,
-        Icons.lightbulb_outline
-      ),
+      (FeedbackType.feature, l10n.feedbackTypeFeature, Icons.lightbulb_outline),
       (
         FeedbackType.general,
         l10n.feedbackTypeGeneral,
@@ -203,8 +198,7 @@ class _TypeSelector extends StatelessWidget {
               color: selected == type ? Colors.white : AppColors.textPrimary,
               fontWeight: FontWeight.w600,
             ),
-            onSelected:
-                onChanged == null ? null : (_) => onChanged!(type),
+            onSelected: onChanged == null ? null : (_) => onChanged!(type),
           ),
       ],
     );

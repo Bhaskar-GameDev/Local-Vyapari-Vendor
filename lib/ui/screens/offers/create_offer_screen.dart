@@ -22,11 +22,11 @@ class CreateOfferScreen extends ConsumerStatefulWidget {
 
 class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _discountController = TextEditingController();
-  
+
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
 
@@ -60,7 +60,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
   Future<DateTime?> _pickDateTime(DateTime initialDate) async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDate.isBefore(DateTime.now()) ? DateTime.now() : initialDate,
+      initialDate:
+          initialDate.isBefore(DateTime.now()) ? DateTime.now() : initialDate,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -102,7 +103,9 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
         await ref.read(offersProvider.notifier).updateOffer(newOffer);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.offerUpdated), backgroundColor: AppColors.success),
+            SnackBar(
+                content: Text(l10n.offerUpdated),
+                backgroundColor: AppColors.success),
           );
           Navigator.pop(context);
         }
@@ -110,7 +113,9 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
         await ref.read(offersProvider.notifier).addOffer(newOffer);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.offerCreated), backgroundColor: AppColors.success),
+            SnackBar(
+                content: Text(l10n.offerCreated),
+                backgroundColor: AppColors.success),
           );
           Navigator.pop(context);
         }
@@ -134,7 +139,9 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingOffer != null ? l10n.editFlashSale : l10n.createFlashSale),
+        title: Text(widget.existingOffer != null
+            ? l10n.editFlashSale
+            : l10n.createFlashSale),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -144,7 +151,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
           ),
           child: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
+              constraints:
+                  const BoxConstraints(maxWidth: AppDimensions.maxFormWidth),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -153,7 +161,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                     CustomTextField(
                       label: l10n.offerTitleLabel,
                       controller: _titleController,
-                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                      validator: (val) =>
+                          val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     CustomTextField(
@@ -176,13 +185,16 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                     CustomTextField(
                       label: l10n.descriptionLabel,
                       controller: _descController,
-                      validator: (val) => val == null || val.isEmpty ? l10n.required : null,
+                      validator: (val) =>
+                          val == null || val.isEmpty ? l10n.required : null,
                     ),
                     AppSpacing.verticalMd,
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                        border: Border.all(
+                            color:
+                                Theme.of(context).colorScheme.outlineVariant),
                         borderRadius: AppRadius.borderMedium,
                       ),
                       child: Column(
@@ -190,7 +202,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.access_time_filled_rounded, color: AppColors.primary),
+                              const Icon(Icons.access_time_filled_rounded,
+                                  color: AppColors.primary),
                               AppSpacing.horizontalSm,
                               Expanded(
                                 child: Column(
@@ -198,12 +211,23 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   children: [
                                     Text(
                                       l10n.startsAt,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
                                     Text(
-                                      DateFormat('MMM dd, yyyy - hh:mm a').format(_startDate),
-                                      style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                      DateFormat('MMM dd, yyyy - hh:mm a')
+                                          .format(_startDate),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface),
                                     ),
                                   ],
                                 ),
@@ -211,7 +235,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                               TextButton(
                                 onPressed: () async {
                                   final dt = await _pickDateTime(_startDate);
-                                  if (dt != null) setState(() => _startDate = dt);
+                                  if (dt != null)
+                                    setState(() => _startDate = dt);
                                 },
                                 child: Text(l10n.change),
                               ),
@@ -220,7 +245,8 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                           const Divider(height: AppSpacing.lg),
                           Row(
                             children: [
-                              const Icon(Icons.event_busy_rounded, color: AppColors.error),
+                              const Icon(Icons.event_busy_rounded,
+                                  color: AppColors.error),
                               AppSpacing.horizontalSm,
                               Expanded(
                                 child: Column(
@@ -228,12 +254,23 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                                   children: [
                                     Text(
                                       l10n.endsAt,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant),
                                     ),
                                     AppSpacing.verticalXs,
                                     Text(
-                                      DateFormat('MMM dd, yyyy - hh:mm a').format(_endDate),
-                                      style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                      DateFormat('MMM dd, yyyy - hh:mm a')
+                                          .format(_endDate),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface),
                                     ),
                                   ],
                                 ),
@@ -254,13 +291,16 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                        border: Border.all(
+                            color:
+                                Theme.of(context).colorScheme.outlineVariant),
                         borderRadius: AppRadius.borderMedium,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.campaign_rounded, color: AppColors.primary),
+                          const Icon(Icons.campaign_rounded,
+                              color: AppColors.primary),
                           AppSpacing.horizontalSm,
                           Expanded(
                             child: Column(
@@ -268,12 +308,22 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                               children: [
                                 Text(
                                   l10n.featureInPromoCarousel,
-                                  style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface),
                                 ),
                                 AppSpacing.verticalXs,
                                 Text(
                                   l10n.featureInPromoCarouselDescription,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant),
                                 ),
                               ],
                             ),
@@ -281,14 +331,17 @@ class _CreateOfferScreenState extends ConsumerState<CreateOfferScreen> {
                           AppSpacing.horizontalSm,
                           Switch(
                             value: _isFeatured,
-                            onChanged: (val) => setState(() => _isFeatured = val),
+                            onChanged: (val) =>
+                                setState(() => _isFeatured = val),
                           ),
                         ],
                       ),
                     ),
                     AppSpacing.verticalXl,
                     PrimaryButton(
-                      text: widget.existingOffer != null ? l10n.updateOffer : l10n.launchOffer,
+                      text: widget.existingOffer != null
+                          ? l10n.updateOffer
+                          : l10n.launchOffer,
                       isLoading: _isLoading,
                       onPressed: _submitOffer,
                       color: AppColors.warning,

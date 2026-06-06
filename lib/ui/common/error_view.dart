@@ -51,7 +51,8 @@ class ErrorView extends StatelessWidget {
             Text(
               ErrorHandler.getMessage(error),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 20),

@@ -32,7 +32,8 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final shopState = ref.watch(shopProvider);
-    final shopName = shopState.maybeWhen(data: (s) => s?.name ?? l10n.yourStore, orElse: () => l10n.yourStore);
+    final shopName = shopState.maybeWhen(
+        data: (s) => s?.name ?? l10n.yourStore, orElse: () => l10n.yourStore);
 
     return Scaffold(
       appBar: AppBar(
@@ -41,8 +42,18 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_greeting(l10n), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Theme.of(context).colorScheme.outline, height: 1)),
-            Text(shopName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface, height: 1.3)),
+            Text(_greeting(l10n),
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: Theme.of(context).colorScheme.outline,
+                    height: 1)),
+            Text(shopName,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.3)),
           ],
         ),
         actions: [
@@ -58,11 +69,14 @@ class DashboardScreen extends ConsumerWidget {
         child: Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
-              Responsive.horizontalPadding(context), 16,
-              Responsive.horizontalPadding(context), 24,
+              Responsive.horizontalPadding(context),
+              16,
+              Responsive.horizontalPadding(context),
+              24,
             ),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: AppDimensions.maxTabletContentWidth),
+              constraints: const BoxConstraints(
+                  maxWidth: AppDimensions.maxTabletContentWidth),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -133,20 +147,29 @@ class _HeroCard extends ConsumerWidget {
                 const SizedBox(height: 14),
                 Text(
                   shop?.name ?? l10n.yourStore,
-                  style: TextStyle(color: Colors.white, fontSize: 22 * ts, fontWeight: FontWeight.w700, height: 1.2, fontFamily: 'Poppins'),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22 * ts,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                      fontFamily: 'Poppins'),
                 ),
                 if (shop?.address.isNotEmpty == true) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_rounded, color: Colors.white.withValues(alpha: 0.55), size: 12),
+                      Icon(Icons.location_on_rounded,
+                          color: Colors.white.withValues(alpha: 0.55),
+                          size: 12),
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text(
                           shop!.address,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 12),
                         ),
                       ),
                     ],
@@ -154,18 +177,28 @@ class _HeroCard extends ConsumerWidget {
                 ],
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      _HeroMiniStat(icon: Icons.visibility_outlined, value: '${todayStat.views}', label: l10n.todaysViews),
+                      _HeroMiniStat(
+                          icon: Icons.visibility_outlined,
+                          value: '${todayStat.views}',
+                          label: l10n.todaysViews),
                       _VertDivider(),
-                      _HeroMiniStat(icon: Icons.ads_click_rounded, value: '${todayStat.clicks}', label: l10n.todaysClicks),
+                      _HeroMiniStat(
+                          icon: Icons.ads_click_rounded,
+                          value: '${todayStat.clicks}',
+                          label: l10n.todaysClicks),
                       _VertDivider(),
-                      _HeroMiniStat(icon: Icons.star_outline_rounded, value: '${shop?.totalReviews ?? 0}', label: l10n.totalReviews),
+                      _HeroMiniStat(
+                          icon: Icons.star_outline_rounded,
+                          value: '${shop?.totalReviews ?? 0}',
+                          label: l10n.totalReviews),
                     ],
                   ),
                 ),
@@ -175,8 +208,11 @@ class _HeroCard extends ConsumerWidget {
         },
         orElse: () => Container(
           height: 180,
-          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
-          child: const Center(child: CircularProgressIndicator(color: Colors.white38)),
+          decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(20)),
+          child: const Center(
+              child: CircularProgressIndicator(color: Colors.white38)),
         ),
       ),
     );
@@ -199,7 +235,8 @@ class _StatusPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7, height: 7,
+            width: 7,
+            height: 7,
             decoration: BoxDecoration(
               color: isOpen ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
               shape: BoxShape.circle,
@@ -207,8 +244,14 @@ class _StatusPill extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isOpen ? AppLocalizations.of(context).open : AppLocalizations.of(context).closed,
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+            isOpen
+                ? AppLocalizations.of(context).open
+                : AppLocalizations.of(context).closed,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins'),
           ),
         ],
       ),
@@ -233,7 +276,12 @@ class _RatingChip extends StatelessWidget {
         children: [
           const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 13),
           const SizedBox(width: 4),
-          Text(rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
+          Text(rating.toStringAsFixed(1),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Poppins')),
         ],
       ),
     );
@@ -244,7 +292,8 @@ class _HeroMiniStat extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
-  const _HeroMiniStat({required this.icon, required this.value, required this.label});
+  const _HeroMiniStat(
+      {required this.icon, required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -259,14 +308,25 @@ class _HeroMiniStat extends StatelessWidget {
                 Icon(icon, color: Colors.white54, size: 11),
                 const SizedBox(width: 3),
                 Flexible(
-                  child: Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(label,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 10),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
             const SizedBox(height: 3),
             Builder(builder: (ctx) {
               final s = Responsive.heroTextScale(ctx);
-              return Text(value, style: TextStyle(color: Colors.white, fontSize: 20 * s, fontWeight: FontWeight.w700, height: 1, fontFamily: 'Poppins'));
+              return Text(value,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20 * s,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      fontFamily: 'Poppins'));
             }),
           ],
         ),
@@ -278,7 +338,8 @@ class _HeroMiniStat extends StatelessWidget {
 class _VertDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(width: 0.7, height: 30, color: Colors.white.withValues(alpha: 0.2));
+    return Container(
+        width: 0.7, height: 30, color: Colors.white.withValues(alpha: 0.2));
   }
 }
 
@@ -295,13 +356,19 @@ class _StatsRow extends ConsumerWidget {
     final analyticsState = ref.watch(analyticsProvider);
     final analytics = analyticsState.value ?? const AnalyticsModel();
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
-    final yesterdayStr = DateTime.now().subtract(const Duration(days: 1)).toIso8601String().split('T')[0];
+    final yesterdayStr = DateTime.now()
+        .subtract(const Duration(days: 1))
+        .toIso8601String()
+        .split('T')[0];
     final todayStat = analytics.daily[todayStr] ?? const DailyStat();
     final yesterdayStat = analytics.daily[yesterdayStr] ?? const DailyStat();
 
     // Last-7-day views series for the featured sparkline.
     final viewSeries = List.generate(7, (i) {
-      final d = DateTime.now().subtract(Duration(days: 6 - i)).toIso8601String().split('T')[0];
+      final d = DateTime.now()
+          .subtract(Duration(days: 6 - i))
+          .toIso8601String()
+          .split('T')[0];
       return (analytics.daily[d] ?? const DailyStat()).views.toDouble();
     });
 
@@ -379,7 +446,12 @@ class _StatData {
   final IconData icon;
   final Color color;
   final bool loading;
-  const _StatData({required this.label, required this.value, required this.icon, required this.color, this.loading = false});
+  const _StatData(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color,
+      this.loading = false});
 }
 
 /// Tween-driven count-up number. Animates from 0 to [value] on first build
@@ -432,7 +504,10 @@ class _FeaturedStat extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: AppColors.primary.withValues(alpha: 0.22), blurRadius: 20, offset: const Offset(0, 8)),
+          BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.22),
+              blurRadius: 20,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -445,12 +520,21 @@ class _FeaturedStat extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.visibility_rounded, color: Colors.white, size: 15),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.visibility_rounded,
+                          color: Colors.white, size: 15),
                     ),
                     const SizedBox(width: 8),
                     Flexible(
-                      child: Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(label,
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ],
                 ),
@@ -459,14 +543,21 @@ class _FeaturedStat extends StatelessWidget {
                     ? Container(
                         width: 56,
                         height: 34,
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(6)),
+                        decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(6)),
                       )
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           _AnimatedCount(
                             value: value,
-                            style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700, height: 1, fontFamily: 'Poppins'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 34,
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                                fontFamily: 'Poppins'),
                           ),
                           const SizedBox(width: 8),
                           if (delta != 0) _DeltaBadge(delta: delta),
@@ -491,20 +582,27 @@ class _FeaturedStat extends StatelessWidget {
                     maxY: maxY * 1.15,
                     lineBarsData: [
                       LineChartBarData(
-                        spots: [for (int i = 0; i < series.length; i++) FlSpot(i.toDouble(), series[i])],
+                        spots: [
+                          for (int i = 0; i < series.length; i++)
+                            FlSpot(i.toDouble(), series[i])
+                        ],
                         isCurved: true,
                         color: Colors.white,
                         barWidth: 2,
                         isStrokeCapRound: true,
                         dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(show: true, color: Colors.white.withValues(alpha: 0.16)),
+                        belowBarData: BarAreaData(
+                            show: true,
+                            color: Colors.white.withValues(alpha: 0.16)),
                       ),
                     ],
                   ))
                 : Center(
                     child: Text(
                       AppLocalizations.of(context).sevenDays,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 10),
                     ),
                   ),
           ),
@@ -525,15 +623,22 @@ class _DeltaBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: (up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)).withValues(alpha: 0.22),
+        color: (up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5))
+            .withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 11, color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)),
+          Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+              size: 11,
+              color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)),
           const SizedBox(width: 2),
-          Text('${delta.abs()}', style: TextStyle(color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5), fontSize: 11, fontWeight: FontWeight.w700)),
+          Text('${delta.abs()}',
+              style: TextStyle(
+                  color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -555,7 +660,11 @@ class _StatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : AppColors.border.withValues(alpha: 0.7), width: 0.7),
+        border: Border.all(
+            color: isDark
+                ? Colors.white10
+                : AppColors.border.withValues(alpha: 0.7),
+            width: 0.7),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
@@ -570,18 +679,32 @@ class _StatTile extends StatelessWidget {
           Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(color: data.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9)),
+            decoration: BoxDecoration(
+                color: data.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9)),
             child: Icon(data.icon, color: data.color, size: 16),
           ),
           const SizedBox(height: 12),
           data.loading
-              ? const Skeleton(child: SkeletonBox(width: 34, height: 24, radius: 4))
+              ? const Skeleton(
+                  child: SkeletonBox(width: 34, height: 24, radius: 4))
               : _AnimatedCount(
                   value: data.value,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textColor, height: 1, fontFamily: 'Poppins'),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      height: 1,
+                      fontFamily: 'Poppins'),
                 ),
           const SizedBox(height: 3),
-          Text(data.label, style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : AppColors.textSecondary, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(data.label,
+              style: TextStyle(
+                  fontSize: 10.5,
+                  color: isDark ? Colors.white54 : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -618,7 +741,11 @@ class _AnalyticsChartSection extends ConsumerWidget {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(32),
                 ),
-                child: Text(l10n.sevenDays, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                child: Text(l10n.sevenDays,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary)),
               ),
             ],
           ),
@@ -629,9 +756,11 @@ class _AnalyticsChartSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildChart(BuildContext context, AnalyticsModel analytics, Color bg, bool isDark) {
+  Widget _buildChart(
+      BuildContext context, AnalyticsModel analytics, Color bg, bool isDark) {
     final l10n = AppLocalizations.of(context);
-    final last7Days = List.generate(7, (i) => DateTime.now().subtract(Duration(days: 6 - i)));
+    final last7Days =
+        List.generate(7, (i) => DateTime.now().subtract(Duration(days: 6 - i)));
     final spotsViews = <FlSpot>[];
     final spotsClicks = <FlSpot>[];
     double maxVal = 5.0;
@@ -645,7 +774,8 @@ class _AnalyticsChartSection extends ConsumerWidget {
       if (stat.clicks > maxVal) maxVal = stat.clicks.toDouble();
     }
 
-    final hasData = analytics.daily.values.any((s) => s.views > 0 || s.clicks > 0);
+    final hasData =
+        analytics.daily.values.any((s) => s.views > 0 || s.clicks > 0);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -653,9 +783,16 @@ class _AnalyticsChartSection extends ConsumerWidget {
         color: bg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.055), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.055),
+              blurRadius: 14,
+              offset: const Offset(0, 4)),
         ],
-        border: Border.all(color: isDark ? Colors.white10 : AppColors.border.withValues(alpha: 0.6), width: 0.7),
+        border: Border.all(
+            color: isDark
+                ? Colors.white10
+                : AppColors.border.withValues(alpha: 0.6),
+            width: 0.7),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -672,23 +809,35 @@ class _AnalyticsChartSection extends ConsumerWidget {
             height: Responsive.chartHeight(context),
             child: !hasData
                 ? Center(
-                    child: Text(l10n.noTrafficData, style: TextStyle(color: isDark ? Colors.white38 : AppColors.textHint, fontSize: 13)),
+                    child: Text(l10n.noTrafficData,
+                        style: TextStyle(
+                            color: isDark ? Colors.white38 : AppColors.textHint,
+                            fontSize: 13)),
                   )
                 : LineChart(LineChartData(
                     gridData: FlGridData(
                       show: true,
                       drawVerticalLine: false,
-                      getDrawingHorizontalLine: (_) => FlLine(color: isDark ? Colors.white10 : AppColors.border, strokeWidth: 0.7),
+                      getDrawingHorizontalLine: (_) => FlLine(
+                          color: isDark ? Colors.white10 : AppColors.border,
+                          strokeWidth: 0.7),
                     ),
                     titlesData: FlTitlesData(
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
                           reservedSize: 28,
                           getTitlesWidget: (v, _) => v == v.toInt()
-                              ? Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : AppColors.textSecondary))
+                              ? Text(v.toInt().toString(),
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDark
+                                          ? Colors.white38
+                                          : AppColors.textSecondary))
                               : const SizedBox(),
                         ),
                       ),
@@ -697,18 +846,27 @@ class _AnalyticsChartSection extends ConsumerWidget {
                           showTitles: true,
                           getTitlesWidget: (v, _) {
                             final idx = v.toInt();
-                            if (idx < 0 || idx >= last7Days.length) return const SizedBox();
+                            if (idx < 0 || idx >= last7Days.length)
+                              return const SizedBox();
                             return Padding(
                               padding: const EdgeInsets.only(top: 6),
-                              child: Text(DateFormat('E').format(last7Days[idx]),
-                                  style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : AppColors.textSecondary)),
+                              child: Text(
+                                  DateFormat('E').format(last7Days[idx]),
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDark
+                                          ? Colors.white38
+                                          : AppColors.textSecondary)),
                             );
                           },
                         ),
                       ),
                     ),
                     borderData: FlBorderData(show: false),
-                    minX: 0, maxX: 6, minY: 0, maxY: maxVal * 1.2,
+                    minX: 0,
+                    maxX: 6,
+                    minY: 0,
+                    maxY: maxVal * 1.2,
                     lineBarsData: [
                       LineChartBarData(
                         spots: spotsViews,
@@ -717,7 +875,9 @@ class _AnalyticsChartSection extends ConsumerWidget {
                         barWidth: 2.5,
                         isStrokeCapRound: true,
                         dotData: const FlDotData(show: true),
-                        belowBarData: BarAreaData(show: true, color: AppColors.primary.withValues(alpha: 0.07)),
+                        belowBarData: BarAreaData(
+                            show: true,
+                            color: AppColors.primary.withValues(alpha: 0.07)),
                       ),
                       LineChartBarData(
                         spots: spotsClicks,
@@ -726,7 +886,9 @@ class _AnalyticsChartSection extends ConsumerWidget {
                         barWidth: 2.5,
                         isStrokeCapRound: true,
                         dotData: const FlDotData(show: true),
-                        belowBarData: BarAreaData(show: true, color: AppColors.warning.withValues(alpha: 0.07)),
+                        belowBarData: BarAreaData(
+                            show: true,
+                            color: AppColors.warning.withValues(alpha: 0.07)),
                       ),
                     ],
                   )),
@@ -746,9 +908,16 @@ class _LegendDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 5),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
@@ -775,7 +944,10 @@ class _RatingsSection extends ConsumerWidget {
               _SectionHeader(title: l10n.customerRatings),
               const Spacer(),
               if (ratingDist.totalCount > 0)
-                Text(l10n.nTotal(ratingDist.totalCount), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
+                Text(l10n.nTotal(ratingDist.totalCount),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.outline)),
             ],
           ),
           const SizedBox(height: 12),
@@ -801,7 +973,8 @@ class _LowStockSection extends ConsumerWidget {
           duration: const Duration(milliseconds: 500),
           delay: const Duration(milliseconds: 300),
           slideOffset: 10,
-          child: _SectionHeader(title: AppLocalizations.of(context).lowStockAlerts),
+          child: _SectionHeader(
+              title: AppLocalizations.of(context).lowStockAlerts),
         ),
         const SizedBox(height: 12),
         _buildLowStockList(context, productsState),
@@ -820,14 +993,18 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      style: Theme.of(context)
+          .textTheme
+          .titleMedium
+          ?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
 
 // ─── Low stock list builder (top-level function) ──────────────────────────────
 
-Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> productsState) {
+Widget _buildLowStockList(
+    BuildContext context, AsyncValue<List<ProductModel>> productsState) {
   final l10n = AppLocalizations.of(context);
   if (productsState.isLoading) {
     return ListView.builder(
@@ -844,7 +1021,9 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
   }
 
   if (productsState.hasError) {
-    return Text(l10n.errorLoadingInventory, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
+    return Text(l10n.errorLoadingInventory,
+        style:
+            TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
   }
 
   final allProducts = productsState.asData?.value ?? [];
@@ -864,9 +1043,14 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
         ),
         child: Row(
           children: [
-            const Icon(Icons.check_circle_outline_rounded, color: AppColors.accent, size: 18),
+            const Icon(Icons.check_circle_outline_rounded,
+                color: AppColors.accent, size: 18),
             const SizedBox(width: 10),
-            Text(l10n.allProductsStocked, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
+            Text(l10n.allProductsStocked,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -884,35 +1068,59 @@ Widget _buildLowStockList(BuildContext context, AsyncValue<List<ProductModel>> p
         delay: Duration(milliseconds: 350 + index * 70),
         slideOffset: 14,
         child: ScaleOnTap(
-          onTap: () => Navigator.push(context, AppPageRoute.slideRight<void>(AddProductScreen(existingProduct: product))),
+          onTap: () => Navigator.push(
+              context,
+              AppPageRoute.slideRight<void>(
+                  AddProductScreen(existingProduct: product))),
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A2E) : Colors.white,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1A1A2E)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))],
+              border:
+                  Border.all(color: AppColors.error.withValues(alpha: 0.25)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3))
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 18),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.warning_amber_rounded,
+                      color: AppColors.error, size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Theme.of(context).colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(product.name,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurface),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 1),
-                      Text(l10n.onlyNLeft(product.stockQuantity), style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                      Text(l10n.onlyNLeft(product.stockQuantity),
+                          style: const TextStyle(
+                              color: AppColors.error, fontSize: 12)),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.outline, size: 18),
+                Icon(Icons.chevron_right_rounded,
+                    color: Theme.of(context).colorScheme.outline, size: 18),
               ],
             ),
           ),

@@ -10,7 +10,8 @@ class DailyStat with _$DailyStat {
     @Default(0) int clicks,
   }) = _DailyStat;
 
-  factory DailyStat.fromJson(Map<String, dynamic> json) => _$DailyStatFromJson(json);
+  factory DailyStat.fromJson(Map<String, dynamic> json) =>
+      _$DailyStatFromJson(json);
 }
 
 @freezed
@@ -21,5 +22,6 @@ class AnalyticsModel with _$AnalyticsModel {
     @Default({}) Map<String, DailyStat> daily,
   }) = _AnalyticsModel;
 
-  factory AnalyticsModel.fromJson(Map<String, dynamic> json) => _$AnalyticsModelFromJson(json);
+  factory AnalyticsModel.fromJson(Map<String, dynamic> json) =>
+      _$AnalyticsModelFromJson(json);
 }

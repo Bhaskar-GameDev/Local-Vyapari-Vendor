@@ -41,7 +41,7 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
-  
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
@@ -224,14 +224,15 @@ CustomTransitionPage<T> buildFadeThroughPage<T>({
     transitionDuration: const Duration(milliseconds: 350),
     reverseTransitionDuration: const Duration(milliseconds: 250),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-      final enterScale = Tween<double>(begin: 0.94, end: 1.0)
-          .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+      final enterFade =
+          CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      final enterScale = Tween<double>(begin: 0.94, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
 
-      final exitFade = Tween<double>(begin: 1.0, end: 0.85)
-          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
-      final exitScale = Tween<double>(begin: 1.0, end: 0.96)
-          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final exitFade = Tween<double>(begin: 1.0, end: 0.85).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final exitScale = Tween<double>(begin: 1.0, end: 0.96).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
       return FadeTransition(
         opacity: exitFade,
@@ -269,9 +270,10 @@ CustomTransitionPage<T> buildSlideRightPage<T>({
       final exitSlide = Tween<Offset>(
         begin: Offset.zero,
         end: const Offset(-0.3, 0.0),
-      ).animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOut));
-      final exitDim = Tween<double>(begin: 1.0, end: 0.85)
-          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      ).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOut));
+      final exitDim = Tween<double>(begin: 1.0, end: 0.85).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
       return SlideTransition(
         position: exitSlide,
@@ -313,12 +315,13 @@ CustomTransitionPage<T> buildSlideUpPage<T>({
         curve: Curves.easeOutQuart,
         reverseCurve: Curves.easeInQuint,
       ));
-      final enterFade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      final enterFade =
+          CurvedAnimation(parent: animation, curve: Curves.easeOut);
 
-      final secScale = Tween<double>(begin: 1.0, end: 0.94)
-          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
-      final secDim = Tween<double>(begin: 1.0, end: 0.78)
-          .animate(CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final secScale = Tween<double>(begin: 1.0, end: 0.94).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
+      final secDim = Tween<double>(begin: 1.0, end: 0.78).animate(
+          CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn));
 
       return ScaleTransition(
         scale: secScale,
