@@ -68,7 +68,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
         && isValidRating(request.resource.data.rating)
         && request.resource.data.shopId is string;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid
+      // Owner may edit only the rating. userId and shopId are immutable, so a
+      // user cannot re-point their review at another shop (which would skew that
+      // shop's server-computed avgRating via onShopReviewWrite).
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.shopId == resource.data.shopId
         && isValidRating(request.resource.data.rating);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
@@ -78,7 +83,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
         && isValidRating(request.resource.data.rating)
         && request.resource.data.productId is string;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid
+      // Owner may edit only the rating. userId and productId are immutable, so a
+      // user cannot re-point their review at another product (which would skew
+      // that product's server-computed avgRating via onProductReviewWrite).
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.productId == resource.data.productId
         && isValidRating(request.resource.data.rating);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }

@@ -36,18 +36,24 @@ class ProductRepository {
   Future<void> addProduct(ProductModel product) async {
     final shopId = _currentShopId;
     if (shopId == null) throw Exception('User not authenticated');
-    
-    final data = product.toJson()..remove('id');
+
+    final data = product.toJson()..removeWhere(_isServerOwnedKey);
     await _dbRef.child(shopId).push().set(data);
   }
 
   Future<void> updateProduct(ProductModel product) async {
     final shopId = _currentShopId;
     if (shopId == null) throw Exception('User not authenticated');
-    
-    final data = product.toJson()..remove('id');
+
+    final data = product.toJson()..removeWhere(_isServerOwnedKey);
     await _dbRef.child(shopId).child(product.id).update(data);
   }
+
+  // `rating`/`totalRatings` are computed server-side by Cloud Functions from the
+  // product_reviews collection; `id` is the RTDB key, not a field. The security
+  // rules reject client writes to the rating fields, so strip them here.
+  static bool _isServerOwnedKey(String key, dynamic _) =>
+      key == 'id' || key == 'rating' || key == 'totalRatings';
 
   Future<void> deleteProduct(String productId) async {
     final shopId = _currentShopId;

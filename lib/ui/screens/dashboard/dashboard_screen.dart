@@ -282,7 +282,7 @@ class _VertDivider extends StatelessWidget {
   }
 }
 
-// ─── Stats Row (horizontal scroll) ───────────────────────────────────────────
+// ─── Overview (bento grid) ────────────────────────────────────────────────────
 
 class _StatsRow extends ConsumerWidget {
   const _StatsRow();
@@ -295,40 +295,39 @@ class _StatsRow extends ConsumerWidget {
     final analyticsState = ref.watch(analyticsProvider);
     final analytics = analyticsState.value ?? const AnalyticsModel();
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final yesterdayStr = DateTime.now().subtract(const Duration(days: 1)).toIso8601String().split('T')[0];
     final todayStat = analytics.daily[todayStr] ?? const DailyStat();
+    final yesterdayStat = analytics.daily[yesterdayStr] ?? const DailyStat();
 
-    final stats = [
+    // Last-7-day views series for the featured sparkline.
+    final viewSeries = List.generate(7, (i) {
+      final d = DateTime.now().subtract(Duration(days: 6 - i)).toIso8601String().split('T')[0];
+      return (analytics.daily[d] ?? const DailyStat()).views.toDouble();
+    });
+
+    final compactStats = [
       _StatData(
         label: l10n.products,
-        value: productsState.maybeWhen(data: (l) => '${l.length}', orElse: () => '—'),
+        value: productsState.maybeWhen(data: (l) => l.length, orElse: () => 0),
         icon: Icons.inventory_2_rounded,
         color: AppColors.info,
         loading: productsState.isLoading,
       ),
       _StatData(
         label: l10n.liveOffers,
-        value: offersState.maybeWhen(data: (l) => '${l.length}', orElse: () => '—'),
+        value: offersState.maybeWhen(data: (l) => l.length, orElse: () => 0),
         icon: Icons.local_offer_rounded,
         color: AppColors.warning,
         loading: offersState.isLoading,
       ),
       _StatData(
-        label: l10n.viewsToday,
-        value: analyticsState.isLoading ? '—' : '${todayStat.views}',
-        icon: Icons.visibility_rounded,
+        label: l10n.totalClicksLabel,
+        value: analytics.totalClicks,
+        icon: Icons.ads_click_rounded,
         color: AppColors.accent,
         loading: analyticsState.isLoading,
       ),
-      _StatData(
-        label: l10n.totalClicksLabel,
-        value: analyticsState.isLoading ? '—' : '${analytics.totalClicks}',
-        icon: Icons.ads_click_rounded,
-        color: AppColors.primaryLight,
-        loading: analyticsState.isLoading,
-      ),
     ];
-
-    final useGrid = Responsive.useStatsGrid(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,44 +338,36 @@ class _StatsRow extends ConsumerWidget {
           slideOffset: 10,
           child: _SectionHeader(title: l10n.overview),
         ),
-        const SizedBox(height: 10),
-        if (useGrid)
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 2.4,
-            ),
-            itemCount: stats.length,
-            itemBuilder: (context, i) => FadeInSlide(
-              key: ValueKey('stat_grid_$i'),
-              duration: const Duration(milliseconds: 420),
-              delay: Duration(milliseconds: 100 + i * 50),
-              slideOffset: 12,
-              child: _StatTile(data: stats[i], flexible: true),
-            ),
-          )
-        else
-          SizedBox(
-            height: 112,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              itemCount: stats.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, i) => FadeInSlide(
-                key: ValueKey('stat_$i'),
-                duration: const Duration(milliseconds: 420),
-                delay: Duration(milliseconds: 120 + i * 55),
-                slideOffset: 14,
-                direction: Axis.horizontal,
-                child: _StatTile(data: stats[i]),
-              ),
-            ),
+        const SizedBox(height: 12),
+        FadeInSlide(
+          duration: const Duration(milliseconds: 460),
+          delay: const Duration(milliseconds: 110),
+          slideOffset: 14,
+          child: _FeaturedStat(
+            label: l10n.viewsToday,
+            value: todayStat.views,
+            previous: yesterdayStat.views,
+            series: viewSeries,
+            loading: analyticsState.isLoading,
           ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            for (int i = 0; i < compactStats.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(
+                child: FadeInSlide(
+                  key: ValueKey('stat_$i'),
+                  duration: const Duration(milliseconds: 420),
+                  delay: Duration(milliseconds: 180 + i * 60),
+                  slideOffset: 14,
+                  child: _StatTile(data: compactStats[i]),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }
@@ -384,18 +375,174 @@ class _StatsRow extends ConsumerWidget {
 
 class _StatData {
   final String label;
-  final String value;
+  final int value;
   final IconData icon;
   final Color color;
   final bool loading;
   const _StatData({required this.label, required this.value, required this.icon, required this.color, this.loading = false});
 }
 
+/// Tween-driven count-up number. Animates from 0 to [value] on first build
+/// and whenever [value] changes.
+class _AnimatedCount extends StatelessWidget {
+  final int value;
+  final TextStyle style;
+  const _AnimatedCount({required this.value, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value.toDouble()),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, __) => Text('${v.round()}', style: style),
+    );
+  }
+}
+
+/// Featured "hero" metric: gradient surface, animated count, a delta badge
+/// comparing against the previous day, and an inline 7-day sparkline.
+class _FeaturedStat extends StatelessWidget {
+  final String label;
+  final int value;
+  final int previous;
+  final List<double> series;
+  final bool loading;
+  const _FeaturedStat({
+    required this.label,
+    required this.value,
+    required this.previous,
+    required this.series,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = value - previous;
+    final hasSpark = series.any((v) => v > 0);
+    final maxY = series.fold<double>(1, (m, v) => v > m ? v : m);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withValues(alpha: 0.22), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.visibility_rounded, color: Colors.white, size: 15),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                loading
+                    ? Container(
+                        width: 56,
+                        height: 34,
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(6)),
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _AnimatedCount(
+                            value: value,
+                            style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700, height: 1, fontFamily: 'Poppins'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (delta != 0) _DeltaBadge(delta: delta),
+                        ],
+                      ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 86,
+            height: 48,
+            child: hasSpark
+                ? LineChart(LineChartData(
+                    gridData: const FlGridData(show: false),
+                    titlesData: const FlTitlesData(show: false),
+                    borderData: FlBorderData(show: false),
+                    lineTouchData: const LineTouchData(enabled: false),
+                    minX: 0,
+                    maxX: (series.length - 1).toDouble(),
+                    minY: 0,
+                    maxY: maxY * 1.15,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: [for (int i = 0; i < series.length; i++) FlSpot(i.toDouble(), series[i])],
+                        isCurved: true,
+                        color: Colors.white,
+                        barWidth: 2,
+                        isStrokeCapRound: true,
+                        dotData: const FlDotData(show: false),
+                        belowBarData: BarAreaData(show: true, color: Colors.white.withValues(alpha: 0.16)),
+                      ),
+                    ],
+                  ))
+                : Center(
+                    child: Text(
+                      AppLocalizations.of(context).sevenDays,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeltaBadge extends StatelessWidget {
+  final int delta;
+  const _DeltaBadge({required this.delta});
+
+  @override
+  Widget build(BuildContext context) {
+    final up = delta > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        color: (up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)).withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 11, color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)),
+          const SizedBox(width: 2),
+          Text('${delta.abs()}', style: TextStyle(color: up ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5), fontSize: 11, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
   final _StatData data;
-  /// When true the tile expands to fill its grid cell (no fixed width).
-  final bool flexible;
-  const _StatTile({required this.data, this.flexible = false});
+  const _StatTile({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -404,37 +551,37 @@ class _StatTile extends StatelessWidget {
     final textColor = isDark ? Colors.white : AppColors.textPrimary;
 
     return Container(
-      width: flexible ? null : 116,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border(left: BorderSide(color: data.color, width: 3)),
+        border: Border.all(color: isDark ? Colors.white10 : AppColors.border.withValues(alpha: 0.7), width: 0.7),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.055),
-            blurRadius: 14,
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(data.icon, color: data.color, size: 17),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              data.loading
-                  ? const Skeleton(
-                      child: SkeletonBox(width: 40, height: 26, radius: 4),
-                    )
-                  : Text(data.value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: textColor, height: 1, fontFamily: 'Poppins')),
-              const SizedBox(height: 2),
-              Text(data.label, style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : AppColors.textSecondary, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ],
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: data.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9)),
+            child: Icon(data.icon, color: data.color, size: 16),
           ),
+          const SizedBox(height: 12),
+          data.loading
+              ? const Skeleton(child: SkeletonBox(width: 34, height: 24, radius: 4))
+              : _AnimatedCount(
+                  value: data.value,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textColor, height: 1, fontFamily: 'Poppins'),
+                ),
+          const SizedBox(height: 3),
+          Text(data.label, style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : AppColors.textSecondary, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

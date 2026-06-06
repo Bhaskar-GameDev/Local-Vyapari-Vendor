@@ -35,6 +35,21 @@ class NotificationService {
   bool _initialized = false;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
+  // Notification that launched the app from a terminated state. We can't act on
+  // it immediately because the app still has to boot through the splash and
+  // restore auth/shop state. It's stashed here and replayed by
+  // [consumePendingNotification] once the home screen is actually mounted.
+  // The intent survives login/onboarding (it isn't cleared until the home
+  // screen consumes it), so a logged-out tap still lands on the right screen
+  // after the vendor signs in.
+  RemoteMessage? _pendingMessage;
+  DateTime? _pendingMessageAt;
+
+  // How long a stashed launch notification stays actionable. Long enough to
+  // cover a phone-OTP login + onboarding, short enough that re-opening the app
+  // much later doesn't yank the vendor into a stale chat.
+  static const Duration _pendingMessageTtl = Duration(minutes: 10);
+
   NotificationService(this._ref);
 
   void init() {
@@ -67,12 +82,7 @@ class NotificationService {
             final payload = response.payload;
             if (payload != null && payload.isNotEmpty) {
               final data = json.decode(payload) as Map<String, dynamic>;
-              if (data['type'] == 'chat') {
-                _navigateToChat(
-                  userId: data['userId']?.toString() ?? data['senderId']?.toString() ?? '',
-                  userName: data['userName']?.toString() ?? 'Customer',
-                );
-              }
+              _routeNotification(data);
             }
           } catch (e) {
             debugPrint('Error handling local notification click: $e');
@@ -86,10 +96,42 @@ class NotificationService {
               
       if (androidImplementation != null) {
         await androidImplementation.requestNotificationsPermission();
+        await _createNotificationChannels(androidImplementation);
       }
     } catch (e) {
       debugPrint('Error initializing local notifications: $e');
     }
+  }
+
+  /// Registers the notification channels up front so FCM messages that arrive
+  /// while the app is terminated render with the right importance/sound. The
+  /// backend targets `chat_messages` by channelId; on Android 8+ a message
+  /// pointing at a non-existent channel falls back to a low-importance default
+  /// (no heads-up, no sound). Channel settings are immutable once created, so
+  /// these must match the AndroidNotificationDetails used in
+  /// [_showNativeNotification].
+  Future<void> _createNotificationChannels(
+    AndroidFlutterLocalNotificationsPlugin android,
+  ) async {
+    const chatChannel = AndroidNotificationChannel(
+      'chat_messages',
+      'Customer Messages',
+      description: 'Notifications for new customer chat messages',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const vendorChannel = AndroidNotificationChannel(
+      'vendor_channel_id',
+      'Vendor Alerts',
+      description: 'Notifications for orders and store activity',
+      importance: Importance.max,
+      playSound: true,
+    );
+
+    await android.createNotificationChannel(chatChannel);
+    await android.createNotificationChannel(vendorChannel);
   }
 
   Future<void> _showNativeNotification(
@@ -168,13 +210,16 @@ class NotificationService {
       _handleNotificationClick(message);
     });
 
-    // Check if the app was opened from a terminated state via a notification
+    // Check if the app was opened from a terminated state via a notification.
+    // Don't navigate now: the app is still booting through the splash screen,
+    // and the splash does its own `go('/')` after ~2s which would wipe any
+    // route we push here. Stash it and let the home screen replay it once it's
+    // mounted (see consumePendingNotification).
     messaging.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
         debugPrint('FCM message opened from terminated state: ${message.messageId}');
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _handleNotificationClick(message);
-        });
+        _pendingMessage = message;
+        _pendingMessageAt = DateTime.now();
       }
     });
 
@@ -183,17 +228,64 @@ class NotificationService {
     });
   }
 
+  /// Replays a notification that launched the app from a terminated state.
+  /// Called by the home screen once it's mounted, so navigation lands on a
+  /// settled, authenticated app instead of racing the splash screen. If the
+  /// vendor had to log in / onboard first, the intent waited here for them;
+  /// stale intents (older than [_pendingMessageTtl]) are dropped quietly.
+  void consumePendingNotification() {
+    final message = _pendingMessage;
+    final at = _pendingMessageAt;
+    _pendingMessage = null;
+    _pendingMessageAt = null;
+    if (message == null) return;
+    if (at != null && DateTime.now().difference(at) > _pendingMessageTtl) {
+      debugPrint('Dropping stale launch notification: ${message.messageId}');
+      return;
+    }
+    _handleNotificationClick(message);
+  }
+
   void _handleNotificationClick(RemoteMessage message) {
     try {
-      if (message.data['type'] == 'chat') {
-        _navigateToChat(
-          userId: message.data['userId']?.toString() ?? message.data['senderId']?.toString() ?? '',
-          userName: message.data['userName']?.toString() ?? message.notification?.title ?? 'Customer',
-        );
-      }
+      _routeNotification(
+        Map<String, dynamic>.from(message.data),
+        fallbackUserName: message.notification?.title,
+      );
     } catch (e) {
       debugPrint('Error handling FCM notification click: $e');
     }
+  }
+
+  /// Central deep-link router for a notification's data payload. Every entry
+  /// point — foreground tap, background tap, and cold-start replay — funnels
+  /// through here so navigation behaves identically regardless of how the app
+  /// was opened. The backend always stamps a string `type` discriminator (and
+  /// any IDs the client needs) on the data payload; see functions/src/index.ts.
+  void _routeNotification(Map<String, dynamic> data, {String? fallbackUserName}) {
+    switch (data['type']?.toString()) {
+      case 'chat':
+        _navigateToChat(
+          userId: data['userId']?.toString() ??
+              data['senderId']?.toString() ??
+              '',
+          userName:
+              data['userName']?.toString() ?? fallbackUserName ?? 'Customer',
+        );
+        break;
+      case 'security_new_device':
+        // "New sign-in detected" alert (recordDeviceAndMaybeAlert in the
+        // backend). Take the vendor straight to the security screen where they
+        // can review devices and sign out everywhere.
+        _navigateToSecurity();
+        break;
+    }
+  }
+
+  void _navigateToSecurity() {
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) return;
+    GoRouter.of(context).push('/security');
   }
 
   void _navigateToChat({required String userId, required String userName}) {

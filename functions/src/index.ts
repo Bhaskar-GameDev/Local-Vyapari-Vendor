@@ -64,20 +64,41 @@ export const checkExpiredOffers = functions.pubsub.schedule("every 1 hours")
       .where("expiresAt", "<", now)
       .get();
 
-    const batch = db.batch();
+    // A WriteBatch is hard-capped at 500 operations. Each expired offer costs up
+    // to 2 writes (offer status + linked product offerPrice delete), so a single
+    // batch overflows past ~250 offers and NOTHING expires. Flush in chunks that
+    // stay safely under the limit and commit them in parallel.
+    const MAX_OPS = 450; // margin under Firestore's 500-op ceiling
+    let batch = db.batch();
+    let opCount = 0;
+    const commits: Promise<unknown>[] = [];
+
+    const flushIfFull = () => {
+      if (opCount >= MAX_OPS) {
+        commits.push(batch.commit());
+        batch = db.batch();
+        opCount = 0;
+      }
+    };
+
     expiredOffers.docs.forEach(doc => {
       batch.update(doc.ref, { status: "expired" });
-      
+      opCount++;
+      flushIfFull();
+
       // Remove offer price from linked product
       const productId = doc.data().productId;
       if (productId) {
         const productRef = db.collection("products").doc(productId);
         batch.update(productRef, { offerPrice: admin.firestore.FieldValue.delete() });
+        opCount++;
+        flushIfFull();
       }
     });
 
-    await batch.commit();
-    console.log(`Expired ${expiredOffers.size} offers.`);
+    if (opCount > 0) commits.push(batch.commit());
+    await Promise.all(commits);
+    console.log(`Expired ${expiredOffers.size} offers in ${commits.length} batch(es).`);
     return null;
   });
 
@@ -525,11 +546,15 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
   }
 
   // Gate 2: the account must have a verified contact channel — a verified phone
-  // (set during phone-OTP linking) or a verified email. Prevents drive-by
-  // self-promotion from unverified accounts.
-  const userSnap = await admin.database().ref(`/users/${uid}`).once("value");
-  const userData = userSnap.exists() ? userSnap.val() : {};
-  const phoneVerified = userData.verified === true || typeof context.auth.token.phone_number === "string";
+  // or a verified email. Trust ONLY the auth token's claims here, never the RTDB
+  // `/users/{uid}/verified` flag: that node is client-writable (rules allow the
+  // owner to write their own record), so honoring it let an unverified account
+  // self-promote by writing `verified:true` and then calling this function. The
+  // token's `phone_number`/`email_verified` claims are minted by Firebase Auth
+  // and cannot be forged by the client.
+  const phoneVerified =
+    typeof context.auth.token.phone_number === "string" &&
+    context.auth.token.phone_number.length > 0;
   const emailVerified = context.auth.token.email_verified === true;
   if (!phoneVerified && !emailVerified) {
     throw new functions.https.HttpsError(

@@ -11,12 +11,18 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/responsive.dart';
 import '../common/app_animations.dart';
 import '../../core/providers/navigation_provider.dart';
+import '../../core/services/notification_service.dart';
 import '../../domain/providers/chat_provider.dart';
 import '../../l10n/app_localizations.dart';
 
-class MainNavigation extends ConsumerWidget {
+class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
 
+  @override
+  ConsumerState<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends ConsumerState<MainNavigation> {
   static const List<Widget> _screens = [
     DashboardScreen(),
     ProductsListScreen(),
@@ -26,7 +32,18 @@ class MainNavigation extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    // The home screen is the first fully-onboarded surface, so it's the safe
+    // point to replay a notification that cold-started the app from terminated.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(notificationServiceProvider).consumePendingNotification();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     ref.watch(shopAutoOpenProvider); // keeps auto-open timer alive
     final shopState = ref.watch(shopProvider);

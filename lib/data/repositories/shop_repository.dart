@@ -30,7 +30,14 @@ class ShopRepository {
   Future<void> updateShopProfile(ShopModel shop) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not authenticated');
-    final data = shop.copyWith(id: uid).toJson();
+    // Server-owned fields: verification is granted server-side and ratings are
+    // computed by Cloud Functions from the reviews collections. The client must
+    // never write these — the security rules reject them, and re-sending a stale
+    // rating here would otherwise fail the whole update. Strip before writing.
+    final data = shop.copyWith(id: uid).toJson()
+      ..remove('isVerified')
+      ..remove('rating')
+      ..remove('totalReviews');
     // update() instead of set() so extra fields (e.g. manuallyClosedAt) are preserved.
     await _dbRef.child(uid).update(data);
   }

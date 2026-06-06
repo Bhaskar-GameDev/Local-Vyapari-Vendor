@@ -11,6 +11,9 @@
         },
         "activeRole": {
           ".validate": "newData.isString() && (newData.val() === 'customer' || newData.val() === 'merchant') && root.child('users').child($uid).child('roles').child(newData.val()).val() === true"
+        },
+        "verified": {
+          ".validate": "newData.isBoolean() && (newData.val() === false || newData.val() === data.val() || auth.token.phone_number != null || auth.token.email_verified === true)"
         }
       }
     },
@@ -35,13 +38,38 @@
     "products": {
       ".read": "true",
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "$productId": {
+          "rating": {
+            ".validate": "!newData.exists() || newData.val() === data.val()"
+          },
+          "avgRating": {
+            ".validate": "!newData.exists() || newData.val() === data.val()"
+          },
+          "totalRatings": {
+            ".validate": "!newData.exists() || newData.val() === data.val()"
+          },
+          "actualPrice": {
+            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0)"
+          },
+          "offerPrice": {
+            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0)"
+          },
+          "stockQuantity": {
+            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0)"
+          }
+        }
       }
     },
     "offers": {
       ".read": "true",
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "$offerId": {
+          "discountPercentage": {
+            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 100)"
+          }
+        }
       }
     },
     "shop": {
@@ -53,6 +81,15 @@
         },
         "longitude": {
           ".validate": "!newData.exists() || newData.isNumber()"
+        },
+        "isVerified": {
+          ".validate": "newData.isBoolean() && (newData.val() === false || newData.val() === data.val())"
+        },
+        "rating": {
+          ".validate": "!newData.exists() || newData.val() === data.val()"
+        },
+        "totalReviews": {
+          ".validate": "!newData.exists() || newData.val() === data.val()"
         }
       }
     },
