@@ -275,8 +275,17 @@ class _$OfferModelImpl implements _OfferModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, title, description,
-      discountPercentage, startDate, endDate, linkedProductId, isActive, isFeatured);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      title,
+      description,
+      discountPercentage,
+      startDate,
+      endDate,
+      linkedProductId,
+      isActive,
+      isFeatured);
 
   /// Create a copy of OfferModel
   /// with the given fields replaced by the non-null parameter values.

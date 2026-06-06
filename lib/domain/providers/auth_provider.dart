@@ -69,11 +69,26 @@ class AuthRepository {
         if (role == 'merchant') {
           await _db.ref('shop').child(uid).set({
             'name': shopName ?? 'My Shop',
+            'ownerId': uid,
             'description': 'Welcome to our shop!',
-            'address': '',
             'phone': phone ?? '',
+            'logoUrl': '',
+            'bannerUrl': '',
             'isOpen': true,
             'isVerified': false,
+            'openingTime': null,
+            'closingTime': null,
+            'rating': 0.0,
+            'totalReviews': 0,
+            'createdAt': ServerValue.timestamp,
+            'latitude': null,
+            'longitude': null,
+            'geohash': '',
+            'address': '',
+            'city': '',
+            'state': '',
+            'pincode': '',
+            'placeId': '',
           });
         }
       } catch (e) {
@@ -111,11 +126,26 @@ class AuthRepository {
 
       await _db.ref('shop').child(user.uid).set({
         'name': shopName ?? 'My Shop',
+        'ownerId': user.uid,
         'description': 'Welcome to our shop!',
-        'address': '',
         'phone': phone,
+        'logoUrl': '',
+        'bannerUrl': '',
         'isOpen': true,
         'isVerified': false,
+        'openingTime': null,
+        'closingTime': null,
+        'rating': 0.0,
+        'totalReviews': 0,
+        'createdAt': ServerValue.timestamp,
+        'latitude': null,
+        'longitude': null,
+        'geohash': '',
+        'address': '',
+        'city': '',
+        'state': '',
+        'pincode': '',
+        'placeId': '',
       });
     } catch (e) {
       try {
@@ -823,11 +853,26 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         if (role == 'merchant') {
           await FirebaseDatabase.instance.ref('shop').child(uid).set({
             'name': shopName ?? 'My Shop',
+            'ownerId': uid,
             'description': 'Welcome to our shop!',
-            'address': '',
             'phone': phone.trim(),
+            'logoUrl': '',
+            'bannerUrl': '',
             'isOpen': true,
             'isVerified': false,
+            'openingTime': null,
+            'closingTime': null,
+            'rating': 0.0,
+            'totalReviews': 0,
+            'createdAt': ServerValue.timestamp,
+            'latitude': null,
+            'longitude': null,
+            'geohash': '',
+            'address': '',
+            'city': '',
+            'state': '',
+            'pincode': '',
+            'placeId': '',
           });
         }
       } catch (_) {

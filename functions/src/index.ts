@@ -627,8 +627,28 @@ export const onShopProfileUpdate = functions.database.ref("/shop/{shopId}")
         try {
           // 1. Sync to Firestore searchable_shops for customer geo-location searches
           await db.collection("searchable_shops").doc(shopId).set({
+            name: name,
             shopName: name,
+            ownerId: after.ownerId || shopId,
             description: description,
+            phone: after.phone || "",
+            logoUrl: after.logoUrl || after.shopLogo || "",
+            bannerUrl: after.bannerUrl || after.shopBanner || "",
+            isOpen: after.isOpen === true,
+            isVerified: after.isVerified === true,
+            openingTime: after.openingTime || null,
+            closingTime: after.closingTime || null,
+            rating: after.rating !== undefined ? parseFloat(after.rating) : 0,
+            totalReviews: after.totalReviews !== undefined ? parseInt(after.totalReviews) : 0,
+            createdAt: after.createdAt !== undefined ? parseInt(after.createdAt) : Date.now(),
+            latitude: latNum,
+            longitude: lngNum,
+            geohash: geohash,
+            address: after.address || "",
+            city: after.city || "",
+            state: after.state || "",
+            pincode: after.pincode || "",
+            placeId: after.placeId || "",
             geo: {
               geohash: geohash,
               geopoint: new admin.firestore.GeoPoint(latNum, lngNum)

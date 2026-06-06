@@ -22,6 +22,14 @@ _$ShopModelImpl _$$ShopModelImplFromJson(Map<String, dynamic> json) =>
       totalReviews: (json['totalReviews'] as num?)?.toInt(),
       openingTime: json['openingTime'] as String?,
       closingTime: json['closingTime'] as String?,
+      ownerId: json['ownerId'] as String?,
+      bannerUrl: json['bannerUrl'] as String?,
+      createdAt: (json['createdAt'] as num?)?.toInt(),
+      geohash: json['geohash'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      pincode: json['pincode'] as String?,
+      placeId: json['placeId'] as String?,
     );
 
 Map<String, dynamic> _$$ShopModelImplToJson(_$ShopModelImpl instance) =>
@@ -40,4 +48,12 @@ Map<String, dynamic> _$$ShopModelImplToJson(_$ShopModelImpl instance) =>
       'totalReviews': instance.totalReviews,
       'openingTime': instance.openingTime,
       'closingTime': instance.closingTime,
+      'ownerId': instance.ownerId,
+      'bannerUrl': instance.bannerUrl,
+      'createdAt': instance.createdAt,
+      'geohash': instance.geohash,
+      'city': instance.city,
+      'state': instance.state,
+      'pincode': instance.pincode,
+      'placeId': instance.placeId,
     };

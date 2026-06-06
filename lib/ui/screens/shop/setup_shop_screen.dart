@@ -7,6 +7,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../../core/utils/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -44,6 +46,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   TimeOfDay? _openingTime;
   TimeOfDay? _closingTime;
 
+  String? _city;
+  String? _state;
+  String? _pincode;
+
   File? _logoFile;
   bool _isSaving = false;
   bool _isLocating = false;
@@ -51,6 +57,10 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
   @override
   void initState() {
     super.initState();
+    _city = widget.existingShop?.city;
+    _state = widget.existingShop?.state;
+    _pincode = widget.existingShop?.pincode;
+
     _nameController = TextEditingController(text: widget.existingShop?.name ?? '');
     _descController = TextEditingController(text: widget.existingShop?.description ?? '');
     _addressController = TextEditingController(text: widget.existingShop?.address ?? '');
@@ -182,6 +192,9 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
+          _city = place.locality ?? place.subAdministrativeArea;
+          _state = place.administrativeArea;
+          _pincode = place.postalCode;
           final parts = [place.street, place.subLocality, place.locality, place.postalCode, place.country]
               .where((p) => p != null && p.isNotEmpty)
               .toList();
@@ -402,14 +415,37 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         logoUrl = uploadedUrl;
       }
 
+      final uid = widget.existingShop?.id ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+      final lat = double.tryParse(_latController.text);
+      final lng = double.tryParse(_lngController.text);
+
+      String? geohash;
+      if (lat != null && lng != null) {
+        final point = GeoFirePoint(GeoPoint(lat, lng));
+        geohash = point.geohash;
+
+        // Fallback geocoding resolution if city/state/pincode are missing
+        if (_city == null || _state == null || _pincode == null) {
+          try {
+            List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+            if (placemarks.isNotEmpty) {
+              final place = placemarks.first;
+              _city ??= place.locality ?? place.subAdministrativeArea;
+              _state ??= place.administrativeArea;
+              _pincode ??= place.postalCode;
+            }
+          } catch (_) {}
+        }
+      }
+
       final shop = ShopModel(
-        id: widget.existingShop?.id ?? '', 
+        id: uid,
         name: _nameController.text.trim(),
         description: _descController.text.trim(),
         address: _addressController.text.trim(),
         phone: _phoneController.text.trim(),
-        latitude: double.tryParse(_latController.text),
-        longitude: double.tryParse(_lngController.text),
+        latitude: lat,
+        longitude: lng,
         logoUrl: logoUrl,
         isVerified: widget.existingShop?.isVerified ?? false,
         isOpen: widget.existingShop?.isOpen ?? true,
@@ -417,6 +453,14 @@ class _SetupShopScreenState extends ConsumerState<SetupShopScreen> {
         totalReviews: widget.existingShop?.totalReviews,
         openingTime: _openingTime != null ? '${_openingTime!.hour.toString().padLeft(2, '0')}:${_openingTime!.minute.toString().padLeft(2, '0')}' : null,
         closingTime: _closingTime != null ? '${_closingTime!.hour.toString().padLeft(2, '0')}:${_closingTime!.minute.toString().padLeft(2, '0')}' : null,
+        ownerId: uid,
+        bannerUrl: widget.existingShop?.bannerUrl ?? '',
+        createdAt: widget.existingShop?.createdAt ?? DateTime.now().millisecondsSinceEpoch,
+        geohash: geohash,
+        city: _city ?? '',
+        state: _state ?? '',
+        pincode: _pincode ?? '',
+        placeId: widget.existingShop?.placeId ?? '',
       );
 
       await ref.read(shopRepositoryProvider).updateShopProfile(shop);

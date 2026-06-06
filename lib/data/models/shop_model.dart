@@ -20,6 +20,14 @@ class ShopModel with _$ShopModel {
     int? totalReviews,
     String? openingTime,
     String? closingTime,
+    String? ownerId,
+    String? bannerUrl,
+    int? createdAt,
+    String? geohash,
+    String? city,
+    String? state,
+    String? pincode,
+    String? placeId,
   }) = _ShopModel;
 
   factory ShopModel.fromJson(Map<String, dynamic> json) => _$ShopModelFromJson(json);

@@ -34,6 +34,14 @@ mixin _$ShopModel {
   int? get totalReviews => throw _privateConstructorUsedError;
   String? get openingTime => throw _privateConstructorUsedError;
   String? get closingTime => throw _privateConstructorUsedError;
+  String? get ownerId => throw _privateConstructorUsedError;
+  String? get bannerUrl => throw _privateConstructorUsedError;
+  int? get createdAt => throw _privateConstructorUsedError;
+  String? get geohash => throw _privateConstructorUsedError;
+  String? get city => throw _privateConstructorUsedError;
+  String? get state => throw _privateConstructorUsedError;
+  String? get pincode => throw _privateConstructorUsedError;
+  String? get placeId => throw _privateConstructorUsedError;
 
   /// Serializes this ShopModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -64,7 +72,15 @@ abstract class $ShopModelCopyWith<$Res> {
       double? rating,
       int? totalReviews,
       String? openingTime,
-      String? closingTime});
+      String? closingTime,
+      String? ownerId,
+      String? bannerUrl,
+      int? createdAt,
+      String? geohash,
+      String? city,
+      String? state,
+      String? pincode,
+      String? placeId});
 }
 
 /// @nodoc
@@ -96,6 +112,14 @@ class _$ShopModelCopyWithImpl<$Res, $Val extends ShopModel>
     Object? totalReviews = freezed,
     Object? openingTime = freezed,
     Object? closingTime = freezed,
+    Object? ownerId = freezed,
+    Object? bannerUrl = freezed,
+    Object? createdAt = freezed,
+    Object? geohash = freezed,
+    Object? city = freezed,
+    Object? state = freezed,
+    Object? pincode = freezed,
+    Object? placeId = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -154,6 +178,38 @@ class _$ShopModelCopyWithImpl<$Res, $Val extends ShopModel>
           ? _value.closingTime
           : closingTime // ignore: cast_nullable_to_non_nullable
               as String?,
+      ownerId: freezed == ownerId
+          ? _value.ownerId
+          : ownerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bannerUrl: freezed == bannerUrl
+          ? _value.bannerUrl
+          : bannerUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      geohash: freezed == geohash
+          ? _value.geohash
+          : geohash // ignore: cast_nullable_to_non_nullable
+              as String?,
+      city: freezed == city
+          ? _value.city
+          : city // ignore: cast_nullable_to_non_nullable
+              as String?,
+      state: freezed == state
+          ? _value.state
+          : state // ignore: cast_nullable_to_non_nullable
+              as String?,
+      pincode: freezed == pincode
+          ? _value.pincode
+          : pincode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      placeId: freezed == placeId
+          ? _value.placeId
+          : placeId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -180,7 +236,15 @@ abstract class _$$ShopModelImplCopyWith<$Res>
       double? rating,
       int? totalReviews,
       String? openingTime,
-      String? closingTime});
+      String? closingTime,
+      String? ownerId,
+      String? bannerUrl,
+      int? createdAt,
+      String? geohash,
+      String? city,
+      String? state,
+      String? pincode,
+      String? placeId});
 }
 
 /// @nodoc
@@ -210,6 +274,14 @@ class __$$ShopModelImplCopyWithImpl<$Res>
     Object? totalReviews = freezed,
     Object? openingTime = freezed,
     Object? closingTime = freezed,
+    Object? ownerId = freezed,
+    Object? bannerUrl = freezed,
+    Object? createdAt = freezed,
+    Object? geohash = freezed,
+    Object? city = freezed,
+    Object? state = freezed,
+    Object? pincode = freezed,
+    Object? placeId = freezed,
   }) {
     return _then(_$ShopModelImpl(
       id: null == id
@@ -268,6 +340,38 @@ class __$$ShopModelImplCopyWithImpl<$Res>
           ? _value.closingTime
           : closingTime // ignore: cast_nullable_to_non_nullable
               as String?,
+      ownerId: freezed == ownerId
+          ? _value.ownerId
+          : ownerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bannerUrl: freezed == bannerUrl
+          ? _value.bannerUrl
+          : bannerUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      geohash: freezed == geohash
+          ? _value.geohash
+          : geohash // ignore: cast_nullable_to_non_nullable
+              as String?,
+      city: freezed == city
+          ? _value.city
+          : city // ignore: cast_nullable_to_non_nullable
+              as String?,
+      state: freezed == state
+          ? _value.state
+          : state // ignore: cast_nullable_to_non_nullable
+              as String?,
+      pincode: freezed == pincode
+          ? _value.pincode
+          : pincode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      placeId: freezed == placeId
+          ? _value.placeId
+          : placeId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -289,7 +393,15 @@ class _$ShopModelImpl implements _ShopModel {
       this.rating,
       this.totalReviews,
       this.openingTime,
-      this.closingTime});
+      this.closingTime,
+      this.ownerId,
+      this.bannerUrl,
+      this.createdAt,
+      this.geohash,
+      this.city,
+      this.state,
+      this.pincode,
+      this.placeId});
 
   factory _$ShopModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$ShopModelImplFromJson(json);
@@ -324,10 +436,26 @@ class _$ShopModelImpl implements _ShopModel {
   final String? openingTime;
   @override
   final String? closingTime;
+  @override
+  final String? ownerId;
+  @override
+  final String? bannerUrl;
+  @override
+  final int? createdAt;
+  @override
+  final String? geohash;
+  @override
+  final String? city;
+  @override
+  final String? state;
+  @override
+  final String? pincode;
+  @override
+  final String? placeId;
 
   @override
   String toString() {
-    return 'ShopModel(id: $id, name: $name, description: $description, address: $address, phone: $phone, latitude: $latitude, longitude: $longitude, logoUrl: $logoUrl, isVerified: $isVerified, isOpen: $isOpen, rating: $rating, totalReviews: $totalReviews, openingTime: $openingTime, closingTime: $closingTime)';
+    return 'ShopModel(id: $id, name: $name, description: $description, address: $address, phone: $phone, latitude: $latitude, longitude: $longitude, logoUrl: $logoUrl, isVerified: $isVerified, isOpen: $isOpen, rating: $rating, totalReviews: $totalReviews, openingTime: $openingTime, closingTime: $closingTime, ownerId: $ownerId, bannerUrl: $bannerUrl, createdAt: $createdAt, geohash: $geohash, city: $city, state: $state, pincode: $pincode, placeId: $placeId)';
   }
 
   @override
@@ -355,27 +483,46 @@ class _$ShopModelImpl implements _ShopModel {
             (identical(other.openingTime, openingTime) ||
                 other.openingTime == openingTime) &&
             (identical(other.closingTime, closingTime) ||
-                other.closingTime == closingTime));
+                other.closingTime == closingTime) &&
+            (identical(other.ownerId, ownerId) || other.ownerId == ownerId) &&
+            (identical(other.bannerUrl, bannerUrl) ||
+                other.bannerUrl == bannerUrl) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.geohash, geohash) || other.geohash == geohash) &&
+            (identical(other.city, city) || other.city == city) &&
+            (identical(other.state, state) || other.state == state) &&
+            (identical(other.pincode, pincode) || other.pincode == pincode) &&
+            (identical(other.placeId, placeId) || other.placeId == placeId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      description,
-      address,
-      phone,
-      latitude,
-      longitude,
-      logoUrl,
-      isVerified,
-      isOpen,
-      rating,
-      totalReviews,
-      openingTime,
-      closingTime);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        name,
+        description,
+        address,
+        phone,
+        latitude,
+        longitude,
+        logoUrl,
+        isVerified,
+        isOpen,
+        rating,
+        totalReviews,
+        openingTime,
+        closingTime,
+        ownerId,
+        bannerUrl,
+        createdAt,
+        geohash,
+        city,
+        state,
+        pincode,
+        placeId
+      ]);
 
   /// Create a copy of ShopModel
   /// with the given fields replaced by the non-null parameter values.
@@ -408,7 +555,15 @@ abstract class _ShopModel implements ShopModel {
       final double? rating,
       final int? totalReviews,
       final String? openingTime,
-      final String? closingTime}) = _$ShopModelImpl;
+      final String? closingTime,
+      final String? ownerId,
+      final String? bannerUrl,
+      final int? createdAt,
+      final String? geohash,
+      final String? city,
+      final String? state,
+      final String? pincode,
+      final String? placeId}) = _$ShopModelImpl;
 
   factory _ShopModel.fromJson(Map<String, dynamic> json) =
       _$ShopModelImpl.fromJson;
@@ -441,6 +596,22 @@ abstract class _ShopModel implements ShopModel {
   String? get openingTime;
   @override
   String? get closingTime;
+  @override
+  String? get ownerId;
+  @override
+  String? get bannerUrl;
+  @override
+  int? get createdAt;
+  @override
+  String? get geohash;
+  @override
+  String? get city;
+  @override
+  String? get state;
+  @override
+  String? get pincode;
+  @override
+  String? get placeId;
 
   /// Create a copy of ShopModel
   /// with the given fields replaced by the non-null parameter values.
