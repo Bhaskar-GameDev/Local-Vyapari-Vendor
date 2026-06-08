@@ -23,13 +23,19 @@ function assertAppCheck(context: functions.https.CallableContext): void {
 // 1. Inventory Sync & Low Stock Alerts (RTDB trigger)
 export const onInventoryUpdate = functions.database.ref("/inventory/{productId}")
   .onWrite(async (change, context) => {
+    const before = change.before.val();
     const after = change.after.val();
     const productId = context.params.productId;
 
     if (!after) return null; // Deleted
 
     const stock = after.stock;
-    if (stock <= 5) {
+    const oldStock = before ? before.stock : null;
+
+    // Only alert if stock transitions from above 5 to 5 or below
+    const shouldAlert = stock <= 5 && (oldStock === null || oldStock === undefined || oldStock > 5);
+
+    if (shouldAlert) {
       // Fetch product to get shopId
       const productDoc = await db.collection("products").doc(productId).get();
       if (!productDoc.exists) return null;
@@ -56,7 +62,7 @@ export const onInventoryUpdate = functions.database.ref("/inventory/{productId}"
   });
 
 // 2. Scheduled Offer Expiry Handling (Runs every hour)
-export const checkExpiredOffers = functions.pubsub.schedule("every 1 hours")
+export const checkExpiredOffers = functions.pubsub.schedule("every 12 hours")
   .onRun(async (context) => {
     const now = admin.firestore.Timestamp.now();
     const expiredOffers = await db.collection("offers")
@@ -103,18 +109,20 @@ export const checkExpiredOffers = functions.pubsub.schedule("every 1 hours")
   });
 
 // 3. Analytics Aggregation (Event-driven summarization)
-export const aggregateProductViews = functions.firestore.document("/events/{eventId}")
-  .onCreate(async (snap, context) => {
-    const data = snap.data();
-    if (data.type === "product_view") {
-       const shopRef = db.collection("shops").doc(data.shopId);
-       // Denormalize summary to avoid deep collection queries
-       await shopRef.update({
-         "stats.totalViews": admin.firestore.FieldValue.increment(1)
-       });
-    }
-    return null;
-  });
+// Note: aggregateProductViews was removed as it was dead code. Neither the customer
+// nor the vendor apps write views to /events/{eventId}. To track views, prefer Google Analytics.
+// export const aggregateProductViews = functions.firestore.document("/events/{eventId}")
+//   .onCreate(async (snap, context) => {
+//    const data = snap.data();
+//    if (data.type === "product_view") {
+//       const shopRef = db.collection("shops").doc(data.shopId);
+//       // Denormalize summary to avoid deep collection queries
+//       await shopRef.update({
+//         "stats.totalViews": admin.firestore.FieldValue.increment(1)
+//       });
+//    }
+//    return null;
+//  });
 
 // 4. Send Hyperlocal Push Notification on New Offer (RTDB trigger)
 export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId}")
@@ -127,16 +135,21 @@ export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId
     const discount = offerData.discountPercentage || 0;
 
     try {
-      // Fetch shop data from Realtime Database to get geohash and name
-      const shopSnapshot = await admin.database().ref(`/shop/${shopId}`).once("value");
-      if (!shopSnapshot.exists()) {
-        console.log(`Shop ${shopId} does not exist.`);
-        return null;
+      // Check if client supplied the shop name and geohash directly in the offer node.
+      // Falls back to fetching from database only if missing.
+      let shopName = offerData.shopName;
+      let geohash = offerData.geohash;
+
+      if (!shopName || !geohash) {
+        const shopSnapshot = await admin.database().ref(`/shop/${shopId}`).once("value");
+        if (shopSnapshot.exists()) {
+          const shopData = shopSnapshot.val();
+          shopName = shopName || shopData.name || shopData.shopName;
+          geohash = geohash || shopData.geohash;
+        }
       }
 
-      const shopData = shopSnapshot.val();
-      const shopName = shopData.name || shopData.shopName || "Nearby Shop";
-      const geohash = shopData.geohash;
+      shopName = shopName || "Nearby Shop";
 
       if (!geohash || geohash.length < 5) {
         console.log(`Shop ${shopId} does not have a valid geohash.`);
@@ -596,9 +609,9 @@ export const assignMerchantRole = functions.https.onCall(async (data, context) =
 // and was callable by any authenticated user — an expensive, abusable operation.
 // If a future migration is needed, run it as an admin-only script, not a public callable.
 
-// 6. Shop Profile Sync (RTDB -> Firestore index for geohash search)
 export const onShopProfileUpdate = functions.database.ref("/shop/{shopId}")
   .onWrite(async (change, context) => {
+    const before = change.before.val();
     const after = change.after.val();
     const shopId = context.params.shopId;
 
@@ -610,6 +623,27 @@ export const onShopProfileUpdate = functions.database.ref("/shop/{shopId}")
         console.error("Error deleting searchable shop index:", e);
       }
       return null;
+    }
+
+    // Check if only geohash field changed (avoid double execution from self-updates)
+    if (before) {
+      const fieldsToCheck = [
+        "name", "shopName", "ownerId", "description", "phone", "logoUrl", "shopLogo",
+        "bannerUrl", "shopBanner", "isOpen", "isVerified", "openingTime", "closingTime",
+        "rating", "totalReviews", "createdAt", "latitude", "longitude", "address",
+        "city", "state", "pincode", "placeId"
+      ];
+      let otherFieldsChanged = false;
+      for (const field of fieldsToCheck) {
+        if (before[field] !== after[field]) {
+          otherFieldsChanged = true;
+          break;
+        }
+      }
+      if (!otherFieldsChanged && before.geohash !== after.geohash) {
+        console.log(`Self-triggered geohash write-back detected for shop ${shopId}. Exiting early.`);
+        return null;
+      }
     }
 
     const name = after.name || after.shopName || "";
@@ -781,7 +815,16 @@ async function updateProductRating(productId: string, shopId?: string) {
 
 export const onShopReviewWrite = functions.firestore.document("/shop_reviews/{reviewId}")
   .onWrite(async (change, context) => {
-    const data = change.after.exists ? change.after.data() : change.before.data();
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+
+    // Skip recalculation if review text updated but rating remains the same
+    if (before && after && before.rating === after.rating) {
+      console.log("Shop review updated but rating score did not change. Skipping recalculation.");
+      return null;
+    }
+
+    const data = after || before;
     if (!data) return null;
     const shopId = data.shopId;
     if (shopId) {
@@ -792,7 +835,16 @@ export const onShopReviewWrite = functions.firestore.document("/shop_reviews/{re
 
 export const onProductReviewWrite = functions.firestore.document("/product_reviews/{reviewId}")
   .onWrite(async (change, context) => {
-    const data = change.after.exists ? change.after.data() : change.before.data();
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+
+    // Skip recalculation if review text updated but rating remains the same
+    if (before && after && before.rating === after.rating) {
+      console.log("Product review updated but rating score did not change. Skipping recalculation.");
+      return null;
+    }
+
+    const data = after || before;
     if (!data) return null;
     const productId = data.productId;
     const shopId = data.shopId;
@@ -1057,25 +1109,30 @@ export const onChatMessageCreated = functions.database.ref("/chats/{uid1}/{uid2}
     }
 
     // Resolve the sender's display name.
-    // 1. Check the conversation node stored under the receiver's view (most reliable for name).
-    // 2. Fall back to the users/ node or shop/ node.
-    let senderName = "Customer";
-    const convSnap = await admin.database()
-      .ref(`/chats/${receiverId}/${senderId}/userName`).once("value");
-    if (convSnap.exists() && convSnap.val()) {
-      senderName = convSnap.val();
-    } else if (isSenderVendor) {
-      const shopSnap = await admin.database().ref(`/shop/${senderId}`).once("value");
-      if (shopSnap.exists()) {
-        const s = shopSnap.val();
-        senderName = s.name || s.shopName || "Merchant";
+    // Check if client provided it in the message payload to avoid database reads,
+    // otherwise fallback to fetching from database.
+    let senderName = messageVal.senderName;
+    if (!senderName) {
+      const convSnap = await admin.database()
+        .ref(`/chats/${receiverId}/${senderId}/userName`).once("value");
+      if (convSnap.exists() && convSnap.val()) {
+        senderName = convSnap.val();
+      } else if (isSenderVendor) {
+        const shopSnap = await admin.database().ref(`/shop/${senderId}`).once("value");
+        if (shopSnap.exists()) {
+          const s = shopSnap.val();
+          senderName = s.name || s.shopName || "Merchant";
+        }
+      } else {
+        const userSnap = await admin.database().ref(`/users/${senderId}`).once("value");
+        if (userSnap.exists()) {
+          const u = userSnap.val();
+          senderName = u.name || u.displayName || u.email || "Customer";
+        }
       }
-    } else {
-      const userSnap = await admin.database().ref(`/users/${senderId}`).once("value");
-      if (userSnap.exists()) {
-        const u = userSnap.val();
-        senderName = u.name || u.displayName || u.email || "Customer";
-      }
+    }
+    if (!senderName) {
+      senderName = "Customer";
     }
 
     const payload = {

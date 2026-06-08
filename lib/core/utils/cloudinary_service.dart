@@ -6,23 +6,47 @@ class CloudinaryService {
   static const String _cloudName = 'drn2kxnrz';
   static final Dio _dio = Dio();
 
+  // Signature cache to prevent duplicate Cloud Function calls
+  static String? _cachedSignature;
+  static int? _cachedTimestamp;
+  static String? _cachedApiKey;
+  static String? _cachedCloudName;
+  static DateTime? _cacheTime;
+
   static Future<String?> uploadImage(String filePath,
       {ProgressCallback? onSendProgress}) async {
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('getCloudinarySignature');
-      final response = await callable.call<Map<dynamic, dynamic>>();
-      final result = Map<String, dynamic>.from(response.data);
-      final signature = result['signature'] as String?;
-      final timestamp = (result['timestamp'] as num?)?.toInt();
-      final apiKey = result['apiKey'] as String?;
-      final cloudName = result['cloudName'] as String? ?? _cloudName;
+      final now = DateTime.now();
+      final isCacheValid = _cachedSignature != null &&
+          _cacheTime != null &&
+          now.difference(_cacheTime!).inMinutes < 10;
 
-      // Fail closed: never fall back to a baked-in key. A signed upload requires
-      // a server-issued signature/timestamp/apiKey triple that all match.
-      if (signature == null || timestamp == null || apiKey == null) {
-        throw Exception(
-            'Invalid Cloudinary signature response from getCloudinarySignature');
+      String? signature = _cachedSignature;
+      int? timestamp = _cachedTimestamp;
+      String? apiKey = _cachedApiKey;
+      String? cloudName = _cachedCloudName;
+
+      if (!isCacheValid) {
+        final callable =
+            FirebaseFunctions.instance.httpsCallable('getCloudinarySignature');
+        final response = await callable.call<Map<dynamic, dynamic>>();
+        final result = Map<String, dynamic>.from(response.data);
+        signature = result['signature'] as String?;
+        timestamp = (result['timestamp'] as num?)?.toInt();
+        apiKey = result['apiKey'] as String?;
+        cloudName = result['cloudName'] as String? ?? _cloudName;
+
+        if (signature == null || timestamp == null || apiKey == null) {
+          throw Exception(
+              'Invalid Cloudinary signature response from getCloudinarySignature');
+        }
+
+        // Cache parameters
+        _cachedSignature = signature;
+        _cachedTimestamp = timestamp;
+        _cachedApiKey = apiKey;
+        _cachedCloudName = cloudName;
+        _cacheTime = now;
       }
 
       final uploadUrl =
