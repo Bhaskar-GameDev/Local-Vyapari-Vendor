@@ -33,7 +33,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _offerPriceController = TextEditingController();
   final _stockController = TextEditingController();
 
-  String _selectedCategory = 'Groceries & Staples';
+  String _selectedCategory = '';
   final List<String> _categories = [
     'Groceries & Staples',
     'Fruits & Vegetables',

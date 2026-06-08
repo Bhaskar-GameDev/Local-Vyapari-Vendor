@@ -54,24 +54,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               duration: const Duration(milliseconds: 800),
               slideOffset: 40.0,
               child: Image.asset(
-                'assets/images/logo.png',
+                'assets/images/only_logo.png',
                 height: Responsive.isTablet(context) ? 240 : 180,
                 fit: BoxFit.contain,
-              ),
-            ),
-            AppSpacing.verticalMd,
-            FadeInSlide(
-              duration: const Duration(milliseconds: 800),
-              delay: const Duration(milliseconds: 400),
-              slideOffset: 20.0,
-              child: Text(
-                AppLocalizations.of(context).merchantPartner,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2.0,
-                  color: AppColors.primary.withValues(alpha: 0.8),
-                ),
               ),
             ),
             AppSpacing.verticalXl,

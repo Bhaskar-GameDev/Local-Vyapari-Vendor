@@ -148,7 +148,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Image.asset(
-                    'assets/images/logo.png',
+                    'assets/images/only_logo.png',
                     height: 90,
                     fit: BoxFit.contain,
                   ),

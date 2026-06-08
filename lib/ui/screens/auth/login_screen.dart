@@ -141,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           duration: const Duration(milliseconds: 600),
                           slideOffset: 30,
                           child: Image.asset(
-                            'assets/images/logo.png',
+                            'assets/images/only_logo.png',
                             height: 120,
                             fit: BoxFit.contain,
                           ),
