@@ -184,6 +184,7 @@ export const onNewOfferAdded = functions.database.ref("/offers/{shopId}/{offerId
           click_action: "FLUTTER_NOTIFICATION_CLICK",
           type: "offer",
           shopId: shopId,
+          offerId: context.params.offerId,
         },
       };
 
